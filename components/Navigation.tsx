@@ -118,17 +118,6 @@ function MenuInhoud({
   return (
     <>
       <div className="border-b border-white/10 px-5 py-6">
-        <Link
-          href="/"
-          onClick={sluitMenu}
-          className="flex h-28 w-full items-center justify-center overflow-hidden rounded-2xl bg-white p-4 shadow-sm transition hover:bg-emerald-50"
-        >
-          <img
-            src="/skh-logo.svg"
-            alt="SKH"
-            className="block max-h-20 w-full object-contain"
-          />
-        </Link>
 
         <p className="mt-4 text-center text-xs font-semibold uppercase tracking-[0.2em] text-emerald-200/60">
           Certificaten CRM
@@ -144,29 +133,6 @@ function MenuInhoud({
           const actief = isActief(pathname, item.href);
 
           return (
-            <Link
-              key={item.href}
-              href={item.href}
-              onClick={sluitMenu}
-              aria-current={actief ? "page" : undefined}
-              className={`flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium transition ${
-                actief
-                  ? "bg-emerald-500/15 text-emerald-300 ring-1 ring-inset ring-emerald-400/20"
-                  : "text-slate-300 hover:bg-white/5 hover:text-white"
-              }`}
-            >
-              <span
-                className={
-                  actief
-                    ? "text-emerald-400"
-                    : "text-slate-500"
-                }
-              >
-                {item.icoon}
-              </span>
-
-              <span>{item.naam}</span>
-            </Link>
           );
         })}
       </nav>
