@@ -1,6 +1,7 @@
 "use server";
 
 import ExcelJS from "exceljs";
+import JSZip from "jszip";
 import {
   revalidatePath,
 } from "next/cache";
@@ -159,6 +160,227 @@ function vernieuwPaden() {
   );
 }
 
+
+
+function kolomnummerNaarLetters(
+  kolomnummer: number,
+) {
+  let resultaat = "";
+  let nummer = kolomnummer;
+
+  while (nummer > 0) {
+    const rest =
+      (nummer - 1) % 26;
+
+    resultaat =
+      String.fromCharCode(
+        65 + rest,
+      ) + resultaat;
+
+    nummer = Math.floor(
+      (nummer - 1) / 26,
+    );
+  }
+
+  return resultaat;
+}
+
+function kolomlettersNaarNummer(
+  letters: string,
+) {
+  return letters
+    .toUpperCase()
+    .split("")
+    .reduce(
+      (totaal, letter) =>
+        totaal * 26 +
+        letter.charCodeAt(0) -
+        64,
+      0,
+    );
+}
+
+function voegOntbrekendeWerkbladAdressenToe(
+  xml: string,
+) {
+  let laatsteRijNummer = 0;
+
+  return xml.replace(
+    /<row\b([^>]*)>([\s\S]*?)<\/row>/g,
+    (
+      _volledigeRij,
+      rijAttributen: string,
+      rijInhoud: string,
+    ) => {
+      const bestaandRijNummer =
+        rijAttributen.match(
+          /\br\s*=\s*["'](\d+)["']/i,
+        );
+
+      const rijNummer =
+        bestaandRijNummer
+          ? Number(
+              bestaandRijNummer[1],
+            )
+          : laatsteRijNummer + 1;
+
+      laatsteRijNummer =
+        Math.max(
+          laatsteRijNummer,
+          rijNummer,
+        );
+
+      let laatsteKolomNummer = 0;
+
+      const aangepasteRijInhoud =
+        rijInhoud.replace(
+          /<c\b([^>]*)>/g,
+          (
+            _volledigeCel,
+            celAttributen: string,
+          ) => {
+            const bestaandAdres =
+              celAttributen.match(
+                /\br\s*=\s*["']([A-Z]+)(\d+)["']/i,
+              );
+
+            if (bestaandAdres) {
+              laatsteKolomNummer =
+                Math.max(
+                  laatsteKolomNummer,
+                  kolomlettersNaarNummer(
+                    bestaandAdres[1],
+                  ),
+                );
+
+              return `<c${celAttributen}>`;
+            }
+
+            laatsteKolomNummer += 1;
+
+            const adres =
+              `${kolomnummerNaarLetters(
+                laatsteKolomNummer,
+              )}${rijNummer}`;
+
+            return (
+              `<c${celAttributen} ` +
+              `r="${adres}">`
+            );
+          },
+        );
+
+      const aangepasteRijAttributen =
+        bestaandRijNummer
+          ? rijAttributen
+          : `${rijAttributen} r="${rijNummer}"`;
+
+      return (
+        `<row${aangepasteRijAttributen}>` +
+        `${aangepasteRijInhoud}</row>`
+      );
+    },
+  );
+}
+
+async function normaliseerExcelXmlElementPrefixes(
+  invoer: Uint8Array,
+) {
+  const zip =
+    await JSZip.loadAsync(invoer);
+
+  const xmlBestanden =
+    Object.keys(zip.files).filter(
+      (naam) =>
+        naam.startsWith("xl/") &&
+        naam.endsWith(".xml"),
+    );
+
+  let aantalAangepast = 0;
+
+  await Promise.all(
+    xmlBestanden.map(
+      async (naam) => {
+        const zipBestand =
+          zip.file(naam);
+
+        if (!zipBestand) {
+          return;
+        }
+
+        const xml =
+          await zipBestand.async(
+            "string",
+          );
+
+        /*
+         * Sommige exports gebruiken elementen zoals:
+         * <x:workbook>, <x:worksheet> en <x:row>.
+         *
+         * ExcelJS 4.4.0 verwacht elementen zonder prefix.
+         * Attributen zoals r:id blijven bewust ongewijzigd.
+         */
+        let genormaliseerdeXml =
+          xml.replace(
+            /(<\/?)[A-Za-z_][\w.-]*:/g,
+            "$1",
+          );
+
+        if (
+          naam.startsWith(
+            "xl/worksheets/",
+          )
+        ) {
+          /*
+           * Zelfsluitende cellen moeten eerst worden
+           * omgezet. Anders komt een toegevoegd
+           * r-attribuut na de slash terecht.
+           */
+          genormaliseerdeXml =
+            genormaliseerdeXml.replace(
+              /<row\b([^>]*)\/>/g,
+              "<row$1></row>",
+            );
+
+          genormaliseerdeXml =
+            genormaliseerdeXml.replace(
+              /<c\b([^>]*)\/>/g,
+              "<c$1></c>",
+            );
+
+          genormaliseerdeXml =
+            voegOntbrekendeWerkbladAdressenToe(
+              genormaliseerdeXml,
+            );
+        }
+
+        if (
+          genormaliseerdeXml !== xml
+        ) {
+          zip.file(
+            naam,
+            genormaliseerdeXml,
+          );
+
+          aantalAangepast += 1;
+        }
+      },
+    ),
+  );
+
+  if (aantalAangepast === 0) {
+    return Buffer.from(invoer);
+  }
+
+  return zip.generateAsync({
+    type: "nodebuffer",
+    compression: "DEFLATE",
+    compressionOptions: {
+      level: 6,
+    },
+  });
+}
+
 export async function importeerAtteststatistieken(
   _vorigeStatus: ImportStatus,
   formData: FormData,
@@ -220,8 +442,15 @@ export async function importeerAtteststatistieken(
     const arrayBuffer =
       await bestandWaarde.arrayBuffer();
 
+    const genormaliseerdBestand =
+      await normaliseerExcelXmlElementPrefixes(
+        new Uint8Array(
+          arrayBuffer,
+        ),
+      );
+
     await werkmap.xlsx.load(
-      Buffer.from(arrayBuffer) as unknown as Parameters<typeof werkmap.xlsx.load>[0],
+      genormaliseerdBestand as unknown as Parameters<typeof werkmap.xlsx.load>[0],
     );
   } catch (fout) {
     console.error(
