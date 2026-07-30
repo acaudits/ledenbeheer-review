@@ -5,7 +5,6 @@ import {
   type DeskcontroleKolom,
 } from "@/components/DeskcontrolesTabel";
 import { vereisIngelogdeGebruiker } from "@/lib/auth";
-import { heeftMachtiging } from "@/lib/autorisatie";
 import { formatteerOndernemingsnummer } from "@/lib/ondernemingsnummer";
 import { prisma } from "@/lib/prisma";
 
@@ -146,22 +145,7 @@ const kolommen: DeskcontroleKolom[] = [
 ];
 
 export default async function DeskcontrolesPage() {
-  const gebruiker = await vereisIngelogdeGebruiker();
-
-  const magBeheren = heeftMachtiging(
-    gebruiker.rol,
-    "DESKCONTROLES_BEHEREN",
-  );
-
-  const magExporteren = heeftMachtiging(
-    gebruiker.rol,
-    "DESKCONTROLES_EXCEL_EXPORTEREN",
-  );
-
-  const magStatussenImporteren = heeftMachtiging(
-    gebruiker.rol,
-    "DESKCONTROLES_STATUS_IMPORTEREN",
-  );
+  await vereisIngelogdeGebruiker();
 
   const deskcontroles =
     await prisma.deskcontrole.findMany({
@@ -330,11 +314,6 @@ export default async function DeskcontrolesPage() {
           aantal={
             deskcontroles.length
           }
-          magBeheren={magBeheren}
-          magExporteren={magExporteren}
-          magStatussenImporteren={
-            magStatussenImporteren
-          }
         />
   
         <DeskcontroleDashboard
@@ -345,7 +324,6 @@ export default async function DeskcontrolesPage() {
           rijen={rijen}
           kolommen={kolommen}
           modus="actief"
-          magBeheren={magBeheren}
         />
       </div>
     );

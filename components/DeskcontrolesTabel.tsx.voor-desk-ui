@@ -1,15 +1,14 @@
 "use client";
 
-import NextLink from "next/link";
+import Link from "next/link";
 import {
   useEffect,
   useMemo,
   useState,
-  type ComponentProps,
 } from "react";
-import { DeskcontroleHerstelButton as BasisDeskcontroleHerstelButton } from "@/components/DeskcontroleHerstelButton";
+import { DeskcontroleHerstelButton } from "@/components/DeskcontroleHerstelButton";
 import { DeskcontroleOpmerkingenDialog } from "@/components/DeskcontroleOpmerkingenDialog";
-import { DeskcontroleVerwijderButton as BasisDeskcontroleVerwijderButton } from "@/components/DeskcontroleVerwijderButton";
+import { DeskcontroleVerwijderButton } from "@/components/DeskcontroleVerwijderButton";
 import {
   DeskcontroleSelectievak,
   DeskcontroleStatusSelect,
@@ -38,7 +37,6 @@ type DeskcontrolesTabelProps = {
   rijen: DeskcontroleRij[];
   kolommen: DeskcontroleKolom[];
   modus?: "actief" | "verwijderd";
-  magBeheren: boolean;
 };
 
 type Sortering = {
@@ -215,65 +213,7 @@ export function DeskcontrolesTabel({
   rijen,
   kolommen,
   modus = "actief",
-  magBeheren,
 }: DeskcontrolesTabelProps) {
-  function Link(
-    props: ComponentProps<typeof NextLink>,
-  ) {
-    const bestemming =
-      typeof props.href === "string"
-        ? props.href
-        : "";
-
-    const isWijziglink =
-      bestemming ===
-        "/deskcontroles/nieuw" ||
-      /^\/deskcontroles\/\d+\/bewerken$/.test(
-        bestemming,
-      );
-
-    if (
-      !magBeheren &&
-      isWijziglink
-    ) {
-      return null;
-    }
-
-    return <NextLink {...props} />;
-  }
-
-  function DeskcontroleVerwijderButton(
-    props: ComponentProps<
-      typeof BasisDeskcontroleVerwijderButton
-    >,
-  ) {
-    if (!magBeheren) {
-      return null;
-    }
-
-    return (
-      <BasisDeskcontroleVerwijderButton
-        {...props}
-      />
-    );
-  }
-
-  function DeskcontroleHerstelButton(
-    props: ComponentProps<
-      typeof BasisDeskcontroleHerstelButton
-    >,
-  ) {
-    if (!magBeheren) {
-      return null;
-    }
-
-    return (
-      <BasisDeskcontroleHerstelButton
-        {...props}
-      />
-    );
-  }
-
   const router = useRouter();
 
   const [zoekterm, setZoekterm] = useState("");
@@ -1029,8 +969,7 @@ export function DeskcontrolesTabel({
                             }`}
                           >
                             {isAfgerond &&
-                            modus === "actief" &&
-                            magBeheren ? (
+                            modus === "actief" ? (
                               <DeskcontroleAfgerondSelectievak
                                 id={Number(rij.id)}
                                 afgerond={
@@ -1043,16 +982,14 @@ export function DeskcontrolesTabel({
                                 label={`Deskcontrole ${rij.id} als afgerond markeren`}
                               />
                             ) : isStatus &&
-                              modus === "actief" &&
-                            magBeheren ? (
+                              modus === "actief" ? (
                               <DeskcontroleStatusSelect
                                 id={Number(rij.id)}
                                 waarde={tekst}
                               />
                             ) : isSnelSelectievak &&
 
-                              modus === "actief" &&
-                            magBeheren ? (
+                              modus === "actief" ? (
                               <DeskcontroleSelectievak
                                 id={Number(rij.id)}
                                 veld={
@@ -1065,8 +1002,7 @@ export function DeskcontrolesTabel({
                                 label={`${kolom.label} voor deskcontrole ${rij.id}`}
                               />
                             ) : isOpmerking &&
-                              modus === "actief" &&
-                            magBeheren ? (
+                              modus === "actief" ? (
                               <DeskcontroleOpmerkingenDialog
                                 id={Number(rij.id)}
                                 tekst={tekst}

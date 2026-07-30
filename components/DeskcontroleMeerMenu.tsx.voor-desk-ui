@@ -9,17 +9,7 @@ import {
 
 import { DeskcontroleStatusExcelImport } from "@/components/DeskcontroleStatusExcelImport";
 
-type DeskcontroleMeerMenuProps = {
-  magBeheren: boolean;
-  magExporteren: boolean;
-  magStatussenImporteren: boolean;
-};
-
-export function DeskcontroleMeerMenu({
-  magBeheren,
-  magExporteren,
-  magStatussenImporteren,
-}: DeskcontroleMeerMenuProps) {
+export function DeskcontroleMeerMenu() {
   const [
     geopend,
     setGeopend,
@@ -77,14 +67,6 @@ export function DeskcontroleMeerMenu({
       );
     };
   }, []);
-
-  if (
-    !magBeheren &&
-    !magExporteren &&
-    !magStatussenImporteren
-  ) {
-    return null;
-  }
 
   return (
     <div
@@ -159,7 +141,6 @@ export function DeskcontroleMeerMenu({
           className="absolute right-0 top-full z-50 mt-2 w-[min(92vw,34rem)] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl"
         >
           <div className="p-2">
-            {magBeheren ? (
             <Link
               href="/deskcontroles/verwijderd"
               role="menuitem"
@@ -197,9 +178,7 @@ export function DeskcontroleMeerMenu({
                 </span>
               </span>
             </Link>
-            ) : null}
 
-            {magExporteren ? (
             <a
               href="/deskcontroles/export-openstaand"
               role="menuitem"
@@ -232,14 +211,11 @@ export function DeskcontroleMeerMenu({
                 </span>
               </span>
             </a>
-            ) : null}
           </div>
 
-          {magStatussenImporteren ? (
-            <div className="border-t border-slate-200 bg-slate-50 p-3">
-              <DeskcontroleStatusExcelImport />
-            </div>
-          ) : null}
+          <div className="border-t border-slate-200 bg-slate-50 p-3">
+            <DeskcontroleStatusExcelImport />
+          </div>
         </div>
       ) : null}
     </div>
