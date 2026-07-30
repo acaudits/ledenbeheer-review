@@ -1,0 +1,174 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Lid {
+  id                   Int            @id @default(autoincrement())
+  naamPersoon          String         @map("naam_persoon")
+  telefoonnummer       String?
+  mailadres            String?
+  ovamId               String         @unique @map("ovam_id")
+  certificaatnummer    String         @unique
+  uitgereiktOp         DateTime?      @map("uitgereikt_op") @db.Date
+  bedrijf              String?
+  aansluiting          String?
+  opmerking            String?        @db.Text
+  certificatiePlatform String?        @map("certificatie_platform")
+  aangemaaktOp         DateTime       @default(now()) @map("aangemaakt_op")
+  bijgewerktOp         DateTime       @updatedAt @map("bijgewerkt_op")
+  verwijderdOp         DateTime?      @map("verwijderd_op")
+  deskcontroles        Deskcontrole[]
+
+  @@index([verwijderdOp])
+  @@map("leden")
+}
+
+enum Ondernemingstype {
+  EENMANSZAAK
+  BEDRIJF
+}
+
+model Procescertificaat {
+  id                Int              @id @default(autoincrement())
+  naamBedrijf       String           @map("naam_bedrijf")
+  kboNummer         String           @unique @map("kbo_nummer")
+  certificaatnummer String           @unique
+  uitgereiktOp      DateTime?        @map("uitgereikt_op") @db.Date
+  oneDrive          String?          @map("onedrive_url")
+  opmerking         String?          @db.Text
+  ondernemingstype  Ondernemingstype @map("ondernemingstype")
+  aangemaaktOp      DateTime         @default(now()) @map("aangemaakt_op")
+  bijgewerktOp      DateTime         @updatedAt @map("bijgewerkt_op")
+  verwijderdOp      DateTime?        @map("verwijderd_op")
+  deskcontroles     Deskcontrole[]
+
+  @@index([verwijderdOp])
+  @@map("procescertificaten")
+}
+
+enum DeskcontroleStatus {
+  GEEN
+  IN_OPMAAK
+  GEACTUALISEERD
+  AFGEROND
+}
+
+enum DeskcontroleType {
+  NIEUWE_CONTROLE
+  OPVOLGING
+}
+enum TerreincontroleStatus {
+  GEARCHIVEERD_ATTEST
+  ACTUEEL_ATTEST
+  IN_OPMAAK
+}
+model Terreincontrole {
+  id                  Int                       @id @default(autoincrement())
+  auditeur            String
+  factuurVerzonden    Boolean                   @default(false) @map("factuur_verzonden")
+  status              TerreincontroleStatus?
+  attestUrl           String                    @map("attest_url")
+  opmerkingen         String?
+  adres               String
+  datumPlaatsbezoek   DateTime                  @map("datum_plaatsbezoek") @db.Date
+  uurPlaatsbezoek     String                    @map("uur_plaatsbezoek")
+  ovamId              String                    @map("ovam_id")
+  naamAdi             String                    @map("naam_adi")
+  bedrijfsnaam        String
+  attestId            String                    @unique @map("attest_id") @db.Uuid
+  bronBestandsnaam    String?                   @map("bron_bestandsnaam")
+  bronExcelRij        Int?                      @map("bron_excel_rij")
+  aangemaaktOp        DateTime                  @default(now()) @map("aangemaakt_op")
+  bijgewerktOp        DateTime                  @updatedAt @map("bijgewerkt_op")
+  verwijderdOp        DateTime?                 @map("verwijderd_op")
+
+  @@index([ovamId])
+  @@index([status])
+  @@index([datumPlaatsbezoek])
+  @@index([verwijderdOp])
+  @@map("terreincontroles")
+}
+
+
+model Deskcontrole {
+  id                       Int                        @id @default(autoincrement())
+  attestId                 String                     @unique @map("attest_id") @db.Uuid
+  auditeur                 String
+  lidId                    Int                        @map("lid_id")
+  lid                      Lid                        @relation(fields: [lidId], references: [id], onDelete: Restrict)
+  procescertificaatId      Int                        @map("procescertificaat_id")
+  procescertificaat        Procescertificaat          @relation(fields: [procescertificaatId], references: [id], onDelete: Restrict)
+  linkAttest               String                     @unique @map("link_attest")
+  attestnummer             String                     @unique
+  status                   DeskcontroleStatus         @default(GEEN)
+  deadlineSanctie          DateTime                   @map("deadline_sanctie") @db.Date
+  mailSanctieVerzonden     Boolean                    @default(false) @map("mail_sanctie_verzonden")
+  typeControle             DeskcontroleType           @map("type_controle")
+  deadlineCorrectie        DateTime?                  @map("deadline_correctie") @db.Date
+  mailCorrectieVerzonden   Boolean                    @default(false) @map("mail_correctie_verzonden")
+  oneDrive                 String?                    @map("onedrive_url")
+  voorwaardelijkeOpheffing Boolean                    @default(false) @map("voorwaardelijke_opheffing")
+  opmerkingen              String?                    @db.Text
+  datumControle            DateTime                   @map("datum_controle") @db.Date
+  adres                    String?
+  finalisatieDatum         DateTime?                  @map("finalisatie_datum") @db.Date
+  aangemaaktOp             DateTime                   @default(now()) @map("aangemaakt_op")
+  bijgewerktOp             DateTime                   @updatedAt @map("bijgewerkt_op")
+  verwijderdOp             DateTime?                  @map("verwijderd_op")
+  vaststellingen           DeskcontroleVaststelling[]
+
+  @@index([lidId])
+  @@index([procescertificaatId])
+  @@index([status])
+  @@index([typeControle])
+  @@index([datumControle])
+  @@index([deadlineSanctie])
+  @@index([deadlineCorrectie])
+  @@index([finalisatieDatum])
+  @@index([verwijderdOp])
+  @@map("deskcontroles")
+}
+
+model DeskcontroleVaststelling {
+  id                  Int          @id @default(autoincrement())
+  deskcontroleId      Int          @map("deskcontrole_id")
+  deskcontrole        Deskcontrole @relation(fields: [deskcontroleId], references: [id], onDelete: Cascade)
+  excelRij            Int          @map("excel_rij")
+  parameter           String?
+  ncId                String       @map("nc_id")
+  omschrijving        String?      @db.Text
+  vastgesteldDoorCi   String?      @map("vastgesteld_door_ci")
+  verduidelijking     String?      @db.Text
+  groteImpact         String?      @map("grote_impact")
+  categorie           String?
+  motivatieAanpassing String?      @map("motivatie_aanpassing") @db.Text
+  aangemaaktOp        DateTime     @default(now()) @map("aangemaakt_op")
+
+  @@index([deskcontroleId])
+  @@index([ncId])
+  @@index([categorie])
+  @@map("deskcontrole_vaststellingen")
+}
+
+model ToegestaneGebruiker {
+  id                 Int       @id @default(autoincrement())
+  email              String    @unique
+  naam               String?
+  beheerder          Boolean   @default(false)
+  actief             Boolean   @default(true)
+  authUserId         String?   @unique @map("auth_user_id")
+  uitgenodigdOp      DateTime? @map("uitgenodigd_op")
+  aangemaaktOp       DateTime  @default(now()) @map("aangemaakt_op")
+  bijgewerktOp       DateTime  @updatedAt @map("bijgewerkt_op")
+  wachtwoordWijzigen Boolean   @default(true)
+
+  @@index([email])
+  @@index([actief])
+  @@index([beheerder])
+  @@map("toegestane_gebruikers")
+}

@@ -1,0 +1,5367 @@
+
+
+===== BEGIN app/procescertificaten/actions.ts =====
+
+"use server";
+
+import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
+import { prisma } from "@/lib/prisma";
+
+export type ProcescertificaatFormState = {
+  message?: string;
+  errors?: {
+    naamBedrijf?: string;
+    kboNummer?: string;
+    certificaatnummer?: string;
+    uitgereiktOp?: string;
+    oneDrive?: string;
+    ondernemingstype?: string;
+  };
+};
+
+function tekst(formData: FormData, veld: string) {
+  return String(formData.get(veld) ?? "").trim();
+}
+
+function optioneleTekst(formData: FormData, veld: string) {
+  const waarde = tekst(formData, veld);
+  return waarde || null;
+}
+
+function normaliseerKboNummer(waarde: string) {
+  return waarde.replace(/\D/g, "");
+}
+
+export async function maakProcescertificaatAan(
+  _vorigeStatus: ProcescertificaatFormState,
+  formData: FormData,
+): Promise<ProcescertificaatFormState> {
+  const naamBedrijf = tekst(formData, "naamBedrijf");
+
+  const kboNummer = normaliseerKboNummer(
+    tekst(formData, "kboNummer"),
+  );
+
+  const certificaatnummer = tekst(
+    formData,
+    "certificaatnummer",
+  ).toUpperCase();
+
+  const uitgereiktOpWaarde = tekst(
+    formData,
+    "uitgereiktOp",
+  );
+
+  const oneDrive = optioneleTekst(formData, "oneDrive");
+
+  const opmerking = optioneleTekst(
+    formData,
+    "opmerking",
+  );
+
+  const ondernemingstypeWaarde = tekst(
+    formData,
+    "ondernemingstype",
+  );
+
+  const ondernemingstype =
+    ondernemingstypeWaarde === "EENMANSZAAK" ||
+    ondernemingstypeWaarde === "BEDRIJF"
+      ? ondernemingstypeWaarde
+      : null;
+
+  const errors: NonNullable<
+    ProcescertificaatFormState["errors"]
+  > = {};
+
+  if (!naamBedrijf) {
+    errors.naamBedrijf = "Naam bedrijf is verplicht.";
+  }
+
+  if (!kboNummer) {
+    errors.kboNummer = "KBO-nummer is verplicht.";
+} else if (!/^\d{9,10}$/.test(kboNummer)) {
+    errors.kboNummer =
+      "Het KBO-nummer moet uit 9 of 10 cijfers bestaan.";
+  }
+
+  if (!certificaatnummer) {
+    errors.certificaatnummer =
+      "Certificaatnummer is verplicht.";
+  }
+
+  if (!ondernemingstype) {
+    errors.ondernemingstype =
+      "Kies eenmanszaak of bedrijf.";
+  }
+
+  let uitgereiktOp: Date | null = null;
+
+  if (uitgereiktOpWaarde) {
+    uitgereiktOp = new Date(
+      `${uitgereiktOpWaarde}T00:00:00.000Z`,
+    );
+
+    if (Number.isNaN(uitgereiktOp.getTime())) {
+      errors.uitgereiktOp = "Vul een geldige datum in.";
+    }
+  }
+
+  if (oneDrive) {
+    try {
+      const url = new URL(oneDrive);
+
+      if (!["http:", "https:"].includes(url.protocol)) {
+        errors.oneDrive =
+          "De URL moet met http:// of https:// beginnen.";
+      }
+    } catch {
+      errors.oneDrive =
+        "Vul een geldige OneDrive-URL in.";
+    }
+  }
+
+  if (Object.keys(errors).length > 0) {
+    return {
+      message: "Controleer de gemarkeerde velden.",
+      errors,
+    };
+  }
+
+  const [bestaandKbo, bestaandCertificaat] =
+    await Promise.all([
+      prisma.procescertificaat.findUnique({
+        where: {
+          kboNummer,
+        },
+        select: {
+          id: true,
+        },
+      }),
+
+      prisma.procescertificaat.findUnique({
+        where: {
+          certificaatnummer,
+        },
+        select: {
+          id: true,
+        },
+      }),
+    ]);
+
+  if (bestaandKbo) {
+    errors.kboNummer = "Dit KBO-nummer bestaat al.";
+  }
+
+  if (bestaandCertificaat) {
+    errors.certificaatnummer =
+      "Dit certificaatnummer bestaat al.";
+  }
+
+  if (Object.keys(errors).length > 0) {
+    return {
+      message:
+        "Het procescertificaat kan niet worden opgeslagen.",
+      errors,
+    };
+  }
+
+  if (!ondernemingstype) {
+    return {
+      message: "Kies een ondernemingstype.",
+      errors: {
+        ondernemingstype:
+          "Kies eenmanszaak of bedrijf.",
+      },
+    };
+  }
+
+  try {
+    await prisma.procescertificaat.create({
+      data: {
+        naamBedrijf,
+        kboNummer,
+        certificaatnummer,
+        uitgereiktOp,
+        oneDrive,
+        opmerking,
+        ondernemingstype,
+      },
+    });
+  } catch (error) {
+    if (
+      typeof error === "object" &&
+      error !== null &&
+      "code" in error &&
+      error.code === "P2002"
+    ) {
+      return {
+        message:
+          "Het KBO-nummer of certificaatnummer bestaat al.",
+      };
+    }
+
+    console.error(
+      "Procescertificaat opslaan mislukt:",
+      error,
+    );
+
+    return {
+      message:
+        "Er is een technische fout opgetreden. Probeer opnieuw.",
+    };
+  }
+
+  revalidatePath("/procescertificaten");
+  redirect("/procescertificaten?toegevoegd=1");
+}
+
+
+===== END app/procescertificaten/actions.ts =====
+
+
+===== BEGIN app/api/procescertificaten/controle/route.ts =====
+
+import { NextRequest, NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
+
+export const dynamic = "force-dynamic";
+
+function normaliseerKboNummer(waarde: string) {
+  return waarde.replace(/\D/g, "");
+}
+
+export async function GET(request: NextRequest) {
+  const veld = request.nextUrl.searchParams.get("veld");
+
+  const ruweWaarde =
+    request.nextUrl.searchParams.get("waarde")?.trim() ??
+    "";
+
+  if (!["kboNummer", "certificaatnummer"].includes(
+    veld ?? "",
+  )) {
+    return NextResponse.json(
+      {
+        fout: "Ongeldig veld.",
+      },
+      {
+        status: 400,
+      },
+    );
+  }
+
+  if (!ruweWaarde) {
+    return NextResponse.json({
+      bestaat: false,
+    });
+  }
+
+  if (veld === "kboNummer") {
+    const kboNummer =
+      normaliseerKboNummer(ruweWaarde);
+
+    const bestaandCertificaat =
+      await prisma.procescertificaat.findUnique({
+        where: {
+          kboNummer,
+        },
+        select: {
+          id: true,
+        },
+      });
+
+    return NextResponse.json({
+      bestaat: Boolean(bestaandCertificaat),
+    });
+  }
+
+  const certificaatnummer =
+    ruweWaarde.toUpperCase();
+
+  const bestaandCertificaat =
+    await prisma.procescertificaat.findUnique({
+      where: {
+        certificaatnummer,
+      },
+      select: {
+        id: true,
+      },
+    });
+
+  return NextResponse.json({
+    bestaat: Boolean(bestaandCertificaat),
+  });
+}
+
+
+===== END app/api/procescertificaten/controle/route.ts =====
+
+
+===== BEGIN app/procescertificaten/nieuw/ProcescertificaatFormulier.tsx =====
+
+"use client";
+
+import { useActionState, useState } from "react";
+import { useFormStatus } from "react-dom";
+import {
+  maakProcescertificaatAan,
+  type ProcescertificaatFormState,
+} from "../actions";
+
+const beginstatus: ProcescertificaatFormState = {};
+
+const invoerStijl =
+  "mt-1.5 w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-slate-900 shadow-sm outline-none transition placeholder:text-slate-400 focus:border-emerald-600 focus:ring-4 focus:ring-emerald-100";
+
+const labelStijl =
+  "block text-sm font-semibold text-slate-700";
+
+function Foutmelding({
+  bericht,
+}: {
+  bericht?: string;
+}) {
+  if (!bericht) {
+    return null;
+  }
+
+  return (
+    <p className="mt-1.5 text-sm font-medium text-red-600">
+      {bericht}
+    </p>
+  );
+}
+
+function OpslaanKnop({
+  geblokkeerd,
+}: {
+  geblokkeerd: boolean;
+}) {
+  const { pending } = useFormStatus();
+
+  return (
+    <button
+      type="submit"
+      disabled={pending || geblokkeerd}
+      className="rounded-xl bg-emerald-700 px-5 py-3 font-semibold text-white shadow-sm transition hover:bg-emerald-600 disabled:cursor-not-allowed disabled:bg-slate-400"
+    >
+      {pending
+        ? "Bezig met opslaan..."
+        : "Procescertificaat opslaan"}
+    </button>
+  );
+}
+
+export default function ProcescertificaatFormulier() {
+  const [state, formAction] = useActionState(
+    maakProcescertificaatAan,
+    beginstatus,
+  );
+
+  const [uniekeFouten, setUniekeFouten] = useState<{
+    kboNummer?: string;
+    certificaatnummer?: string;
+  }>({});
+
+  const [controleBezig, setControleBezig] = useState<{
+    kboNummer?: boolean;
+    certificaatnummer?: boolean;
+  }>({});
+
+  async function controleerUniek(
+    veld: "kboNummer" | "certificaatnummer",
+    waarde: string,
+  ) {
+    const opgeschoond = waarde.trim();
+
+    if (!opgeschoond) {
+      return;
+    }
+
+    setControleBezig((vorige) => ({
+      ...vorige,
+      [veld]: true,
+    }));
+
+    try {
+      const parameters = new URLSearchParams({
+        veld,
+        waarde: opgeschoond,
+      });
+
+      const response = await fetch(
+        `/api/procescertificaten/controle?${parameters.toString()}`,
+        {
+          cache: "no-store",
+        },
+      );
+
+      if (!response.ok) {
+        throw new Error("Controle mislukt");
+      }
+
+      const resultaat = (await response.json()) as {
+        bestaat: boolean;
+      };
+
+      setUniekeFouten((vorige) => ({
+        ...vorige,
+        [veld]: resultaat.bestaat
+          ? veld === "kboNummer"
+            ? "Dit KBO-nummer bestaat al."
+            : "Dit certificaatnummer bestaat al."
+          : undefined,
+      }));
+    } catch {
+      // De server controleert opnieuw bij het opslaan.
+    } finally {
+      setControleBezig((vorige) => ({
+        ...vorige,
+        [veld]: false,
+      }));
+    }
+  }
+
+  const dubbeleWaarde = Boolean(
+    uniekeFouten.kboNummer ||
+      uniekeFouten.certificaatnummer,
+  );
+
+  const controleLoopt = Boolean(
+    controleBezig.kboNummer ||
+      controleBezig.certificaatnummer,
+  );
+
+  return (
+    <form action={formAction} className="space-y-8">
+      {state.message && (
+        <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700">
+          {state.message}
+        </div>
+      )}
+
+      <section>
+        <h2 className="text-lg font-bold text-slate-900">
+          Onderneming
+        </h2>
+
+        <p className="mt-1 text-sm text-slate-500">
+          Vul de gegevens van de onderneming in.
+        </p>
+
+        <div className="mt-5 grid gap-5 md:grid-cols-2">
+          <div className="md:col-span-2">
+            <label
+              htmlFor="naamBedrijf"
+              className={labelStijl}
+            >
+              Bedrijf *
+            </label>
+
+            <input
+              id="naamBedrijf"
+              name="naamBedrijf"
+              required
+              autoComplete="organization"
+              placeholder="Naam van het bedrijf"
+              className={invoerStijl}
+            />
+
+            <Foutmelding
+              bericht={state.errors?.naamBedrijf}
+            />
+          </div>
+
+          <div>
+            <label
+              htmlFor="kboNummer"
+              className={labelStijl}
+            >
+              KBO-nummer *
+            </label>
+
+            <input
+              id="kboNummer"
+              name="kboNummer"
+              required
+              inputMode="numeric"
+              placeholder="123.456.789 of 0123.456.789"
+              className={invoerStijl}
+              onChange={() => {
+                setUniekeFouten((vorige) => ({
+                  ...vorige,
+                  kboNummer: undefined,
+                }));
+              }}
+              onBlur={(event) => {
+                void controleerUniek(
+                  "kboNummer",
+                  event.currentTarget.value,
+                );
+              }}
+            />
+
+            {controleBezig.kboNummer && (
+              <p className="mt-1.5 text-sm text-emerald-700">
+                KBO-nummer controleren...
+              </p>
+            )}
+
+            <Foutmelding
+              bericht={
+                uniekeFouten.kboNummer ||
+                state.errors?.kboNummer
+              }
+            />
+          </div>
+
+          <div>
+            <label
+              htmlFor="certificaatnummer"
+              className={labelStijl}
+            >
+              Certificaatnummer *
+            </label>
+
+            <input
+              id="certificaatnummer"
+              name="certificaatnummer"
+              required
+              autoCapitalize="characters"
+              placeholder="Certificaatnummer"
+              className={invoerStijl}
+              onChange={() => {
+                setUniekeFouten((vorige) => ({
+                  ...vorige,
+                  certificaatnummer: undefined,
+                }));
+              }}
+              onBlur={(event) => {
+                void controleerUniek(
+                  "certificaatnummer",
+                  event.currentTarget.value,
+                );
+              }}
+            />
+
+            {controleBezig.certificaatnummer && (
+              <p className="mt-1.5 text-sm text-emerald-700">
+                Certificaatnummer controleren...
+              </p>
+            )}
+
+            <Foutmelding
+              bericht={
+                uniekeFouten.certificaatnummer ||
+                state.errors?.certificaatnummer
+              }
+            />
+          </div>
+        </div>
+      </section>
+
+      <section className="border-t border-slate-200 pt-8">
+        <h2 className="text-lg font-bold text-slate-900">
+          Type onderneming
+        </h2>
+
+        <p className="mt-1 text-sm text-slate-500">
+          Kies één van de twee mogelijkheden.
+        </p>
+
+        <div className="mt-5 grid gap-4 sm:grid-cols-2">
+          <label className="cursor-pointer rounded-2xl border border-slate-300 bg-white p-5 transition hover:border-emerald-400 hover:bg-emerald-50">
+            <div className="flex items-start gap-3">
+              <input
+                type="radio"
+                name="ondernemingstype"
+                value="EENMANSZAAK"
+                required
+                className="mt-1 h-4 w-4 accent-emerald-700"
+              />
+
+              <div>
+                <p className="font-semibold text-slate-900">
+                  Eenmanszaak
+                </p>
+
+                <p className="mt-1 text-sm text-slate-500">
+                  Zelfstandige zonder aparte rechtspersoon.
+                </p>
+              </div>
+            </div>
+          </label>
+
+          <label className="cursor-pointer rounded-2xl border border-slate-300 bg-white p-5 transition hover:border-emerald-400 hover:bg-emerald-50">
+            <div className="flex items-start gap-3">
+              <input
+                type="radio"
+                name="ondernemingstype"
+                value="BEDRIJF"
+                required
+                className="mt-1 h-4 w-4 accent-emerald-700"
+              />
+
+              <div>
+                <p className="font-semibold text-slate-900">
+                  Bedrijf
+                </p>
+
+                <p className="mt-1 text-sm text-slate-500">
+                  Vennootschap of andere rechtspersoon.
+                </p>
+              </div>
+            </div>
+          </label>
+        </div>
+
+        <Foutmelding
+          bericht={state.errors?.ondernemingstype}
+        />
+      </section>
+
+      <section className="border-t border-slate-200 pt-8">
+        <h2 className="text-lg font-bold text-slate-900">
+          Certificaatgegevens
+        </h2>
+
+        <div className="mt-5 grid gap-5 md:grid-cols-2">
+          <div>
+            <label
+              htmlFor="uitgereiktOp"
+              className={labelStijl}
+            >
+              Uitgereikt op
+            </label>
+
+            <input
+              id="uitgereiktOp"
+              name="uitgereiktOp"
+              type="date"
+              className={invoerStijl}
+            />
+
+            <Foutmelding
+              bericht={state.errors?.uitgereiktOp}
+            />
+          </div>
+
+          <div>
+            <label
+              htmlFor="oneDrive"
+              className={labelStijl}
+            >
+              OneDrive-URL
+            </label>
+
+            <input
+              id="oneDrive"
+              name="oneDrive"
+              type="url"
+              placeholder="https://..."
+              className={invoerStijl}
+            />
+
+            <Foutmelding
+              bericht={state.errors?.oneDrive}
+            />
+          </div>
+
+          <div className="md:col-span-2">
+            <label
+              htmlFor="opmerking"
+              className={labelStijl}
+            >
+              Opmerking
+            </label>
+
+            <textarea
+              id="opmerking"
+              name="opmerking"
+              rows={5}
+              placeholder="Aanvullende informatie..."
+              className={invoerStijl}
+            />
+          </div>
+        </div>
+      </section>
+
+      <div className="flex flex-col-reverse gap-3 border-t border-slate-200 pt-6 sm:flex-row sm:justify-end">
+        <a
+          href="/procescertificaten"
+          className="rounded-xl border border-slate-300 bg-white px-5 py-3 text-center font-semibold text-slate-700 transition hover:bg-slate-50"
+        >
+          Annuleren
+        </a>
+
+        <OpslaanKnop
+          geblokkeerd={dubbeleWaarde || controleLoopt}
+        />
+      </div>
+    </form>
+  );
+}
+
+
+===== END app/procescertificaten/nieuw/ProcescertificaatFormulier.tsx =====
+
+
+===== BEGIN app/procescertificaten/nieuw/page.tsx =====
+
+import Link from "next/link";
+import ProcescertificaatFormulier from "./ProcescertificaatFormulier";
+
+export const metadata = {
+  title: "Nieuw procescertificaat | SKH CRM",
+};
+
+export default function NieuwProcescertificaatPage() {
+  return (
+    <div className="mx-auto max-w-4xl">
+      <Link
+        href="/procescertificaten"
+        className="text-sm font-semibold text-emerald-700 transition hover:text-emerald-900"
+      >
+        ← Terug naar procescertificaten
+      </Link>
+
+      <section className="mt-5 overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
+        <div className="bg-gradient-to-r from-[#073c34] to-emerald-700 px-6 py-8 text-white sm:px-8">
+          <p className="text-sm font-semibold uppercase tracking-wider text-emerald-100">
+            SKH · Procescertificaten
+          </p>
+
+          <h1 className="mt-2 text-3xl font-bold">
+            Nieuw procescertificaat
+          </h1>
+
+          <p className="mt-2 max-w-2xl text-emerald-100">
+            Registreer het bedrijf en de bijbehorende
+            certificatiegegevens.
+          </p>
+        </div>
+
+        <div className="p-6 sm:p-8">
+          <ProcescertificaatFormulier />
+        </div>
+      </section>
+    </div>
+  );
+}
+
+
+===== END app/procescertificaten/nieuw/page.tsx =====
+
+
+===== BEGIN app/procescertificaten/[id]/bewerken/page.tsx =====
+
+import Link from "next/link";
+import { revalidatePath } from "next/cache";
+import { notFound, redirect } from "next/navigation";
+import { prisma } from "@/lib/prisma";
+
+export const dynamic = "force-dynamic";
+
+type PaginaProps = {
+  params: Promise<{
+    id: string;
+  }>;
+  searchParams: Promise<{
+    fout?: string;
+  }>;
+};
+
+function tekst(formData: FormData, naam: string) {
+  return String(formData.get(naam) ?? "").trim();
+}
+
+function optioneleTekst(formData: FormData, naam: string) {
+  return tekst(formData, naam) || null;
+}
+
+function normaliseerKboNummer(waarde: string) {
+  return waarde.replace(/\D/g, "");
+}
+
+function datumVoorInput(datum: Date | null) {
+  return datum ? datum.toISOString().slice(0, 10) : "";
+}
+
+export default async function BewerkProcescertificaatPage({
+  params,
+  searchParams,
+}: PaginaProps) {
+  const { id: idTekst } = await params;
+  const parameters = await searchParams;
+  const id = Number(idTekst);
+
+  if (!Number.isInteger(id) || id <= 0) {
+    notFound();
+  }
+
+  const certificaat = await prisma.procescertificaat.findUnique({
+    where: {
+      id,
+    },
+  });
+
+  if (!certificaat) {
+    notFound();
+  }
+
+  async function opslaan(formData: FormData) {
+    "use server";
+
+    const naamBedrijf = tekst(formData, "naamBedrijf");
+    const kboNummer = normaliseerKboNummer(
+      tekst(formData, "kboNummer"),
+    );
+    const certificaatnummer = tekst(
+      formData,
+      "certificaatnummer",
+    ).toUpperCase();
+    const datumWaarde = tekst(formData, "uitgereiktOp");
+    const oneDrive = optioneleTekst(formData, "oneDrive");
+    const opmerking = optioneleTekst(formData, "opmerking");
+    const ondernemingstypeWaarde = tekst(
+      formData,
+      "ondernemingstype",
+    );
+
+    if (
+      !naamBedrijf ||
+      !kboNummer ||
+      !certificaatnummer ||
+      !["EENMANSZAAK", "BEDRIJF"].includes(
+        ondernemingstypeWaarde,
+      )
+    ) {
+      redirect(
+        `/procescertificaten/${id}/bewerken?fout=${encodeURIComponent(
+          "Vul alle verplichte velden correct in.",
+        )}`,
+      );
+    }
+
+    if (!/^\d{9,10}$/.test(kboNummer)) {
+        redirect(
+          `/procescertificaten/${id}/bewerken?fout=${encodeURIComponent(
+            "Het KBO-nummer moet uit 9 of 10 cijfers bestaan.",
+          )}`,
+        );
+      }  
+
+    if (oneDrive) {
+      try {
+        const url = new URL(oneDrive);
+
+        if (!["http:", "https:"].includes(url.protocol)) {
+          throw new Error("Ongeldig protocol");
+        }
+      } catch {
+        redirect(
+          `/procescertificaten/${id}/bewerken?fout=${encodeURIComponent(
+            "Vul een geldige OneDrive-URL in.",
+          )}`,
+        );
+      }
+    }
+
+    const dubbel = await prisma.procescertificaat.findFirst({
+      where: {
+        id: {
+          not: id,
+        },
+        OR: [
+          {
+            kboNummer,
+          },
+          {
+            certificaatnummer,
+          },
+        ],
+      },
+      select: {
+        kboNummer: true,
+        certificaatnummer: true,
+      },
+    });
+
+    if (dubbel?.kboNummer === kboNummer) {
+      redirect(
+        `/procescertificaten/${id}/bewerken?fout=${encodeURIComponent(
+          "Dit KBO-nummer bestaat al.",
+        )}`,
+      );
+    }
+
+    if (dubbel?.certificaatnummer === certificaatnummer) {
+      redirect(
+        `/procescertificaten/${id}/bewerken?fout=${encodeURIComponent(
+          "Dit certificaatnummer bestaat al.",
+        )}`,
+      );
+    }
+
+    const uitgereiktOp = datumWaarde
+      ? new Date(`${datumWaarde}T00:00:00.000Z`)
+      : null;
+
+    const ondernemingstype =
+      ondernemingstypeWaarde === "EENMANSZAAK"
+        ? "EENMANSZAAK"
+        : "BEDRIJF";
+
+    await prisma.procescertificaat.update({
+      where: {
+        id,
+      },
+      data: {
+        naamBedrijf,
+        kboNummer,
+        certificaatnummer,
+        uitgereiktOp,
+        oneDrive,
+        opmerking,
+        ondernemingstype,
+      },
+    });
+
+    revalidatePath("/");
+    revalidatePath("/procescertificaten");
+
+    redirect("/procescertificaten");
+  }
+
+  const invoerStijl =
+    "mt-1.5 w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-slate-900 shadow-sm outline-none focus:border-emerald-600 focus:ring-4 focus:ring-emerald-600/10";
+
+  const labelStijl = "block text-sm font-semibold text-slate-700";
+
+  return (
+    <div className="mx-auto max-w-4xl">
+      <Link
+        href="/procescertificaten"
+        className="text-sm font-semibold text-emerald-700 hover:text-emerald-900"
+      >
+        ← Terug naar procescertificaten
+      </Link>
+
+      <section className="mt-5 overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
+        <div className="bg-gradient-to-r from-[#073c34] to-emerald-700 px-6 py-8 text-white sm:px-8">
+          <p className="text-sm font-semibold uppercase tracking-wider text-emerald-100">
+            Procescertificaten
+          </p>
+          <h1 className="mt-2 text-3xl font-bold">
+            Procescertificaat bewerken
+          </h1>
+          <p className="mt-2 text-emerald-100">
+            Pas de gegevens van {certificaat.naamBedrijf} aan.
+          </p>
+        </div>
+
+        <form action={opslaan} className="space-y-8 p-6 sm:p-8">
+          {parameters.fout && (
+            <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">
+              {parameters.fout}
+            </div>
+          )}
+
+          <div className="grid gap-5 md:grid-cols-2">
+            <div className="md:col-span-2">
+              <label htmlFor="naamBedrijf" className={labelStijl}>
+                Bedrijf *
+              </label>
+              <input
+                id="naamBedrijf"
+                name="naamBedrijf"
+                required
+                defaultValue={certificaat.naamBedrijf}
+                className={invoerStijl}
+              />
+            </div>
+
+            <div>
+              <label htmlFor="kboNummer" className={labelStijl}>
+                KBO-nummer *
+              </label>
+              <input
+                id="kboNummer"
+                name="kboNummer"
+                inputMode="numeric"
+                placeholder="123.456.789 of 0123.456.789"
+                required
+                defaultValue={certificaat.kboNummer}
+                className={invoerStijl}
+              />
+            </div>
+
+            <div>
+              <label
+                htmlFor="certificaatnummer"
+                className={labelStijl}
+              >
+                Certificaatnummer *
+              </label>
+              <input
+                id="certificaatnummer"
+                name="certificaatnummer"
+                required
+                defaultValue={certificaat.certificaatnummer}
+                className={invoerStijl}
+              />
+            </div>
+
+            <div>
+              <label htmlFor="uitgereiktOp" className={labelStijl}>
+                Uitgereikt op
+              </label>
+              <input
+                id="uitgereiktOp"
+                name="uitgereiktOp"
+                type="date"
+                defaultValue={datumVoorInput(
+                  certificaat.uitgereiktOp,
+                )}
+                className={invoerStijl}
+              />
+            </div>
+
+            <div>
+              <label htmlFor="oneDrive" className={labelStijl}>
+                OneDrive-URL
+              </label>
+              <input
+                id="oneDrive"
+                name="oneDrive"
+                type="url"
+                defaultValue={certificaat.oneDrive ?? ""}
+                className={invoerStijl}
+              />
+            </div>
+
+            <div className="md:col-span-2">
+              <span className={labelStijl}>Type onderneming *</span>
+
+              <div className="mt-2 grid gap-3 sm:grid-cols-2">
+                <label className="rounded-xl border border-slate-300 p-4">
+                  <input
+                    type="radio"
+                    name="ondernemingstype"
+                    value="EENMANSZAAK"
+                    defaultChecked={
+                      certificaat.ondernemingstype === "EENMANSZAAK"
+                    }
+                    className="mr-3 accent-emerald-700"
+                  />
+                  Eenmanszaak
+                </label>
+
+                <label className="rounded-xl border border-slate-300 p-4">
+                  <input
+                    type="radio"
+                    name="ondernemingstype"
+                    value="BEDRIJF"
+                    defaultChecked={
+                      certificaat.ondernemingstype === "BEDRIJF"
+                    }
+                    className="mr-3 accent-emerald-700"
+                  />
+                  Bedrijf
+                </label>
+              </div>
+            </div>
+
+            <div className="md:col-span-2">
+              <label htmlFor="opmerking" className={labelStijl}>
+                Opmerking
+              </label>
+              <textarea
+                id="opmerking"
+                name="opmerking"
+                rows={5}
+                defaultValue={certificaat.opmerking ?? ""}
+                className={invoerStijl}
+              />
+            </div>
+          </div>
+
+          <div className="flex flex-col-reverse gap-3 border-t border-slate-200 pt-6 sm:flex-row sm:justify-end">
+            <Link
+              href="/procescertificaten"
+              className="rounded-xl border border-slate-300 px-5 py-3 text-center font-semibold text-slate-700 hover:bg-slate-50"
+            >
+              Annuleren
+            </Link>
+
+            <button
+              type="submit"
+              className="rounded-xl bg-emerald-700 px-5 py-3 font-semibold text-white hover:bg-emerald-600"
+            >
+              Wijzigingen opslaan
+            </button>
+          </div>
+        </form>
+      </section>
+    </div>
+  );
+}
+
+
+===== END app/procescertificaten/[id]/bewerken/page.tsx =====
+
+
+===== BEGIN app/procescertificaten/page.tsx =====
+
+import { PageHeader } from "@/components/PageHeader";
+import {
+  CertificatenTabel,
+  type CertificaatKolom,
+} from "@/components/CertificatenTabel";
+import { prisma } from "@/lib/prisma";
+
+export const dynamic = "force-dynamic";
+
+function formatteerDatum(datum: Date | null) {
+  if (!datum) {
+    return "";
+  }
+
+  return new Intl.DateTimeFormat("nl-BE", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  }).format(datum);
+}
+
+function formatteerKboNummer(kboNummer: string) {
+  const cijfers = kboNummer.replace(/\D/g, "");
+
+  if (cijfers.length === 9) {
+    return `${cijfers.slice(0, 3)}.${cijfers.slice(
+      3,
+      6,
+    )}.${cijfers.slice(6)}`;
+  }
+
+  if (cijfers.length === 10) {
+    return `${cijfers.slice(0, 4)}.${cijfers.slice(
+      4,
+      7,
+    )}.${cijfers.slice(7)}`;
+  }
+
+  return kboNummer;
+}
+
+const kolommen: CertificaatKolom[] = [
+  {
+    sleutel: "bedrijf",
+    label: "Bedrijf",
+  },
+  {
+    sleutel: "kboNummer",
+    label: "KBO-nummer",
+  },
+  {
+    sleutel: "certificaatnummer",
+    label: "Certificaatnummer",
+  },
+  {
+    sleutel: "uitgereiktOp",
+    label: "Uitgereikt op",
+    type: "datum",
+  },
+  
+  {
+    sleutel: "oneDrive",
+    label: "OneDrive",
+    type: "url",
+  },
+  {
+    sleutel: "opmerking",
+    label: "Opmerking",
+  },
+  {
+    sleutel: "ondernemingstype",
+    label: "Type",
+    type: "badge",
+  },
+];
+
+export default async function ProcescertificatenPage() {
+  const procescertificaten =
+    await prisma.procescertificaat.findMany({
+      where: {
+        verwijderdOp: null,
+      },
+      orderBy: {
+        naamBedrijf: "asc",
+      },
+    });
+
+  const rijen = procescertificaten.map(
+    (certificaat) => ({
+      id: certificaat.id,
+      bedrijf: certificaat.naamBedrijf,
+      kboNummer: formatteerKboNummer(
+        certificaat.kboNummer,
+      ),
+      certificaatnummer:
+        certificaat.certificaatnummer,
+      uitgereiktOp: formatteerDatum(
+        certificaat.uitgereiktOp,
+      ),
+      oneDrive: certificaat.oneDrive,
+      opmerking: certificaat.opmerking,
+      ondernemingstype:
+        certificaat.ondernemingstype ===
+        "EENMANSZAAK"
+          ? "Eenmanszaak"
+          : "Bedrijf",
+    }),
+  );
+
+  return (
+    <>
+      <PageHeader
+        compact
+        titel="Procescertificaten"
+        beschrijving={`${procescertificaten.length} actieve procescertificaten`}
+        actieTekst="Nieuw procescertificaat"
+        actieHref="/procescertificaten/nieuw"
+        secundaireActieTekst="Verwijderde"
+        secundaireActieHref="/procescertificaten/verwijderd"
+      />
+
+      <CertificatenTabel
+        rijen={rijen}
+        kolommen={kolommen}
+        zoekPlaceholder="Zoeken in procescertificaten..."
+        legeTitel="Nog geen procescertificaten"
+        legeBeschrijving="Voeg het eerste procescertificaat toe om de lijst op te bouwen."
+        nieuwHref="/procescertificaten/nieuw"
+        nieuwTekst="Nieuw procescertificaat"
+        bewerkBasisHref="/procescertificaten"
+        soort="proces"
+      />
+    </>
+  );
+}
+
+
+===== END app/procescertificaten/page.tsx =====
+
+
+===== BEGIN app/procescertificaten/verwijderd/page.tsx =====
+
+import Link from "next/link";
+import { CopyButton } from "@/components/CopyButton";
+import { HerstelButton } from "@/components/CertificaatStatusButton";
+import { prisma } from "@/lib/prisma";
+
+export const dynamic = "force-dynamic";
+
+function datum(datumWaarde: Date | null) {
+  if (!datumWaarde) {
+    return "—";
+  }
+
+  return new Intl.DateTimeFormat("nl-BE", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(datumWaarde);
+}
+
+function formatteerKboNummer(
+    kboNummer: string,
+  ) {
+    const cijfers = kboNummer.replace(
+      /\D/g,
+      "",
+    );
+  
+    if (cijfers.length === 9) {
+      return `${cijfers.slice(0, 3)}.${cijfers.slice(
+        3,
+        6,
+      )}.${cijfers.slice(6)}`;
+    }
+  
+    if (cijfers.length === 10) {
+      return `${cijfers.slice(0, 4)}.${cijfers.slice(
+        4,
+        7,
+      )}.${cijfers.slice(7)}`;
+    }
+  
+    return kboNummer;
+  }
+  
+
+export default async function VerwijderdeProcescertificatenPage() {
+  const certificaten =
+    await prisma.procescertificaat.findMany({
+      where: {
+        verwijderdOp: {
+          not: null,
+        },
+      },
+      orderBy: {
+        verwijderdOp: "desc",
+      },
+    });
+
+  return (
+    <>
+      <header className="mb-7 border-b border-slate-200 pb-7">
+        <Link
+          href="/procescertificaten"
+          className="text-sm font-semibold text-emerald-700 hover:text-emerald-900"
+        >
+          ← Terug naar procescertificaten
+        </Link>
+
+        <p className="mt-6 text-xs font-bold uppercase tracking-[0.18em] text-emerald-700">
+          Procescertificaten
+        </p>
+
+        <h1 className="mt-2 text-3xl font-bold text-slate-950 sm:text-4xl">
+          Verwijderde procescertificaten
+        </h1>
+
+        <p className="mt-2 text-slate-600">
+          Deze records zijn niet meer zichtbaar in de gewone lijst.
+          Je kunt ze opnieuw terugzetten.
+        </p>
+      </header>
+
+      <section className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
+        <div className="border-b border-slate-200 px-5 py-4">
+          <p className="font-semibold text-slate-950">
+            {certificaten.length} verwijderde records
+          </p>
+        </div>
+
+        {certificaten.length === 0 ? (
+          <div className="px-6 py-20 text-center">
+            <h2 className="text-xl font-bold text-slate-950">
+              Geen verwijderde procescertificaten
+            </h2>
+
+            <p className="mt-2 text-sm text-slate-500">
+              Verwijderde procescertificaten verschijnen hier.
+            </p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[1100px] text-left">
+              <thead className="bg-slate-50">
+                <tr>
+                  {[
+                    "Bedrijf",
+                    "KBO-nummer",
+                    "Certificaatnummer",
+                    "Type",
+                    "Verwijderd op",
+                    "Actie",
+                  ].map((titel) => (
+                    <th
+                      key={titel}
+                      className="border-b border-slate-200 px-5 py-4 text-xs font-bold uppercase tracking-wider text-slate-500"
+                    >
+                      {titel}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+
+              <tbody className="divide-y divide-slate-100">
+                {certificaten.map((certificaat) => {
+                  const type =
+                    certificaat.ondernemingstype === "EENMANSZAAK"
+                      ? "Eenmanszaak"
+                      : "Bedrijf";
+
+                  const waarden = [
+                    certificaat.naamBedrijf,
+                    formatteerKboNummer(certificaat.kboNummer),
+                    certificaat.certificaatnummer,
+                    type,
+                    datum(certificaat.verwijderdOp),
+                  ];
+
+                  return (
+                    <tr
+                      key={certificaat.id}
+                      className="hover:bg-slate-50"
+                    >
+                      {waarden.map((waarde, index) => (
+                        <td
+                          key={index}
+                          className="px-5 py-4 text-sm text-slate-700"
+                        >
+                          <div className="flex min-w-max items-center gap-2">
+                            <span>{waarde}</span>
+                            <CopyButton waarde={waarde} />
+                          </div>
+                        </td>
+                      ))}
+
+                      <td className="px-5 py-4 text-right">
+                        <HerstelButton
+                          id={certificaat.id}
+                          soort="proces"
+                          naam={certificaat.naamBedrijf}
+                        />
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
+    </>
+  );
+}
+
+
+===== END app/procescertificaten/verwijderd/page.tsx =====
+
+
+===== BEGIN app/deskcontroles/import-actions.ts =====
+
+"use server";
+
+import ExcelJS from "exceljs";
+import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
+import { vereisIngelogdeGebruiker } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
+
+export type ExcelImportState = {
+  message?: string;
+  errors?: {
+    finalisatieDatum?: string;
+    excelBestand?: string;
+  };
+};
+
+type DeskcontroleTypeWaarde =
+  | "NIEUWE_CONTROLE"
+  | "OPVOLGING";
+
+type VaststellingInvoer = {
+  excelRij: number;
+  parameter: string | null;
+  ncId: string;
+  omschrijving: string | null;
+  vastgesteldDoorCi: string | null;
+  verduidelijking: string | null;
+  groteImpact: string | null;
+  categorie: string | null;
+  motivatieAanpassing: string | null;
+};
+
+const WERKBLAD_NAAM =
+  "Deskcontrole samenvatting";
+
+const MAXIMALE_BESTANDSGROOTTE =
+  15 * 1024 * 1024;
+
+function maakUtcDatum(
+  jaar: number,
+  maand: number,
+  dag: number,
+) {
+  if (
+    !Number.isInteger(jaar) ||
+    !Number.isInteger(maand) ||
+    !Number.isInteger(dag)
+  ) {
+    return null;
+  }
+
+  const datum = new Date(
+    Date.UTC(jaar, maand - 1, dag),
+  );
+
+  if (
+    datum.getUTCFullYear() !== jaar ||
+    datum.getUTCMonth() !== maand - 1 ||
+    datum.getUTCDate() !== dag
+  ) {
+    return null;
+  }
+
+  return datum;
+}
+
+function leesIsoDatum(
+  waarde: string,
+) {
+  const gevonden = waarde.match(
+    /^(\d{4})-(\d{2})-(\d{2})$/,
+  );
+
+  if (!gevonden) {
+    return null;
+  }
+
+  return maakUtcDatum(
+    Number(gevonden[1]),
+    Number(gevonden[2]),
+    Number(gevonden[3]),
+  );
+}
+
+function telDagenBij(
+  datum: Date,
+  aantalDagen: number,
+) {
+  const resultaat = new Date(
+    datum.getTime(),
+  );
+
+  resultaat.setUTCDate(
+    resultaat.getUTCDate() +
+      aantalDagen,
+  );
+
+  return resultaat;
+}
+
+function normaliseerTekst(
+  waarde: unknown,
+) {
+  const tekst = String(
+    waarde ?? "",
+  ).trim();
+
+  if (
+    !tekst ||
+    tekst.toLocaleLowerCase(
+      "nl-BE",
+    ) === "nan"
+  ) {
+    return "";
+  }
+
+  return tekst;
+}
+
+function leesCelTekst(
+  cel: ExcelJS.Cell,
+) {
+  const waarde = cel.value;
+
+  if (
+    waarde === null ||
+    waarde === undefined
+  ) {
+    return "";
+  }
+
+  if (waarde instanceof Date) {
+    return waarde
+      .toISOString()
+      .slice(0, 10);
+  }
+
+  if (
+    typeof waarde === "string" ||
+    typeof waarde === "number" ||
+    typeof waarde === "boolean"
+  ) {
+    return normaliseerTekst(waarde);
+  }
+
+  if (
+    typeof waarde === "object" &&
+    "richText" in waarde &&
+    Array.isArray(waarde.richText)
+  ) {
+    return normaliseerTekst(
+      waarde.richText
+        .map((deel) => {
+          if (
+            typeof deel === "object" &&
+            deel !== null &&
+            "text" in deel
+          ) {
+            return String(deel.text);
+          }
+
+          return "";
+        })
+        .join(""),
+    );
+  }
+
+  if (
+    typeof waarde === "object" &&
+    "result" in waarde
+  ) {
+    return normaliseerTekst(
+      waarde.result,
+    );
+  }
+
+  if (
+    typeof waarde === "object" &&
+    "text" in waarde
+  ) {
+    return normaliseerTekst(
+      waarde.text,
+    );
+  }
+
+  return normaliseerTekst(cel.text);
+}
+
+function optioneleCelTekst(
+  cel: ExcelJS.Cell,
+) {
+  const waarde = leesCelTekst(cel);
+
+  return waarde || null;
+}
+
+function leesExcelDatum(
+  cel: ExcelJS.Cell,
+) {
+  const waarde = cel.value;
+
+  if (waarde instanceof Date) {
+    return maakUtcDatum(
+      waarde.getUTCFullYear(),
+      waarde.getUTCMonth() + 1,
+      waarde.getUTCDate(),
+    );
+  }
+
+  if (
+    typeof waarde === "number" &&
+    Number.isFinite(waarde)
+  ) {
+    const dagen = Math.floor(waarde);
+
+    const tijdstip =
+      Date.UTC(1899, 11, 30) +
+      dagen * 24 * 60 * 60 * 1000;
+
+    const datum = new Date(tijdstip);
+
+    return maakUtcDatum(
+      datum.getUTCFullYear(),
+      datum.getUTCMonth() + 1,
+      datum.getUTCDate(),
+    );
+  }
+
+  const tekst = leesCelTekst(cel);
+
+  if (!tekst) {
+    return null;
+  }
+
+  let gevonden = tekst.match(
+    /^(\d{4})-(\d{1,2})-(\d{1,2})/,
+  );
+
+  if (gevonden) {
+    return maakUtcDatum(
+      Number(gevonden[1]),
+      Number(gevonden[2]),
+      Number(gevonden[3]),
+    );
+  }
+
+  gevonden = tekst.match(
+    /^(\d{1,2})[/-](\d{1,2})[/-](\d{4})$/,
+  );
+
+  if (gevonden) {
+    return maakUtcDatum(
+      Number(gevonden[3]),
+      Number(gevonden[2]),
+      Number(gevonden[1]),
+    );
+  }
+
+  return null;
+}
+
+function leesKboNummer(
+  cel: ExcelJS.Cell,
+) {
+  const waarde = cel.value;
+
+  let tekst = leesCelTekst(cel);
+
+  if (
+    typeof waarde === "number" &&
+    Number.isFinite(waarde)
+  ) {
+    tekst = String(
+      Math.trunc(waarde),
+    );
+
+    const aantalNullen =
+      typeof cel.numFmt === "string"
+        ? (
+            cel.numFmt.match(/0/g) ??
+            []
+          ).length
+        : 0;
+
+    if (
+      aantalNullen >= 9 &&
+      aantalNullen <= 10
+    ) {
+      tekst = tekst.padStart(
+        aantalNullen,
+        "0",
+      );
+    }
+  }
+
+  return tekst.replace(/\D/g, "");
+}
+
+function leesHyperlink(
+  cel: ExcelJS.Cell,
+) {
+  if (
+    typeof cel.hyperlink === "string" &&
+    cel.hyperlink.trim()
+  ) {
+    return cel.hyperlink.trim();
+  }
+
+  const waarde = cel.value;
+
+  if (
+    typeof waarde === "object" &&
+    waarde !== null &&
+    "hyperlink" in waarde &&
+    typeof waarde.hyperlink ===
+      "string"
+  ) {
+    return waarde.hyperlink.trim();
+  }
+
+  return "";
+}
+
+function haalAttestIdUitLink(
+  linkAttest: string,
+) {
+  try {
+    const url = new URL(linkAttest);
+
+    if (url.protocol !== "https:") {
+      return null;
+    }
+
+    if (
+      url.hostname.toLowerCase() !==
+      "asbestinventaris.ovam.be"
+    ) {
+      return null;
+    }
+
+    const onderdelen = url.pathname
+      .split("/")
+      .filter(Boolean);
+
+    if (
+      onderdelen.length !== 2 ||
+      onderdelen[0].toLowerCase() !==
+        "asbestinventaris"
+    ) {
+      return null;
+    }
+
+    const attestId =
+      onderdelen[1].toLowerCase();
+
+    const uuidPatroon =
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+    if (!uuidPatroon.test(attestId)) {
+      return null;
+    }
+
+    return attestId;
+  } catch {
+    return null;
+  }
+}
+
+function leesTypeControle(
+  cel: ExcelJS.Cell,
+): DeskcontroleTypeWaarde | null {
+  const waarde = leesCelTekst(cel)
+    .toLocaleLowerCase("nl-BE")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  if (waarde === "nieuwe controle") {
+    return "NIEUWE_CONTROLE";
+  }
+
+  if (waarde === "opvolging") {
+    return "OPVOLGING";
+  }
+
+  return null;
+}
+
+function heeftVerwachtLabel(
+  cel: ExcelJS.Cell,
+  verwacht: string,
+) {
+  return leesCelTekst(cel)
+    .toLocaleLowerCase("nl-BE")
+    .includes(
+      verwacht.toLocaleLowerCase(
+        "nl-BE",
+      ),
+    );
+}
+
+function normaliseerKboNummer(
+  waarde: string,
+) {
+  return waarde.replace(/\D/g, "");
+}
+
+function verwijderVoorloopnullen(
+  waarde: string,
+) {
+  const zonderNullen =
+    waarde.replace(/^0+/, "");
+
+  return zonderNullen || "0";
+}
+
+function isPrismaUniekheidsfout(
+  fout: unknown,
+) {
+  return (
+    typeof fout === "object" &&
+    fout !== null &&
+    "code" in fout &&
+    fout.code === "P2002"
+  );
+}
+
+export async function importeerDeskcontroleUitExcel(
+  _vorigeStatus: ExcelImportState,
+  formData: FormData,
+): Promise<ExcelImportState> {
+  await vereisIngelogdeGebruiker();
+
+  const errors: NonNullable<
+    ExcelImportState["errors"]
+  > = {};
+
+  const finalisatieDatumWaarde =
+    String(
+      formData.get(
+        "finalisatieDatum",
+      ) ?? "",
+    ).trim();
+
+  const finalisatieDatum =
+    leesIsoDatum(
+      finalisatieDatumWaarde,
+    );
+
+  if (!finalisatieDatumWaarde) {
+    errors.finalisatieDatum =
+      "Finalisatie Datum is verplicht voordat je een Excelbestand kunt uploaden.";
+  } else if (!finalisatieDatum) {
+    errors.finalisatieDatum =
+      "Vul een geldige Finalisatie Datum in.";
+  }
+
+  const bestandWaarde =
+    formData.get("excelBestand");
+
+  const bestand =
+    bestandWaarde instanceof File
+      ? bestandWaarde
+      : null;
+
+  if (!bestand || bestand.size === 0) {
+    errors.excelBestand =
+      "Kies een Excelbestand.";
+  } else {
+    const bestandsnaam =
+      bestand.name.toLowerCase();
+
+    if (
+      !bestandsnaam.endsWith(".xlsx")
+    ) {
+      errors.excelBestand =
+        "Alleen .xlsx-bestanden worden ondersteund.";
+    }
+
+    if (
+      bestand.size >
+      MAXIMALE_BESTANDSGROOTTE
+    ) {
+      errors.excelBestand =
+        "Het Excelbestand mag maximaal 15 MB groot zijn.";
+    }
+  }
+
+  if (
+    Object.keys(errors).length > 0
+  ) {
+    return {
+      message:
+        "Controleer de gemarkeerde velden.",
+      errors,
+    };
+  }
+
+  if (!bestand || !finalisatieDatum) {
+    return {
+      message:
+        "Finalisatie Datum en Excelbestand zijn verplicht.",
+      errors,
+    };
+  }
+
+  let werkboek: ExcelJS.Workbook;
+
+  try {
+    const arrayBuffer =
+    await bestand.arrayBuffer();
+  
+  const buffer =
+    Buffer.from(arrayBuffer);
+  
+  werkboek =
+    new ExcelJS.Workbook();
+  
+  const excelBuffer =
+    buffer as unknown as Parameters<
+      typeof werkboek.xlsx.load
+    >[0];
+  
+  await werkboek.xlsx.load(
+    excelBuffer,
+  );
+  
+  } catch (fout) {
+    console.error(
+      "Excelbestand openen mislukt:",
+      fout,
+    );
+
+    return {
+      message:
+        "Het Excelbestand kon niet worden geopend. Controleer of het een geldig .xlsx-bestand is.",
+      errors: {
+        excelBestand:
+          "Ongeldig of beschadigd Excelbestand.",
+      },
+    };
+  }
+
+  const werkblad =
+    werkboek.getWorksheet(
+      WERKBLAD_NAAM,
+    );
+
+  if (!werkblad) {
+    return {
+      message:
+        `Het werkblad "${WERKBLAD_NAAM}" werd niet gevonden.`,
+      errors: {
+        excelBestand:
+          `Het Excelbestand moet het tabblad "${WERKBLAD_NAAM}" bevatten.`,
+      },
+    };
+  }
+
+  /*
+   * Andere werkbladen worden bewust
+   * volledig genegeerd.
+   */
+
+  const indelingGeldig =
+    heeftVerwachtLabel(
+      werkblad.getCell("A4"),
+      "Attestnummer",
+    ) &&
+    heeftVerwachtLabel(
+      werkblad.getCell("A6"),
+      "Inspectielocatie",
+    ) &&
+    heeftVerwachtLabel(
+      werkblad.getCell("B6"),
+      "PersoonsID",
+    ) &&
+    heeftVerwachtLabel(
+      werkblad.getCell("C6"),
+      "Ondernemingsnummer",
+    ) &&
+    heeftVerwachtLabel(
+      werkblad.getCell("D12"),
+      "Controleactie",
+    ) &&
+    heeftVerwachtLabel(
+      werkblad.getCell("D13"),
+      "Gecontroleerd op",
+    );
+
+  if (!indelingGeldig) {
+    return {
+      message:
+        "Het Excelbestand heeft niet de verwachte indeling.",
+      errors: {
+        excelBestand:
+          `Controleer of dit een geldige export van "${WERKBLAD_NAAM}" is.`,
+      },
+    };
+  }
+
+  const attestnummer =
+    leesCelTekst(
+      werkblad.getCell("A5"),
+    ).toUpperCase();
+
+  const adres =
+    optioneleCelTekst(
+      werkblad.getCell("A7"),
+    );
+
+  const ovamId =
+    leesCelTekst(
+      werkblad.getCell("B7"),
+    ).toUpperCase();
+
+  const kboNummer =
+    leesKboNummer(
+      werkblad.getCell("C7"),
+    );
+
+  const linkAttest =
+    leesHyperlink(
+      werkblad.getCell("A8"),
+    );
+
+  const attestId =
+    haalAttestIdUitLink(
+      linkAttest,
+    );
+
+  const typeControle =
+    leesTypeControle(
+      werkblad.getCell("E12"),
+    );
+
+  /*
+   * Datum controle wordt altijd
+   * uitsluitend uit E13 gelezen.
+   */
+  const datumControle =
+    leesExcelDatum(
+      werkblad.getCell("E13"),
+    );
+
+  const auditeur =
+    leesCelTekst(
+      werkblad.getCell("G13"),
+    );
+
+  if (!attestnummer) {
+    errors.excelBestand =
+      "Cel A5 bevat geen attestnummer.";
+  } else if (
+    attestnummer.length > 255
+  ) {
+    errors.excelBestand =
+      "Het attestnummer in cel A5 is te lang.";
+  }
+
+  if (!ovamId) {
+    errors.excelBestand =
+      "Cel B7 bevat geen OVAM-ID.";
+  }
+
+  if (
+    !/^[0-9]{9,10}$/.test(
+      kboNummer,
+    )
+  ) {
+    errors.excelBestand =
+      "Cel C7 moet een KBO-nummer van 9 of 10 cijfers bevatten.";
+  }
+
+  if (!linkAttest) {
+    errors.excelBestand =
+      "Cel A8 bevat geen hyperlink.";
+  } else if (!attestId) {
+    errors.excelBestand =
+      "De hyperlink in cel A8 is geen geldige OVAM-attestlink.";
+  }
+
+  if (!typeControle) {
+    errors.excelBestand =
+      'Cel E12 moet "Nieuwe controle" of "Opvolging" bevatten.';
+  }
+
+  if (!datumControle) {
+    errors.excelBestand =
+      "Cel E13 bevat geen geldige Datum controle.";
+  }
+
+  if (!auditeur) {
+    errors.excelBestand =
+      "Cel G13 bevat geen auditeur.";
+  }
+
+  if (
+    adres &&
+    adres.length > 1000
+  ) {
+    errors.excelBestand =
+      "Het adres in cel A7 is langer dan 1000 tekens.";
+  }
+
+  if (
+    datumControle &&
+    finalisatieDatum.getTime() <
+      datumControle.getTime()
+  ) {
+    errors.finalisatieDatum =
+      "Finalisatie Datum mag niet vóór de Datum controle uit cel E13 liggen.";
+  }
+
+  if (
+    Object.keys(errors).length > 0
+  ) {
+    return {
+      message:
+        "De gegevens in het Excelbestand zijn niet geldig.",
+      errors,
+    };
+  }
+
+  if (
+    !attestId ||
+    !typeControle ||
+    !datumControle
+  ) {
+    return {
+      message:
+        "Niet alle verplichte Excelgegevens zijn geldig.",
+      errors: {
+        excelBestand:
+          "Controleer het Excelbestand.",
+      },
+    };
+  }
+
+  const vaststellingen:
+    VaststellingInvoer[] = [];
+
+  /*
+   * Rij 15 is de koprij.
+   * De gegevens beginnen vanaf rij 16.
+   */
+  for (
+    let rijnummer = 16;
+    rijnummer <= werkblad.rowCount;
+    rijnummer++
+  ) {
+    const ncId = leesCelTekst(
+      werkblad.getCell(
+        `B${rijnummer}`,
+      ),
+    );
+
+    if (!ncId) {
+      continue;
+    }
+
+    vaststellingen.push({
+      excelRij: rijnummer,
+      parameter:
+        optioneleCelTekst(
+          werkblad.getCell(
+            `A${rijnummer}`,
+          ),
+        ),
+      ncId,
+      omschrijving:
+        optioneleCelTekst(
+          werkblad.getCell(
+            `C${rijnummer}`,
+          ),
+        ),
+      vastgesteldDoorCi:
+        optioneleCelTekst(
+          werkblad.getCell(
+            `D${rijnummer}`,
+          ),
+        ),
+      verduidelijking:
+        optioneleCelTekst(
+          werkblad.getCell(
+            `E${rijnummer}`,
+          ),
+        ),
+      groteImpact:
+        optioneleCelTekst(
+          werkblad.getCell(
+            `F${rijnummer}`,
+          ),
+        ),
+      categorie:
+        optioneleCelTekst(
+          werkblad.getCell(
+            `G${rijnummer}`,
+          ),
+        ),
+      motivatieAanpassing:
+        optioneleCelTekst(
+          werkblad.getCell(
+            `H${rijnummer}`,
+          ),
+        ),
+    });
+  }
+
+  const [
+    lid,
+    procescertificaten,
+    bestaandeDeskcontrole,
+  ] = await Promise.all([
+    prisma.lid.findFirst({
+      where: {
+        ovamId: {
+          equals: ovamId,
+          mode: "insensitive",
+        },
+        verwijderdOp: null,
+      },
+      select: {
+        id: true,
+        naamPersoon: true,
+        ovamId: true,
+        certificaatnummer: true,
+        certificatiePlatform: true,
+      },
+    }),
+
+    prisma.procescertificaat.findMany({
+      where: {
+        verwijderdOp: null,
+      },
+      select: {
+        id: true,
+        naamBedrijf: true,
+        kboNummer: true,
+        certificaatnummer: true,
+        oneDrive: true,
+      },
+    }),
+
+    prisma.deskcontrole.findFirst({
+      where: {
+        OR: [
+          {
+            attestId,
+          },
+          {
+            attestnummer,
+          },
+          {
+            linkAttest,
+          },
+        ],
+      },
+      select: {
+        id: true,
+        attestId: true,
+        attestnummer: true,
+        linkAttest: true,
+      },
+    }),
+  ]);
+
+  if (!lid) {
+    return {
+      message:
+        `Er werd geen actief persoonscertificaat gevonden voor OVAM-ID ${ovamId}.`,
+      errors: {
+        excelBestand:
+          "Controleer de waarde in cel B7.",
+      },
+    };
+  }
+
+  const exactOvereenkomendeProcessen =
+    procescertificaten.filter(
+      (procescertificaat) =>
+        normaliseerKboNummer(
+          procescertificaat.kboNummer,
+        ) === kboNummer,
+    );
+
+  let procescertificaat =
+    exactOvereenkomendeProcessen[0] ??
+    null;
+
+  /*
+   * Sommige Excelbestanden verliezen
+   * een voorloopnul wanneer het KBO-nummer
+   * als getal is opgeslagen.
+   */
+  if (!procescertificaat) {
+    const zonderVoorloopnul =
+      procescertificaten.filter(
+        (proces) =>
+          verwijderVoorloopnullen(
+            normaliseerKboNummer(
+              proces.kboNummer,
+            ),
+          ) ===
+          verwijderVoorloopnullen(
+            kboNummer,
+          ),
+      );
+
+    if (
+      zonderVoorloopnul.length === 1
+    ) {
+      procescertificaat =
+        zonderVoorloopnul[0];
+    }
+  }
+
+  if (!procescertificaat) {
+    return {
+      message:
+        `Er werd geen actief procescertificaat gevonden voor KBO-nummer ${kboNummer}.`,
+      errors: {
+        excelBestand:
+          "Controleer de waarde in cel C7.",
+      },
+    };
+  }
+
+  if (bestaandeDeskcontrole) {
+    if (
+      bestaandeDeskcontrole.attestnummer ===
+      attestnummer
+    ) {
+      return {
+        message:
+          "Dit attestnummer bestaat al.",
+        errors: {
+          excelBestand:
+            `Attestnummer ${attestnummer} werd al geïmporteerd.`,
+        },
+      };
+    }
+
+    return {
+      message:
+        "Voor deze attestlink bestaat al een deskcontrole.",
+      errors: {
+        excelBestand:
+          "Het attest-ID of de hyperlink uit cel A8 bestaat al.",
+      },
+    };
+  }
+
+  const deadlineSanctie =
+    telDagenBij(
+      datumControle,
+      21,
+    );
+
+  const deadlineCorrectie =
+    telDagenBij(
+      finalisatieDatum,
+      30,
+    );
+
+  let nieuweDeskcontroleId:
+    number | null = null;
+
+  try {
+    const nieuweDeskcontrole =
+      await prisma.$transaction(
+        async (transactie) => {
+          return transactie.deskcontrole.create({
+            data: {
+              attestId,
+              auditeur,
+              lidId: lid.id,
+              procescertificaatId:
+                procescertificaat.id,
+              linkAttest,
+              attestnummer,
+              status: "GEEN",
+              deadlineSanctie,
+              mailSanctieVerzonden: false,
+              typeControle,
+              deadlineCorrectie,
+              mailCorrectieVerzonden:
+                false,
+              oneDrive:
+                procescertificaat.oneDrive,
+              voorwaardelijkeOpheffing:
+                false,
+              opmerkingen: null,
+              datumControle,
+              adres,
+              finalisatieDatum,
+              vaststellingen: {
+                create:
+                  vaststellingen.map(
+                    (vaststelling) => ({
+                      excelRij:
+                        vaststelling.excelRij,
+                      parameter:
+                        vaststelling.parameter,
+                      ncId:
+                        vaststelling.ncId,
+                      omschrijving:
+                        vaststelling.omschrijving,
+                      vastgesteldDoorCi:
+                        vaststelling.vastgesteldDoorCi,
+                      verduidelijking:
+                        vaststelling.verduidelijking,
+                      groteImpact:
+                        vaststelling.groteImpact,
+                      categorie:
+                        vaststelling.categorie,
+                      motivatieAanpassing:
+                        vaststelling.motivatieAanpassing,
+                    }),
+                  ),
+              },
+            },
+            select: {
+              id: true,
+            },
+          });
+        },
+      );
+
+    nieuweDeskcontroleId =
+      nieuweDeskcontrole.id;
+  } catch (fout) {
+    if (
+      isPrismaUniekheidsfout(fout)
+    ) {
+      return {
+        message:
+          "Het attestnummer, de attestlink of het attest-ID bestaat al.",
+        errors: {
+          excelBestand:
+            "Dit Excelbestand werd mogelijk al geïmporteerd.",
+        },
+      };
+    }
+
+    console.error(
+      "Excelimport deskcontrole mislukt:",
+      fout,
+    );
+
+    return {
+      message:
+        "Er is een technische fout opgetreden tijdens de Excelimport.",
+      errors: {
+        excelBestand:
+          "De deskcontrole kon niet worden opgeslagen.",
+      },
+    };
+  }
+
+  if (!nieuweDeskcontroleId) {
+    return {
+      message:
+        "De deskcontrole kon niet worden aangemaakt.",
+      errors: {
+        excelBestand:
+          "Onbekende fout tijdens de import.",
+      },
+    };
+  }
+
+  revalidatePath("/");
+  revalidatePath("/deskcontroles");
+  revalidatePath(
+    `/deskcontroles/${nieuweDeskcontroleId}`,
+  );
+
+  redirect(
+    `/deskcontroles/${nieuweDeskcontroleId}?geimporteerd=1`,
+  );
+}
+
+
+===== END app/deskcontroles/import-actions.ts =====
+
+
+===== BEGIN app/deskcontroles/page.tsx =====
+
+import { PageHeader } from "@/components/PageHeader";
+import {
+  DeskcontrolesTabel,
+  type DeskcontroleKolom,
+} from "@/components/DeskcontrolesTabel";
+import { vereisIngelogdeGebruiker } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
+import { DeskcontroleDashboard } from "@/components/DeskcontroleDashboard";
+
+export const dynamic = "force-dynamic";
+
+function formatteerDatum(
+  datum: Date | null,
+) {
+  if (!datum) {
+    return "";
+  }
+
+  return new Intl.DateTimeFormat(
+    "nl-BE",
+    {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      timeZone: "UTC",
+    },
+  ).format(datum);
+}
+
+function formatteerKboNummer(
+  kboNummer: string,
+) {
+  const cijfers =
+    kboNummer.replace(/\D/g, "");
+
+  if (cijfers.length === 9) {
+    return `${cijfers.slice(
+      0,
+      3,
+    )}.${cijfers.slice(
+      3,
+      6,
+    )}.${cijfers.slice(6)}`;
+  }
+
+  if (cijfers.length === 10) {
+    return `${cijfers.slice(
+      0,
+      4,
+    )}.${cijfers.slice(
+      4,
+      7,
+    )}.${cijfers.slice(7)}`;
+  }
+
+  return kboNummer;
+}
+
+const kolommen: DeskcontroleKolom[] = [
+  {
+    sleutel: "auditeur",
+    label: "Auditeur",
+  },
+  {
+    sleutel: "naamAdi",
+    label: "Naam ADI",
+  },
+  {
+    sleutel: "linkAttest",
+    label: "Link Attest",
+    type: "url",
+  },
+  {
+    sleutel: "attestnummer",
+    label: "Attestnummer",
+  },
+  {
+    sleutel: "status",
+    label: "Status",
+    type: "badge",
+  },
+  {
+    sleutel: "deadlineSanctie",
+    label: "Deadline Sanctie",
+    type: "datum",
+  },
+  {
+    sleutel: "mailSanctie",
+    label: "✉ Sanctie",
+    type: "boolean",
+  },
+  {
+    sleutel: "typeControle",
+    label: "Type Controle",
+    type: "badge",
+  },
+  {
+    sleutel: "deadlineCorrectie",
+    label: "Deadline Correctie",
+    type: "datum",
+  },
+  {
+    sleutel: "mailCorrectie",
+    label: "✉ Correctie",
+    type: "boolean",
+  },
+  {
+    sleutel: "oneDrive",
+    label: "OneDrive",
+    type: "url",
+  },
+  {
+    sleutel: "voorwaardelijkeOpheffing",
+    label: "Voorwaardelijke Opheffing",
+    type: "boolean",
+  },
+  {
+    sleutel: "certificatiePlatform",
+    label: "Certificatieplatform",
+    type: "url",
+  },
+  {
+    sleutel: "opmerkingen",
+    label: "Opmerkingen",
+    type: "opmerking",
+  },
+  {
+    sleutel: "datumControle",
+    label: "Datum controle",
+    type: "datum",
+  },
+  {
+    sleutel: "adres",
+    label: "Adres",
+  },
+  {
+    sleutel: "persoonsId",
+    label: "PersoonsID",
+  },
+  {
+    sleutel: "bedrijfsnaam",
+    label: "Bedrijfsnaam",
+  },
+  {
+    sleutel: "ondernemingsnummer",
+    label: "Ondernemingsnummer",
+  },
+  {
+    sleutel: "persoonscertificaat",
+    label: "Persoonscertificaat",
+  },
+  {
+    sleutel: "procescertificaat",
+    label: "Procescertificaat",
+  },
+  {
+    sleutel: "finalisatieDatum",
+    label: "Finalisatie Datum",
+    type: "datum",
+  },
+  {
+    sleutel: "attestId",
+    label: "ID",
+  },
+];
+
+export default async function DeskcontrolesPage() {
+  await vereisIngelogdeGebruiker();
+
+  const deskcontroles =
+    await prisma.deskcontrole.findMany({
+      where: {
+        verwijderdOp: null,
+      },
+      include: {
+        lid: {
+          select: {
+            naamPersoon: true,
+            ovamId: true,
+            certificaatnummer: true,
+            certificatiePlatform: true,
+          },
+        },
+        procescertificaat: {
+          select: {
+            naamBedrijf: true,
+            kboNummer: true,
+            certificaatnummer: true,
+          },
+        },
+      },
+      orderBy: {
+        datumControle: "desc",
+      },
+    });
+
+  const rijen = deskcontroles.map(
+    (deskcontrole) => ({
+      id: deskcontrole.id,
+      auditeur: deskcontrole.auditeur,
+      naamAdi:
+        deskcontrole.lid.naamPersoon,
+      linkAttest:
+        deskcontrole.linkAttest,
+      attestnummer:
+        deskcontrole.attestnummer,
+      status:
+        deskcontrole.status ===
+        "IN_OPMAAK"
+          ? "In opmaak"
+          : deskcontrole.status ===
+              "GEACTUALISEERD"
+            ? "Geactualiseerd"
+            : "Geen",
+      deadlineSanctie:
+        formatteerDatum(
+          deskcontrole.deadlineSanctie,
+        ),
+      mailSanctie:
+        deskcontrole.mailSanctieVerzonden
+          ? "Ja"
+          : "Nee",
+      typeControle:
+        deskcontrole.typeControle ===
+        "NIEUWE_CONTROLE"
+          ? "Nieuwe controle"
+          : "Opvolging",
+      deadlineCorrectie:
+        formatteerDatum(
+          deskcontrole.deadlineCorrectie,
+        ),
+      mailCorrectie:
+        deskcontrole.mailCorrectieVerzonden
+          ? "Ja"
+          : "Nee",
+      oneDrive: deskcontrole.oneDrive,
+      voorwaardelijkeOpheffing:
+        deskcontrole
+          .voorwaardelijkeOpheffing
+          ? "Ja"
+          : "Nee",
+      certificatiePlatform:
+        deskcontrole.lid
+          .certificatiePlatform,
+      opmerkingen:
+        deskcontrole.opmerkingen,
+      datumControle:
+        formatteerDatum(
+          deskcontrole.datumControle,
+        ),
+      adres: deskcontrole.adres,
+      persoonsId:
+        deskcontrole.lid.ovamId,
+      bedrijfsnaam:
+        deskcontrole
+          .procescertificaat
+          .naamBedrijf,
+      ondernemingsnummer:
+        formatteerKboNummer(
+          deskcontrole
+            .procescertificaat
+            .kboNummer,
+        ),
+      persoonscertificaat:
+        deskcontrole.lid
+          .certificaatnummer,
+      procescertificaat:
+        deskcontrole
+          .procescertificaat
+          .certificaatnummer,
+      finalisatieDatum:
+        formatteerDatum(
+          deskcontrole.finalisatieDatum,
+        ),
+      attestId:
+        deskcontrole.attestId,
+    }),
+  );
+
+  return (
+    <div className="space-y-4">
+      <PageHeader
+        compact
+        titel="Deskcontrole opvolging"
+        beschrijving={`${deskcontroles.length} actieve deskcontroles`}
+        actieTekst="Nieuwe deskcontrole"
+        actieHref="/deskcontroles/nieuw"
+        secundaireActieTekst="Verwijderde"
+        secundaireActieHref="/deskcontroles/verwijderd"
+      />
+  
+      <DeskcontroleDashboard rijen={rijen} />
+  
+      <DeskcontrolesTabel
+        rijen={rijen}
+        kolommen={kolommen}
+        modus="actief"
+      />
+    </div>
+  );  
+}
+
+
+
+===== END app/deskcontroles/page.tsx =====
+
+
+===== BEGIN app/deskcontroles/verwijderd/page.tsx =====
+
+import { PageHeader } from "@/components/PageHeader";
+import {
+  DeskcontrolesTabel,
+  type DeskcontroleKolom,
+} from "@/components/DeskcontrolesTabel";
+import { vereisIngelogdeGebruiker } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
+
+export const dynamic = "force-dynamic";
+
+function formatteerDatum(
+  datum: Date | null,
+) {
+  if (!datum) {
+    return "";
+  }
+
+  return new Intl.DateTimeFormat(
+    "nl-BE",
+    {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      timeZone: "UTC",
+    },
+  ).format(datum);
+}
+
+function formatteerKboNummer(
+  kboNummer: string,
+) {
+  const cijfers =
+    kboNummer.replace(/\D/g, "");
+
+  if (cijfers.length === 9) {
+    return `${cijfers.slice(
+      0,
+      3,
+    )}.${cijfers.slice(
+      3,
+      6,
+    )}.${cijfers.slice(6)}`;
+  }
+
+  if (cijfers.length === 10) {
+    return `${cijfers.slice(
+      0,
+      4,
+    )}.${cijfers.slice(
+      4,
+      7,
+    )}.${cijfers.slice(7)}`;
+  }
+
+  return kboNummer;
+}
+
+const kolommen: DeskcontroleKolom[] = [
+  {
+    sleutel: "auditeur",
+    label: "Auditeur",
+  },
+  {
+    sleutel: "naamAdi",
+    label: "Naam ADI",
+  },
+  {
+    sleutel: "linkAttest",
+    label: "Link Attest",
+    type: "url",
+  },
+  {
+    sleutel: "attestnummer",
+    label: "Attestnummer",
+  },
+  {
+    sleutel: "status",
+    label: "Status",
+    type: "badge",
+  },
+  {
+    sleutel: "deadlineSanctie",
+    label: "Deadline Sanctie",
+    type: "datum",
+  },
+  {
+    sleutel: "mailSanctie",
+    label: "✉ Sanctie",
+    type: "boolean",
+  },
+  {
+    sleutel: "typeControle",
+    label: "Type Controle",
+    type: "badge",
+  },
+  {
+    sleutel: "deadlineCorrectie",
+    label: "Deadline Correctie",
+    type: "datum",
+  },
+  {
+    sleutel: "mailCorrectie",
+    label: "✉ Correctie",
+    type: "boolean",
+  },
+  {
+    sleutel: "oneDrive",
+    label: "OneDrive",
+    type: "url",
+  },
+  {
+    sleutel: "voorwaardelijkeOpheffing",
+    label: "Voorwaardelijke Opheffing",
+    type: "boolean",
+  },
+  {
+    sleutel: "certificatiePlatform",
+    label: "Certificatieplatform",
+    type: "url",
+  },
+  {
+    sleutel: "opmerkingen",
+    label: "Opmerkingen",
+    type: "opmerking",
+  },
+  {
+    sleutel: "datumControle",
+    label: "Datum controle",
+    type: "datum",
+  },
+  {
+    sleutel: "adres",
+    label: "Adres",
+  },
+  {
+    sleutel: "persoonsId",
+    label: "PersoonsID",
+  },
+  {
+    sleutel: "bedrijfsnaam",
+    label: "Bedrijfsnaam",
+  },
+  {
+    sleutel: "ondernemingsnummer",
+    label: "Ondernemingsnummer",
+  },
+  {
+    sleutel: "persoonscertificaat",
+    label: "Persoonscertificaat",
+  },
+  {
+    sleutel: "procescertificaat",
+    label: "Procescertificaat",
+  },
+  {
+    sleutel: "finalisatieDatum",
+    label: "Finalisatie Datum",
+    type: "datum",
+  },
+  {
+    sleutel: "attestId",
+    label: "ID",
+  },
+];
+
+export default async function VerwijderdeDeskcontrolesPage() {
+  await vereisIngelogdeGebruiker();
+
+  const deskcontroles =
+    await prisma.deskcontrole.findMany({
+      where: {
+        verwijderdOp: {
+          not: null,
+        },
+      },      
+      include: {
+        lid: {
+          select: {
+            naamPersoon: true,
+            ovamId: true,
+            certificaatnummer: true,
+            certificatiePlatform: true,
+          },
+        },
+        procescertificaat: {
+          select: {
+            naamBedrijf: true,
+            kboNummer: true,
+            certificaatnummer: true,
+          },
+        },
+      },
+      orderBy: {
+        verwijderdOp: "desc",
+      },
+    });
+
+  const rijen = deskcontroles.map(
+    (deskcontrole) => ({
+      id: deskcontrole.id,
+      auditeur: deskcontrole.auditeur,
+      naamAdi:
+        deskcontrole.lid.naamPersoon,
+      linkAttest:
+        deskcontrole.linkAttest,
+      attestnummer:
+        deskcontrole.attestnummer,
+      status:
+        deskcontrole.status ===
+        "IN_OPMAAK"
+          ? "In opmaak"
+          : deskcontrole.status ===
+              "GEACTUALISEERD"
+            ? "Geactualiseerd"
+            : "Geen",
+      deadlineSanctie:
+        formatteerDatum(
+          deskcontrole.deadlineSanctie,
+        ),
+      mailSanctie:
+        deskcontrole.mailSanctieVerzonden
+          ? "Ja"
+          : "Nee",
+      typeControle:
+        deskcontrole.typeControle ===
+        "NIEUWE_CONTROLE"
+          ? "Nieuwe controle"
+          : "Opvolging",
+      deadlineCorrectie:
+        formatteerDatum(
+          deskcontrole.deadlineCorrectie,
+        ),
+      mailCorrectie:
+        deskcontrole.mailCorrectieVerzonden
+          ? "Ja"
+          : "Nee",
+      oneDrive: deskcontrole.oneDrive,
+      voorwaardelijkeOpheffing:
+        deskcontrole
+          .voorwaardelijkeOpheffing
+          ? "Ja"
+          : "Nee",
+      certificatiePlatform:
+        deskcontrole.lid
+          .certificatiePlatform,
+      opmerkingen:
+        deskcontrole.opmerkingen,
+      datumControle:
+        formatteerDatum(
+          deskcontrole.datumControle,
+        ),
+      adres: deskcontrole.adres,
+      persoonsId:
+        deskcontrole.lid.ovamId,
+      bedrijfsnaam:
+        deskcontrole
+          .procescertificaat
+          .naamBedrijf,
+      ondernemingsnummer:
+        formatteerKboNummer(
+          deskcontrole
+            .procescertificaat
+            .kboNummer,
+        ),
+      persoonscertificaat:
+        deskcontrole.lid
+          .certificaatnummer,
+      procescertificaat:
+        deskcontrole
+          .procescertificaat
+          .certificaatnummer,
+      finalisatieDatum:
+        formatteerDatum(
+          deskcontrole.finalisatieDatum,
+        ),
+      attestId:
+        deskcontrole.attestId,
+    }),
+  );
+
+  return (
+    <>
+      <PageHeader
+        compact
+        titel="Verwijderde deskcontroles"
+        beschrijving={`${deskcontroles.length} verwijderde deskcontroles`}
+        actieTekst="Terug naar actieve"
+        actieHref="/deskcontroles"
+      />
+
+
+
+      <DeskcontrolesTabel
+        rijen={rijen}
+        kolommen={kolommen}
+        modus="verwijderd"
+      />
+    </>
+  );
+}
+
+
+
+===== END app/deskcontroles/verwijderd/page.tsx =====
+
+
+===== BEGIN app/deskcontroles/[id]/page.tsx =====
+
+import Link from "next/link";
+import { notFound } from "next/navigation";
+import { DeskcontroleVaststellingenTabel } from "@/components/DeskcontroleVaststellingenTabel";
+import { vereisIngelogdeGebruiker } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
+
+export const dynamic = "force-dynamic";
+
+type DeskcontroleDetailPageProps = {
+  params: Promise<{
+    id: string;
+  }>;
+};
+
+function formatteerDatum(
+  datum: Date | null,
+) {
+  if (!datum) {
+    return "";
+  }
+
+  return new Intl.DateTimeFormat(
+    "nl-BE",
+    {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      timeZone: "UTC",
+    },
+  ).format(datum);
+}
+
+function formatteerKboNummer(
+  waarde: string,
+) {
+  const cijfers =
+    waarde.replace(/\D/g, "");
+
+  if (cijfers.length === 9) {
+    return `${cijfers.slice(
+      0,
+      3,
+    )}.${cijfers.slice(
+      3,
+      6,
+    )}.${cijfers.slice(6)}`;
+  }
+
+  if (cijfers.length === 10) {
+    return `${cijfers.slice(
+      0,
+      4,
+    )}.${cijfers.slice(
+      4,
+      7,
+    )}.${cijfers.slice(7)}`;
+  }
+
+  return waarde;
+}
+
+function statusLabel(
+  status: string,
+) {
+  if (status === "IN_OPMAAK") {
+    return "In opmaak";
+  }
+
+  if (
+    status === "GEACTUALISEERD"
+  ) {
+    return "Geactualiseerd";
+  }
+
+  return "Geen";
+}
+
+function typeControleLabel(
+  typeControle: string,
+) {
+  return typeControle ===
+    "OPVOLGING"
+    ? "Opvolging"
+    : "Nieuwe controle";
+}
+
+function statusStijl(
+  status: string,
+) {
+  if (
+    status === "GEACTUALISEERD"
+  ) {
+    return "border-emerald-200 bg-emerald-50 text-emerald-800";
+  }
+
+  if (status === "IN_OPMAAK") {
+    return "border-amber-200 bg-amber-50 text-amber-800";
+  }
+
+  return "border-slate-200 bg-slate-100 text-slate-700";
+}
+
+type GegevensVeldProps = {
+  label: string;
+  waarde?: string | null;
+  breed?: boolean;
+};
+
+function GegevensVeld({
+  label,
+  waarde,
+  breed = false,
+}: GegevensVeldProps) {
+  return (
+    <div
+      className={
+        breed
+          ? "sm:col-span-2 xl:col-span-3"
+          : ""
+      }
+    >
+      <dt className="text-xs font-bold uppercase tracking-wide text-slate-500">
+        {label}
+      </dt>
+
+      <dd className="mt-1 whitespace-pre-wrap break-words text-sm font-medium text-slate-900">
+        {waarde?.trim() || "—"}
+      </dd>
+    </div>
+  );
+}
+
+export default async function DeskcontroleDetailPage({
+  params,
+}: DeskcontroleDetailPageProps) {
+  await vereisIngelogdeGebruiker();
+
+  const { id: idWaarde } =
+    await params;
+
+  const id = Number(idWaarde);
+
+  if (
+    !Number.isInteger(id) ||
+    id <= 0
+  ) {
+    notFound();
+  }
+
+  const deskcontrole =
+    await prisma.deskcontrole.findUnique({
+      where: {
+        id,
+      },
+      include: {
+        lid: {
+          select: {
+            naamPersoon: true,
+            ovamId: true,
+            certificaatnummer: true,
+            certificatiePlatform: true,
+          },
+        },
+        procescertificaat: {
+          select: {
+            naamBedrijf: true,
+            kboNummer: true,
+            certificaatnummer: true,
+            oneDrive: true,
+          },
+        },
+        vaststellingen: {
+          orderBy: [
+            {
+              excelRij: "asc",
+            },
+            {
+              id: "asc",
+            },
+          ],
+        },
+      },
+    });
+
+  if (!deskcontrole) {
+    notFound();
+  }
+
+  const vaststellingRijen =
+    deskcontrole.vaststellingen.map(
+      (vaststelling) => ({
+        id: vaststelling.id,
+        excelRij:
+          vaststelling.excelRij,
+        parameter:
+          vaststelling.parameter ?? "",
+        ncId: vaststelling.ncId,
+        omschrijving:
+          vaststelling.omschrijving ??
+          "",
+        vastgesteldDoorCi:
+          vaststelling.vastgesteldDoorCi ??
+          "",
+        verduidelijking:
+          vaststelling.verduidelijking ??
+          "",
+        groteImpact:
+          vaststelling.groteImpact ??
+          "",
+        categorie:
+          vaststelling.categorie ?? "",
+        motivatieAanpassing:
+          vaststelling.motivatieAanpassing ??
+          "",
+      }),
+    );
+
+  const oneDrive =
+    deskcontrole.oneDrive ??
+    deskcontrole.procescertificaat
+      .oneDrive ??
+    "";
+
+  return (
+    <div className="mx-auto max-w-[1600px] space-y-5">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <Link
+          href="/deskcontroles"
+          className="text-sm font-semibold text-emerald-700 hover:text-emerald-900"
+        >
+          ← Terug naar
+          deskcontroles
+        </Link>
+
+        <div className="flex flex-wrap gap-2">
+          {deskcontrole.verwijderdOp ? (
+            <span className="inline-flex items-center rounded-xl border border-red-200 bg-red-50 px-4 py-2 text-sm font-bold text-red-700">
+              Verwijderd
+            </span>
+          ) : (
+            <Link
+              href={`/deskcontroles/${deskcontrole.id}/bewerken`}
+              className="inline-flex items-center rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-bold text-slate-700 hover:bg-slate-50"
+            >
+              Bewerken
+            </Link>
+          )}
+
+          <a
+            href={
+              deskcontrole.linkAttest
+            }
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center rounded-xl bg-sky-700 px-4 py-2 text-sm font-bold text-white hover:bg-sky-800"
+          >
+            Open attest ↗
+          </a>
+
+          {oneDrive ? (
+            <a
+              href={oneDrive}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center rounded-xl bg-emerald-700 px-4 py-2 text-sm font-bold text-white hover:bg-emerald-800"
+            >
+              Open OneDrive ↗
+            </a>
+          ) : null}
+        </div>
+      </div>
+
+      <section className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
+        <header className="bg-gradient-to-r from-[#073c34] to-emerald-700 px-6 py-7 text-white sm:px-8">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+            <div>
+              <p className="text-xs font-bold uppercase tracking-[0.18em] text-emerald-100">
+                Deskcontrole opvolging
+              </p>
+
+              <h1 className="mt-2 text-2xl font-bold sm:text-3xl">
+                {
+                  deskcontrole.attestnummer
+                }
+              </h1>
+
+              <p className="mt-2 text-sm text-emerald-100">
+                {
+                  deskcontrole.lid
+                    .naamPersoon
+                }{" "}
+                ·{" "}
+                {
+                  deskcontrole
+                    .procescertificaat
+                    .naamBedrijf
+                }
+              </p>
+            </div>
+
+            <span
+              className={`inline-flex w-fit rounded-full border px-3 py-1.5 text-sm font-bold ${statusStijl(
+                deskcontrole.status,
+              )}`}
+            >
+              {statusLabel(
+                deskcontrole.status,
+              )}
+            </span>
+          </div>
+        </header>
+
+        <dl className="grid gap-x-8 gap-y-6 px-6 py-6 sm:grid-cols-2 sm:px-8 xl:grid-cols-3">
+          <GegevensVeld
+            label="Auditeur"
+            waarde={
+              deskcontrole.auditeur
+            }
+          />
+
+          <GegevensVeld
+            label="Type Controle"
+            waarde={typeControleLabel(
+              deskcontrole.typeControle,
+            )}
+          />
+
+          <GegevensVeld
+            label="Attest-ID"
+            waarde={
+              deskcontrole.attestId
+            }
+          />
+
+          <GegevensVeld
+            label="Naam ADI"
+            waarde={
+              deskcontrole.lid
+                .naamPersoon
+            }
+          />
+
+          <GegevensVeld
+            label="OVAM-ID"
+            waarde={
+              deskcontrole.lid.ovamId
+            }
+          />
+
+          <GegevensVeld
+            label="Persoonscertificaat"
+            waarde={
+              deskcontrole.lid
+                .certificaatnummer
+            }
+          />
+
+          <GegevensVeld
+            label="Certificatie platform"
+            waarde={
+              deskcontrole.lid
+                .certificatiePlatform
+            }
+          />
+
+          <GegevensVeld
+            label="Bedrijfsnaam"
+            waarde={
+              deskcontrole
+                .procescertificaat
+                .naamBedrijf
+            }
+          />
+
+          <GegevensVeld
+            label="Ondernemingsnummer"
+            waarde={formatteerKboNummer(
+              deskcontrole
+                .procescertificaat
+                .kboNummer,
+            )}
+          />
+
+          <GegevensVeld
+            label="Procescertificaat"
+            waarde={
+              deskcontrole
+                .procescertificaat
+                .certificaatnummer
+            }
+          />
+
+          <GegevensVeld
+            label="Datum controle"
+            waarde={formatteerDatum(
+              deskcontrole.datumControle,
+            )}
+          />
+
+          <GegevensVeld
+            label="Deadline Sanctie"
+            waarde={formatteerDatum(
+              deskcontrole.deadlineSanctie,
+            )}
+          />
+
+          <GegevensVeld
+            label="Finalisatie Datum"
+            waarde={formatteerDatum(
+              deskcontrole.finalisatieDatum,
+            )}
+          />
+
+          <GegevensVeld
+            label="Deadline Correctie"
+            waarde={formatteerDatum(
+              deskcontrole.deadlineCorrectie,
+            )}
+          />
+
+          <GegevensVeld
+            label="Mail sanctie verzonden"
+            waarde={
+              deskcontrole.mailSanctieVerzonden
+                ? "Ja"
+                : "Nee"
+            }
+          />
+
+          <GegevensVeld
+            label="Mail correctie verzonden"
+            waarde={
+              deskcontrole.mailCorrectieVerzonden
+                ? "Ja"
+                : "Nee"
+            }
+          />
+
+          <GegevensVeld
+            label="Voorwaardelijke Opheffing"
+            waarde={
+              deskcontrole.voorwaardelijkeOpheffing
+                ? "Ja"
+                : "Nee"
+            }
+          />
+
+          <GegevensVeld
+            label="Adres"
+            waarde={
+              deskcontrole.adres
+            }
+            breed
+          />
+
+          <GegevensVeld
+            label="Opmerkingen"
+            waarde={
+              deskcontrole.opmerkingen
+            }
+            breed
+          />
+        </dl>
+      </section>
+
+      {vaststellingRijen.length >
+      0 ? (
+        <DeskcontroleVaststellingenTabel
+          rijen={vaststellingRijen}
+        />
+      ) : (
+        <section className="rounded-3xl border border-slate-200 bg-white px-6 py-12 text-center shadow-sm">
+          <h2 className="font-bold text-slate-950">
+            Geen vaststellingen
+          </h2>
+
+          <p className="mt-2 text-sm text-slate-500">
+            Aan deze deskcontrole zijn
+            geen vaststellingen gekoppeld.
+          </p>
+        </section>
+      )}
+    </div>
+  );
+}
+
+
+
+===== END app/deskcontroles/[id]/page.tsx =====
+
+
+===== BEGIN app/deskcontroles/nieuw/DeskcontroleFormulier.tsx =====
+
+"use client";
+
+import {
+  useActionState,
+  useMemo,
+  useState,
+} from "react";
+import { useFormStatus } from "react-dom";
+import {
+  maakDeskcontroleAan,
+  type DeskcontroleFormState,
+} from "../actions";
+
+type LidOptie = {
+  id: number;
+  naamPersoon: string;
+  ovamId: string;
+  certificaatnummer: string;
+  certificatiePlatform: string | null;
+};
+
+type ProcescertificaatOptie = {
+  id: number;
+  naamBedrijf: string;
+  kboNummer: string;
+  certificaatnummer: string;
+};
+
+type DeskcontroleFormulierProps = {
+  leden: LidOptie[];
+  procescertificaten:
+    ProcescertificaatOptie[];
+};
+
+const beginstatus: DeskcontroleFormState =
+  {};
+
+const invoerStijl =
+  "mt-1.5 w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-sm text-slate-900 shadow-sm outline-none transition placeholder:text-slate-400 focus:border-emerald-600 focus:ring-4 focus:ring-emerald-100";
+
+const labelStijl =
+  "block text-sm font-semibold text-slate-700";
+
+function Foutmelding({
+  bericht,
+}: {
+  bericht?: string;
+}) {
+  if (!bericht) {
+    return null;
+  }
+
+  return (
+    <p className="mt-1.5 text-sm font-medium text-red-600">
+      {bericht}
+    </p>
+  );
+}
+
+function Leesveld({
+  label,
+  waarde,
+  placeholder = "Wordt automatisch ingevuld",
+}: {
+  label: string;
+  waarde?: string | null;
+  placeholder?: string;
+}) {
+  return (
+    <div>
+      <p className={labelStijl}>
+        {label}
+      </p>
+
+      <div
+        className={`mt-1.5 min-h-10 rounded-xl border px-3.5 py-2.5 text-sm ${
+          waarde
+            ? "border-emerald-200 bg-emerald-50 text-emerald-950"
+            : "border-slate-200 bg-slate-50 text-slate-400"
+        }`}
+      >
+        {waarde || placeholder}
+      </div>
+    </div>
+  );
+}
+
+function OpslaanKnop() {
+  const { pending } = useFormStatus();
+
+  return (
+    <button
+      type="submit"
+      disabled={pending}
+      className="rounded-xl bg-emerald-700 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-600 disabled:cursor-not-allowed disabled:bg-slate-400"
+    >
+      {pending
+        ? "Deskcontrole opslaan..."
+        : "Deskcontrole opslaan"}
+    </button>
+  );
+}
+
+function ontleedInputDatum(
+  waarde: string,
+) {
+  const delen = waarde
+    .split("-")
+    .map(Number);
+
+  if (
+    delen.length !== 3 ||
+    delen.some(Number.isNaN)
+  ) {
+    return null;
+  }
+
+  const [jaar, maand, dag] = delen;
+
+  const datum = new Date(
+    Date.UTC(jaar, maand - 1, dag),
+  );
+
+  if (
+    datum.getUTCFullYear() !== jaar ||
+    datum.getUTCMonth() !==
+      maand - 1 ||
+    datum.getUTCDate() !== dag
+  ) {
+    return null;
+  }
+
+  return datum;
+}
+
+function berekenDeadline(
+  datumWaarde: string,
+  aantalDagen: number,
+) {
+  const datum =
+    ontleedInputDatum(datumWaarde);
+
+  if (!datum) {
+    return "";
+  }
+
+  datum.setUTCDate(
+    datum.getUTCDate() + aantalDagen,
+  );
+
+  return new Intl.DateTimeFormat(
+    "nl-BE",
+    {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      timeZone: "UTC",
+    },
+  ).format(datum);
+}
+
+function haalAttestIdUitLink(
+  link: string,
+) {
+  try {
+    const url = new URL(link);
+
+    if (
+      url.protocol !== "https:" ||
+      url.hostname.toLowerCase() !==
+        "asbestinventaris.ovam.be"
+    ) {
+      return "";
+    }
+
+    const onderdelen =
+      url.pathname
+        .split("/")
+        .filter(Boolean);
+
+    if (
+      onderdelen.length !== 2 ||
+      onderdelen[0].toLowerCase() !==
+        "asbestinventaris"
+    ) {
+      return "";
+    }
+
+    const mogelijkId =
+      onderdelen[1].toLowerCase();
+
+    const uuidPatroon =
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+    return uuidPatroon.test(
+      mogelijkId,
+    )
+      ? mogelijkId
+      : "";
+  } catch {
+    return "";
+  }
+}
+
+function formatteerKboNummer(
+  kboNummer: string,
+) {
+  const cijfers =
+    kboNummer.replace(/\D/g, "");
+
+  if (cijfers.length === 9) {
+    return `${cijfers.slice(
+      0,
+      3,
+    )}.${cijfers.slice(
+      3,
+      6,
+    )}.${cijfers.slice(6)}`;
+  }
+
+  if (cijfers.length === 10) {
+    return `${cijfers.slice(
+      0,
+      4,
+    )}.${cijfers.slice(
+      4,
+      7,
+    )}.${cijfers.slice(7)}`;
+  }
+
+  return kboNummer;
+}
+
+export default function DeskcontroleFormulier({
+  leden,
+  procescertificaten,
+}: DeskcontroleFormulierProps) {
+  const [state, formAction] =
+    useActionState(
+      maakDeskcontroleAan,
+      beginstatus,
+    );
+
+  const [lidId, setLidId] =
+    useState("");
+
+  const [
+    procescertificaatId,
+    setProcescertificaatId,
+  ] = useState("");
+
+  const [
+    datumControle,
+    setDatumControle,
+  ] = useState("");
+
+  const [
+    finalisatieDatum,
+    setFinalisatieDatum,
+  ] = useState("");
+
+  const [linkAttest, setLinkAttest] =
+    useState("");
+
+  const geselecteerdLid =
+    useMemo(
+      () =>
+        leden.find(
+          (lid) =>
+            lid.id === Number(lidId),
+        ) ?? null,
+      [leden, lidId],
+    );
+
+  const geselecteerdProcescertificaat =
+    useMemo(
+      () =>
+        procescertificaten.find(
+          (certificaat) =>
+            certificaat.id ===
+            Number(
+              procescertificaatId,
+            ),
+        ) ?? null,
+      [
+        procescertificaten,
+        procescertificaatId,
+      ],
+    );
+
+  const attestId =
+    haalAttestIdUitLink(
+      linkAttest.trim(),
+    );
+
+  const deadlineSanctie =
+    berekenDeadline(
+      datumControle,
+      21,
+    );
+
+  const deadlineCorrectie =
+    berekenDeadline(
+      finalisatieDatum,
+      30,
+    );
+
+  return (
+    <form
+      action={formAction}
+      className="space-y-8 p-6 sm:p-8"
+    >
+      {state.message && (
+        <div
+          role="alert"
+          className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700"
+        >
+          {state.message}
+        </div>
+      )}
+
+      <section>
+        <h2 className="text-lg font-bold text-slate-950">
+          Algemene gegevens
+        </h2>
+
+        <p className="mt-1 text-sm text-slate-500">
+          Vul de auditeur en de
+          attestgegevens in.
+        </p>
+
+        <div className="mt-5 grid gap-5 md:grid-cols-2">
+          <div>
+            <label
+              htmlFor="auditeur"
+              className={labelStijl}
+            >
+              Auditeur *
+            </label>
+
+            <input
+              id="auditeur"
+              name="auditeur"
+              required
+              placeholder="Naam van de auditeur"
+              className={invoerStijl}
+            />
+
+            <Foutmelding
+              bericht={
+                state.errors?.auditeur
+              }
+            />
+          </div>
+
+          <div>
+            <label
+              htmlFor="attestnummer"
+              className={labelStijl}
+            >
+              Attestnummer *
+            </label>
+
+            <input
+              id="attestnummer"
+              name="attestnummer"
+              required
+              autoCapitalize="characters"
+              placeholder="Uniek attestnummer"
+              className={invoerStijl}
+            />
+
+            <Foutmelding
+              bericht={
+                state.errors
+                  ?.attestnummer
+              }
+            />
+          </div>
+
+          <div className="md:col-span-2">
+            <label
+              htmlFor="linkAttest"
+              className={labelStijl}
+            >
+              Link Attest *
+            </label>
+
+            <input
+              id="linkAttest"
+              name="linkAttest"
+              type="url"
+              required
+              value={linkAttest}
+              onChange={(event) =>
+                setLinkAttest(
+                  event.target.value,
+                )
+              }
+              placeholder="https://asbestinventaris.ovam.be/asbestinventaris/a0295bbc-6cd3-4c02-b39e-590658978f3c"
+              className={invoerStijl}
+            />
+
+            <Foutmelding
+              bericht={
+                state.errors?.linkAttest
+              }
+            />
+          </div>
+
+          <div className="md:col-span-2">
+            <Leesveld
+              label="ID uit attestlink"
+              waarde={attestId}
+              placeholder={
+                linkAttest
+                  ? "De link bevat geen geldig attest-ID."
+                  : "Wordt automatisch uit Link Attest gehaald"
+              }
+            />
+          </div>
+        </div>
+      </section>
+
+      <section className="border-t border-slate-200 pt-8">
+        <h2 className="text-lg font-bold text-slate-950">
+          Persoonscertificaat
+        </h2>
+
+        <p className="mt-1 text-sm text-slate-500">
+          Kies de Naam ADI uit de
+          bestaande persoonscertificaten.
+        </p>
+
+        <div className="mt-5 grid gap-5 md:grid-cols-2">
+          <div className="md:col-span-2">
+            <label
+              htmlFor="lidId"
+              className={labelStijl}
+            >
+              Naam ADI *
+            </label>
+
+            <select
+              id="lidId"
+              name="lidId"
+              required
+              value={lidId}
+              onChange={(event) =>
+                setLidId(
+                  event.target.value,
+                )
+              }
+              className={invoerStijl}
+            >
+              <option value="">
+                Selecteer een persoon
+              </option>
+
+              {leden.map((lid) => (
+                <option
+                  key={lid.id}
+                  value={lid.id}
+                >
+                  {lid.naamPersoon} —{" "}
+                  {lid.certificaatnummer}
+                </option>
+              ))}
+            </select>
+
+            <Foutmelding
+              bericht={state.errors?.lidId}
+            />
+          </div>
+
+          <Leesveld
+            label="PersoonsID"
+            waarde={
+              geselecteerdLid?.ovamId
+            }
+          />
+
+          <Leesveld
+            label="Persoonscertificaat"
+            waarde={
+              geselecteerdLid
+                ?.certificaatnummer
+            }
+          />
+
+          <div className="md:col-span-2">
+            <Leesveld
+              label="Certificatieplatform"
+              waarde={
+                geselecteerdLid
+                  ?.certificatiePlatform
+              }
+              placeholder={
+                geselecteerdLid
+                  ? "Geen certificatieplatform geregistreerd"
+                  : "Wordt automatisch ingevuld"
+              }
+            />
+          </div>
+        </div>
+      </section>
+
+      <section className="border-t border-slate-200 pt-8">
+        <h2 className="text-lg font-bold text-slate-950">
+          Procescertificaat
+        </h2>
+
+        <p className="mt-1 text-sm text-slate-500">
+          Kies de bedrijfsnaam uit de
+          bestaande procescertificaten.
+        </p>
+
+        <div className="mt-5 grid gap-5 md:grid-cols-2">
+          <div className="md:col-span-2">
+            <label
+              htmlFor="procescertificaatId"
+              className={labelStijl}
+            >
+              Bedrijfsnaam *
+            </label>
+
+            <select
+              id="procescertificaatId"
+              name="procescertificaatId"
+              required
+              value={
+                procescertificaatId
+              }
+              onChange={(event) =>
+                setProcescertificaatId(
+                  event.target.value,
+                )
+              }
+              className={invoerStijl}
+            >
+              <option value="">
+                Selecteer een bedrijf
+              </option>
+
+              {procescertificaten.map(
+                (certificaat) => (
+                  <option
+                    key={certificaat.id}
+                    value={certificaat.id}
+                  >
+                    {
+                      certificaat.naamBedrijf
+                    }{" "}
+                    —{" "}
+                    {
+                      certificaat.certificaatnummer
+                    }
+                  </option>
+                ),
+              )}
+            </select>
+
+            <Foutmelding
+              bericht={
+                state.errors
+                  ?.procescertificaatId
+              }
+            />
+          </div>
+
+          <Leesveld
+            label="Ondernemingsnummer"
+            waarde={
+              geselecteerdProcescertificaat
+                ? formatteerKboNummer(
+                    geselecteerdProcescertificaat.kboNummer,
+                  )
+                : ""
+            }
+          />
+
+          <Leesveld
+            label="Procescertificaat"
+            waarde={
+              geselecteerdProcescertificaat
+                ?.certificaatnummer
+            }
+          />
+        </div>
+      </section>
+
+      <section className="border-t border-slate-200 pt-8">
+        <h2 className="text-lg font-bold text-slate-950">
+          Controle en opvolging
+        </h2>
+
+        <div className="mt-5 grid gap-5 md:grid-cols-2">
+          <div>
+            <label
+              htmlFor="status"
+              className={labelStijl}
+            >
+              Status *
+            </label>
+
+            <select
+              id="status"
+              name="status"
+              required
+              defaultValue="GEEN"
+              className={invoerStijl}
+            >
+              <option value="GEEN">
+                Geen
+              </option>
+
+              <option value="IN_OPMAAK">
+                In opmaak
+              </option>
+
+              <option value="GEACTUALISEERD">
+                Geactualiseerd
+              </option>
+            </select>
+
+            <Foutmelding
+              bericht={
+                state.errors?.status
+              }
+            />
+          </div>
+
+          <div>
+            <label
+              htmlFor="typeControle"
+              className={labelStijl}
+            >
+              Type controle *
+            </label>
+
+            <select
+              id="typeControle"
+              name="typeControle"
+              required
+              defaultValue=""
+              className={invoerStijl}
+            >
+              <option
+                value=""
+                disabled
+              >
+                Selecteer een type
+              </option>
+
+              <option value="NIEUWE_CONTROLE">
+                Nieuwe controle
+              </option>
+
+              <option value="OPVOLGING">
+                Opvolging
+              </option>
+            </select>
+
+            <Foutmelding
+              bericht={
+                state.errors
+                  ?.typeControle
+              }
+            />
+          </div>
+
+          <div>
+            <label
+              htmlFor="datumControle"
+              className={labelStijl}
+            >
+              Datum controle *
+            </label>
+
+            <input
+              id="datumControle"
+              name="datumControle"
+              type="date"
+              required
+              value={datumControle}
+              onChange={(event) =>
+                setDatumControle(
+                  event.target.value,
+                )
+              }
+              className={invoerStijl}
+            />
+
+            <Foutmelding
+              bericht={
+                state.errors
+                  ?.datumControle
+              }
+            />
+          </div>
+
+          <Leesveld
+            label="Deadline sanctie"
+            waarde={deadlineSanctie}
+            placeholder="Datum controle + 21 dagen"
+          />
+
+          <div>
+            <label
+              htmlFor="finalisatieDatum"
+              className={labelStijl}
+            >
+              Finalisatie Datum
+            </label>
+
+            <input
+              id="finalisatieDatum"
+              name="finalisatieDatum"
+              type="date"
+              value={finalisatieDatum}
+              onChange={(event) =>
+                setFinalisatieDatum(
+                  event.target.value,
+                )
+              }
+              className={invoerStijl}
+            />
+
+            <Foutmelding
+              bericht={
+                state.errors
+                  ?.finalisatieDatum
+              }
+            />
+          </div>
+
+          <Leesveld
+            label="Deadline Correctie"
+            waarde={deadlineCorrectie}
+            placeholder="Finalisatie Datum + 30 dagen"
+          />
+        </div>
+
+        <div className="mt-5 grid gap-3 md:grid-cols-3">
+          <label className="flex cursor-pointer items-start gap-3 rounded-2xl border border-slate-300 bg-white p-4 transition hover:border-emerald-400 hover:bg-emerald-50">
+            <input
+              type="checkbox"
+              name="mailSanctieVerzonden"
+              className="mt-0.5 size-4 accent-emerald-700"
+            />
+
+            <span>
+              <span className="block text-sm font-semibold text-slate-900">
+                ✉ Sanctiemail verzonden
+              </span>
+
+              <span className="mt-1 block text-xs text-slate-500">
+                Vink aan wanneer de mail
+                verzonden is.
+              </span>
+            </span>
+          </label>
+
+          <label className="flex cursor-pointer items-start gap-3 rounded-2xl border border-slate-300 bg-white p-4 transition hover:border-emerald-400 hover:bg-emerald-50">
+            <input
+              type="checkbox"
+              name="mailCorrectieVerzonden"
+              className="mt-0.5 size-4 accent-emerald-700"
+            />
+
+            <span>
+              <span className="block text-sm font-semibold text-slate-900">
+                ✉ Correctiemail verzonden
+              </span>
+
+              <span className="mt-1 block text-xs text-slate-500">
+                Vink aan wanneer de mail
+                verzonden is.
+              </span>
+            </span>
+          </label>
+
+          <label className="flex cursor-pointer items-start gap-3 rounded-2xl border border-slate-300 bg-white p-4 transition hover:border-emerald-400 hover:bg-emerald-50">
+            <input
+              type="checkbox"
+              name="voorwaardelijkeOpheffing"
+              className="mt-0.5 size-4 accent-emerald-700"
+            />
+
+            <span>
+              <span className="block text-sm font-semibold text-slate-900">
+                Voorwaardelijke opheffing
+              </span>
+
+              <span className="mt-1 block text-xs text-slate-500">
+                Markeer deze deskcontrole
+                als voorwaardelijke opheffing.
+              </span>
+            </span>
+          </label>
+        </div>
+      </section>
+
+      <section className="border-t border-slate-200 pt-8">
+        <h2 className="text-lg font-bold text-slate-950">
+          Aanvullende informatie
+        </h2>
+
+        <div className="mt-5 grid gap-5 md:grid-cols-2">
+          <div>
+            <label
+              htmlFor="oneDrive"
+              className={labelStijl}
+            >
+              OneDrive
+            </label>
+
+            <input
+              id="oneDrive"
+              name="oneDrive"
+              type="url"
+              placeholder="https://..."
+              className={invoerStijl}
+            />
+
+            <Foutmelding
+              bericht={
+                state.errors?.oneDrive
+              }
+            />
+          </div>
+
+          <div>
+            <label
+              htmlFor="adres"
+              className={labelStijl}
+            >
+              Adres
+            </label>
+
+            <input
+              id="adres"
+              name="adres"
+              placeholder="Straat, nummer, postcode en gemeente"
+              className={invoerStijl}
+            />
+
+            <Foutmelding
+              bericht={
+                state.errors?.adres
+              }
+            />
+          </div>
+
+          <div className="md:col-span-2">
+            <label
+              htmlFor="opmerkingen"
+              className={labelStijl}
+            >
+              Opmerkingen
+            </label>
+
+            <textarea
+              id="opmerkingen"
+              name="opmerkingen"
+              rows={6}
+              maxLength={5000}
+              placeholder="Aanvullende informatie over de deskcontrole..."
+              className={invoerStijl}
+            />
+
+            <Foutmelding
+              bericht={
+                state.errors
+                  ?.opmerkingen
+              }
+            />
+          </div>
+        </div>
+      </section>
+
+      <footer className="flex flex-col-reverse gap-3 border-t border-slate-200 pt-6 sm:flex-row sm:justify-end">
+        <a
+          href="/deskcontroles"
+          className="rounded-xl border border-slate-300 bg-white px-5 py-3 text-center text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+        >
+          Annuleren
+        </a>
+
+        <OpslaanKnop />
+      </footer>
+    </form>
+  );
+}
+
+
+
+===== END app/deskcontroles/nieuw/DeskcontroleFormulier.tsx =====
+
+
+===== BEGIN app/deskcontroles/[id]/bewerken/DeskcontroleBewerkFormulier.tsx =====
+
+"use client";
+
+import Link from "next/link";
+import {
+  useMemo,
+  useState,
+} from "react";
+import { useFormStatus } from "react-dom";
+import { wijzigDeskcontrole } from "./actions";
+
+type DeskcontroleGegevens = {
+  auditeur: string;
+  lidId: number;
+  procescertificaatId: number;
+  linkAttest: string;
+  attestnummer: string;
+  status:
+    | "GEEN"
+    | "IN_OPMAAK"
+    | "GEACTUALISEERD";
+  mailSanctieVerzonden: boolean;
+  typeControle:
+    | "NIEUWE_CONTROLE"
+    | "OPVOLGING";
+  mailCorrectieVerzonden: boolean;
+  oneDrive: string | null;
+  voorwaardelijkeOpheffing: boolean;
+  opmerkingen: string | null;
+  datumControle: string;
+  adres: string | null;
+  finalisatieDatum: string;
+};
+
+type LidOptie = {
+  id: number;
+  naamPersoon: string;
+  ovamId: string;
+  certificaatnummer: string;
+  certificatiePlatform: string | null;
+  verwijderd: boolean;
+};
+
+type ProcescertificaatOptie = {
+  id: number;
+  naamBedrijf: string;
+  kboNummer: string;
+  certificaatnummer: string;
+  verwijderd: boolean;
+};
+
+type FormulierProps = {
+  id: number;
+  fout?: string;
+  deskcontrole: DeskcontroleGegevens;
+  leden: LidOptie[];
+  procescertificaten:
+    ProcescertificaatOptie[];
+};
+
+const invoerStijl =
+  "mt-1.5 w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-sm text-slate-900 shadow-sm outline-none transition placeholder:text-slate-400 focus:border-emerald-600 focus:ring-4 focus:ring-emerald-100";
+
+const labelStijl =
+  "block text-sm font-semibold text-slate-700";
+
+function OpslaanKnop() {
+  const { pending } = useFormStatus();
+
+  return (
+    <button
+      type="submit"
+      disabled={pending}
+      className="rounded-xl bg-emerald-700 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-600 disabled:cursor-not-allowed disabled:bg-slate-400"
+    >
+      {pending
+        ? "Wijzigingen opslaan..."
+        : "Wijzigingen opslaan"}
+    </button>
+  );
+}
+
+function Leesveld({
+  label,
+  waarde,
+  placeholder = "Wordt automatisch ingevuld",
+}: {
+  label: string;
+  waarde?: string | null;
+  placeholder?: string;
+}) {
+  return (
+    <div>
+      <p className={labelStijl}>
+        {label}
+      </p>
+
+      <div
+        className={`mt-1.5 min-h-10 rounded-xl border px-3.5 py-2.5 text-sm ${
+          waarde
+            ? "border-emerald-200 bg-emerald-50 text-emerald-950"
+            : "border-slate-200 bg-slate-50 text-slate-400"
+        }`}
+      >
+        {waarde || placeholder}
+      </div>
+    </div>
+  );
+}
+
+function ontleedInputDatum(
+  waarde: string,
+) {
+  const delen = waarde
+    .split("-")
+    .map(Number);
+
+  if (
+    delen.length !== 3 ||
+    delen.some(Number.isNaN)
+  ) {
+    return null;
+  }
+
+  const [jaar, maand, dag] = delen;
+
+  const datum = new Date(
+    Date.UTC(
+      jaar,
+      maand - 1,
+      dag,
+    ),
+  );
+
+  if (
+    datum.getUTCFullYear() !== jaar ||
+    datum.getUTCMonth() !==
+      maand - 1 ||
+    datum.getUTCDate() !== dag
+  ) {
+    return null;
+  }
+
+  return datum;
+}
+
+function berekenDeadline(
+  datumWaarde: string,
+  aantalDagen: number,
+) {
+  const datum =
+    ontleedInputDatum(datumWaarde);
+
+  if (!datum) {
+    return "";
+  }
+
+  datum.setUTCDate(
+    datum.getUTCDate() +
+      aantalDagen,
+  );
+
+  return new Intl.DateTimeFormat(
+    "nl-BE",
+    {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      timeZone: "UTC",
+    },
+  ).format(datum);
+}
+
+function haalAttestIdUitLink(
+  link: string,
+) {
+  try {
+    const url = new URL(link);
+
+    if (
+      url.protocol !== "https:" ||
+      url.hostname.toLowerCase() !==
+        "asbestinventaris.ovam.be"
+    ) {
+      return "";
+    }
+
+    const onderdelen =
+      url.pathname
+        .split("/")
+        .filter(Boolean);
+
+    if (
+      onderdelen.length !== 2 ||
+      onderdelen[0].toLowerCase() !==
+        "asbestinventaris"
+    ) {
+      return "";
+    }
+
+    const mogelijkId =
+      onderdelen[1].toLowerCase();
+
+    const uuidPatroon =
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+    return uuidPatroon.test(
+      mogelijkId,
+    )
+      ? mogelijkId
+      : "";
+  } catch {
+    return "";
+  }
+}
+
+function formatteerKboNummer(
+  kboNummer: string,
+) {
+  const cijfers =
+    kboNummer.replace(/\D/g, "");
+
+  if (cijfers.length === 9) {
+    return `${cijfers.slice(
+      0,
+      3,
+    )}.${cijfers.slice(
+      3,
+      6,
+    )}.${cijfers.slice(6)}`;
+  }
+
+  if (cijfers.length === 10) {
+    return `${cijfers.slice(
+      0,
+      4,
+    )}.${cijfers.slice(
+      4,
+      7,
+    )}.${cijfers.slice(7)}`;
+  }
+
+  return kboNummer;
+}
+
+export default function DeskcontroleBewerkFormulier({
+  id,
+  fout,
+  deskcontrole,
+  leden,
+  procescertificaten,
+}: FormulierProps) {
+  const [lidId, setLidId] =
+    useState(
+      String(deskcontrole.lidId),
+    );
+
+  const [
+    procescertificaatId,
+    setProcescertificaatId,
+  ] = useState(
+    String(
+      deskcontrole
+        .procescertificaatId,
+    ),
+  );
+
+  const [
+    datumControle,
+    setDatumControle,
+  ] = useState(
+    deskcontrole.datumControle,
+  );
+
+  const [
+    finalisatieDatum,
+    setFinalisatieDatum,
+  ] = useState(
+    deskcontrole.finalisatieDatum,
+  );
+
+  const [
+    linkAttest,
+    setLinkAttest,
+  ] = useState(
+    deskcontrole.linkAttest,
+  );
+
+  const geselecteerdLid =
+    useMemo(
+      () =>
+        leden.find(
+          (lid) =>
+            lid.id === Number(lidId),
+        ) ?? null,
+      [leden, lidId],
+    );
+
+  const geselecteerdProcescertificaat =
+    useMemo(
+      () =>
+        procescertificaten.find(
+          (certificaat) =>
+            certificaat.id ===
+            Number(
+              procescertificaatId,
+            ),
+        ) ?? null,
+      [
+        procescertificaten,
+        procescertificaatId,
+      ],
+    );
+
+  const attestId =
+    haalAttestIdUitLink(
+      linkAttest.trim(),
+    );
+
+  const deadlineSanctie =
+    berekenDeadline(
+      datumControle,
+      21,
+    );
+
+  const deadlineCorrectie =
+    berekenDeadline(
+      finalisatieDatum,
+      30,
+    );
+
+  const opslaan =
+    wijzigDeskcontrole.bind(
+      null,
+      id,
+    );
+
+  return (
+    <form
+      action={opslaan}
+      className="space-y-8 p-6 sm:p-8"
+    >
+      {fout && (
+        <div
+          role="alert"
+          className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700"
+        >
+          {fout}
+        </div>
+      )}
+
+      <section>
+        <h2 className="text-lg font-bold text-slate-950">
+          Algemene gegevens
+        </h2>
+
+        <div className="mt-5 grid gap-5 md:grid-cols-2">
+          <div>
+            <label
+              htmlFor="auditeur"
+              className={labelStijl}
+            >
+              Auditeur *
+            </label>
+
+            <input
+              id="auditeur"
+              name="auditeur"
+              required
+              defaultValue={
+                deskcontrole.auditeur
+              }
+              className={invoerStijl}
+            />
+          </div>
+
+          <div>
+            <label
+              htmlFor="attestnummer"
+              className={labelStijl}
+            >
+              Attestnummer *
+            </label>
+
+            <input
+              id="attestnummer"
+              name="attestnummer"
+              required
+              defaultValue={
+                deskcontrole.attestnummer
+              }
+              className={invoerStijl}
+            />
+          </div>
+
+          <div className="md:col-span-2">
+            <label
+              htmlFor="linkAttest"
+              className={labelStijl}
+            >
+              Link Attest *
+            </label>
+
+            <input
+              id="linkAttest"
+              name="linkAttest"
+              type="url"
+              required
+              value={linkAttest}
+              onChange={(event) =>
+                setLinkAttest(
+                  event.target.value,
+                )
+              }
+              className={invoerStijl}
+            />
+          </div>
+
+          <div className="md:col-span-2">
+            <Leesveld
+              label="ID uit attestlink"
+              waarde={attestId}
+              placeholder="Geen geldig attest-ID gevonden"
+            />
+          </div>
+        </div>
+      </section>
+
+      <section className="border-t border-slate-200 pt-8">
+        <h2 className="text-lg font-bold text-slate-950">
+          Persoonscertificaat
+        </h2>
+
+        <div className="mt-5 grid gap-5 md:grid-cols-2">
+          <div className="md:col-span-2">
+            <label
+              htmlFor="lidId"
+              className={labelStijl}
+            >
+              Naam ADI *
+            </label>
+
+            <select
+              id="lidId"
+              name="lidId"
+              required
+              value={lidId}
+              onChange={(event) =>
+                setLidId(
+                  event.target.value,
+                )
+              }
+              className={invoerStijl}
+            >
+              {leden.map((lid) => (
+                <option
+                  key={lid.id}
+                  value={lid.id}
+                >
+                  {lid.naamPersoon} —{" "}
+                  {lid.certificaatnummer}
+                  {lid.verwijderd
+                    ? " (verwijderd)"
+                    : ""}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <Leesveld
+            label="PersoonsID"
+            waarde={
+              geselecteerdLid?.ovamId
+            }
+          />
+
+          <Leesveld
+            label="Persoonscertificaat"
+            waarde={
+              geselecteerdLid
+                ?.certificaatnummer
+            }
+          />
+
+          <div className="md:col-span-2">
+            <Leesveld
+              label="Certificatieplatform"
+              waarde={
+                geselecteerdLid
+                  ?.certificatiePlatform
+              }
+              placeholder="Geen certificatieplatform geregistreerd"
+            />
+          </div>
+        </div>
+      </section>
+
+      <section className="border-t border-slate-200 pt-8">
+        <h2 className="text-lg font-bold text-slate-950">
+          Procescertificaat
+        </h2>
+
+        <div className="mt-5 grid gap-5 md:grid-cols-2">
+          <div className="md:col-span-2">
+            <label
+              htmlFor="procescertificaatId"
+              className={labelStijl}
+            >
+              Bedrijfsnaam *
+            </label>
+
+            <select
+              id="procescertificaatId"
+              name="procescertificaatId"
+              required
+              value={
+                procescertificaatId
+              }
+              onChange={(event) =>
+                setProcescertificaatId(
+                  event.target.value,
+                )
+              }
+              className={invoerStijl}
+            >
+              {procescertificaten.map(
+                (certificaat) => (
+                  <option
+                    key={certificaat.id}
+                    value={certificaat.id}
+                  >
+                    {
+                      certificaat
+                        .naamBedrijf
+                    }{" "}
+                    —{" "}
+                    {
+                      certificaat
+                        .certificaatnummer
+                    }
+                    {certificaat.verwijderd
+                      ? " (verwijderd)"
+                      : ""}
+                  </option>
+                ),
+              )}
+            </select>
+          </div>
+
+          <Leesveld
+            label="Ondernemingsnummer"
+            waarde={
+              geselecteerdProcescertificaat
+                ? formatteerKboNummer(
+                    geselecteerdProcescertificaat.kboNummer,
+                  )
+                : ""
+            }
+          />
+
+          <Leesveld
+            label="Procescertificaat"
+            waarde={
+              geselecteerdProcescertificaat
+                ?.certificaatnummer
+            }
+          />
+        </div>
+      </section>
+
+      <section className="border-t border-slate-200 pt-8">
+        <h2 className="text-lg font-bold text-slate-950">
+          Controle en opvolging
+        </h2>
+
+        <div className="mt-5 grid gap-5 md:grid-cols-2">
+          <div>
+            <label
+              htmlFor="status"
+              className={labelStijl}
+            >
+              Status *
+            </label>
+
+            <select
+              id="status"
+              name="status"
+              required
+              defaultValue={
+                deskcontrole.status
+              }
+              className={invoerStijl}
+            >
+              <option value="GEEN">
+                Geen
+              </option>
+
+              <option value="IN_OPMAAK">
+                In opmaak
+              </option>
+
+              <option value="GEACTUALISEERD">
+                Geactualiseerd
+              </option>
+            </select>
+          </div>
+
+          <div>
+            <label
+              htmlFor="typeControle"
+              className={labelStijl}
+            >
+              Type controle *
+            </label>
+
+            <select
+              id="typeControle"
+              name="typeControle"
+              required
+              defaultValue={
+                deskcontrole
+                  .typeControle
+              }
+              className={invoerStijl}
+            >
+              <option value="NIEUWE_CONTROLE">
+                Nieuwe controle
+              </option>
+
+              <option value="OPVOLGING">
+                Opvolging
+              </option>
+            </select>
+          </div>
+
+          <div>
+            <label
+              htmlFor="datumControle"
+              className={labelStijl}
+            >
+              Datum controle *
+            </label>
+
+            <input
+              id="datumControle"
+              name="datumControle"
+              type="date"
+              required
+              value={datumControle}
+              onChange={(event) =>
+                setDatumControle(
+                  event.target.value,
+                )
+              }
+              className={invoerStijl}
+            />
+          </div>
+
+          <Leesveld
+            label="Deadline Sanctie"
+            waarde={deadlineSanctie}
+            placeholder="Datum controle + 21 dagen"
+          />
+
+          <div>
+            <label
+              htmlFor="finalisatieDatum"
+              className={labelStijl}
+            >
+              Finalisatie Datum
+            </label>
+
+            <input
+              id="finalisatieDatum"
+              name="finalisatieDatum"
+              type="date"
+              value={finalisatieDatum}
+              onChange={(event) =>
+                setFinalisatieDatum(
+                  event.target.value,
+                )
+              }
+              className={invoerStijl}
+            />
+          </div>
+
+          <Leesveld
+            label="Deadline Correctie"
+            waarde={deadlineCorrectie}
+            placeholder="Finalisatie Datum + 30 dagen"
+          />
+        </div>
+
+        <div className="mt-5 grid gap-3 md:grid-cols-3">
+          <label className="flex cursor-pointer items-start gap-3 rounded-2xl border border-slate-300 p-4 hover:border-emerald-400 hover:bg-emerald-50">
+            <input
+              type="checkbox"
+              name="mailSanctieVerzonden"
+              defaultChecked={
+                deskcontrole
+                  .mailSanctieVerzonden
+              }
+              className="mt-0.5 size-4 accent-emerald-700"
+            />
+
+            <span className="text-sm font-semibold text-slate-900">
+              ✉ Sanctiemail verzonden
+            </span>
+          </label>
+
+          <label className="flex cursor-pointer items-start gap-3 rounded-2xl border border-slate-300 p-4 hover:border-emerald-400 hover:bg-emerald-50">
+            <input
+              type="checkbox"
+              name="mailCorrectieVerzonden"
+              defaultChecked={
+                deskcontrole
+                  .mailCorrectieVerzonden
+              }
+              className="mt-0.5 size-4 accent-emerald-700"
+            />
+
+            <span className="text-sm font-semibold text-slate-900">
+              ✉ Correctiemail verzonden
+            </span>
+          </label>
+
+          <label className="flex cursor-pointer items-start gap-3 rounded-2xl border border-slate-300 p-4 hover:border-emerald-400 hover:bg-emerald-50">
+            <input
+              type="checkbox"
+              name="voorwaardelijkeOpheffing"
+              defaultChecked={
+                deskcontrole
+                  .voorwaardelijkeOpheffing
+              }
+              className="mt-0.5 size-4 accent-emerald-700"
+            />
+
+            <span className="text-sm font-semibold text-slate-900">
+              Voorwaardelijke opheffing
+            </span>
+          </label>
+        </div>
+      </section>
+
+      <section className="border-t border-slate-200 pt-8">
+        <h2 className="text-lg font-bold text-slate-950">
+          Aanvullende informatie
+        </h2>
+
+        <div className="mt-5 grid gap-5 md:grid-cols-2">
+          <div>
+            <label
+              htmlFor="oneDrive"
+              className={labelStijl}
+            >
+              OneDrive
+            </label>
+
+            <input
+              id="oneDrive"
+              name="oneDrive"
+              type="url"
+              defaultValue={
+                deskcontrole.oneDrive ??
+                ""
+              }
+              placeholder="https://..."
+              className={invoerStijl}
+            />
+          </div>
+
+          <div>
+            <label
+              htmlFor="adres"
+              className={labelStijl}
+            >
+              Adres
+            </label>
+
+            <input
+              id="adres"
+              name="adres"
+              defaultValue={
+                deskcontrole.adres ?? ""
+              }
+              className={invoerStijl}
+            />
+          </div>
+
+          <div className="md:col-span-2">
+            <label
+              htmlFor="opmerkingen"
+              className={labelStijl}
+            >
+              Opmerkingen
+            </label>
+
+            <textarea
+              id="opmerkingen"
+              name="opmerkingen"
+              rows={6}
+              maxLength={5000}
+              defaultValue={
+                deskcontrole.opmerkingen ??
+                ""
+              }
+              className={invoerStijl}
+            />
+          </div>
+        </div>
+      </section>
+
+      <footer className="flex flex-col-reverse gap-3 border-t border-slate-200 pt-6 sm:flex-row sm:justify-end">
+        <Link
+          href="/deskcontroles"
+          className="rounded-xl border border-slate-300 bg-white px-5 py-3 text-center text-sm font-semibold text-slate-700 hover:bg-slate-50"
+        >
+          Annuleren
+        </Link>
+
+        <OpslaanKnop />
+      </footer>
+    </form>
+  );
+}
+
+
+
+===== END app/deskcontroles/[id]/bewerken/DeskcontroleBewerkFormulier.tsx =====

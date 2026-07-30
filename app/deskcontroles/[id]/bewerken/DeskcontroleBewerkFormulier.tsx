@@ -1,0 +1,798 @@
+"use client";
+
+import Link from "next/link";
+import { useMemo, useState } from "react";
+import { useFormStatus } from "react-dom";
+
+import { formatteerOndernemingsnummer } from "@/lib/ondernemingsnummer";
+
+import { wijzigDeskcontrole } from "./actions";
+
+type DeskcontroleGegevens = {
+  auditeur: string;
+  lidId: number;
+  procescertificaatId: number;
+  linkAttest: string;
+  attestnummer: string;
+  status:
+    | "GEEN"
+    | "IN_OPMAAK"
+    | "GEACTUALISEERD"
+    | "AFGEROND";
+  mailSanctieVerzonden: boolean;
+  typeControle:
+    | "NIEUWE_CONTROLE"
+    | "OPVOLGING";
+  mailCorrectieVerzonden: boolean;
+  oneDrive: string | null;
+  voorwaardelijkeOpheffing: boolean;
+  opmerkingen: string | null;
+  datumControle: string;
+  adres: string | null;
+  finalisatieDatum: string;
+};
+
+type LidOptie = {
+  id: number;
+  naamPersoon: string;
+  ovamId: string;
+  certificaatnummer: string;
+  certificatiePlatform: string | null;
+  verwijderd: boolean;
+};
+
+type ProcescertificaatOptie = {
+  id: number;
+  naamBedrijf: string;
+  kboNummer: string;
+  certificaatnummer: string;
+  verwijderd: boolean;
+};
+
+type FormulierProps = {
+  id: number;
+  fout?: string;
+  deskcontrole: DeskcontroleGegevens;
+  leden: LidOptie[];
+  procescertificaten: ProcescertificaatOptie[];
+};
+
+const invoerStijl =
+  "mt-1.5 w-full rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-sm text-slate-900 shadow-sm outline-none transition placeholder:text-slate-400 focus:border-emerald-600 focus:ring-4 focus:ring-emerald-100";
+
+const labelStijl =
+  "block text-sm font-semibold text-slate-700";
+
+function OpslaanKnop() {
+  const { pending } = useFormStatus();
+
+  return (
+    <button
+      type="submit"
+      disabled={pending}
+      className="rounded-xl bg-emerald-700 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-600 disabled:cursor-not-allowed disabled:bg-slate-400"
+    >
+      {pending
+        ? "Wijzigingen opslaan..."
+        : "Wijzigingen opslaan"}
+    </button>
+  );
+}
+
+function Leesveld({
+  label,
+  waarde,
+  placeholder = "Wordt automatisch ingevuld",
+}: {
+  label: string;
+  waarde?: string | null;
+  placeholder?: string;
+}) {
+  return (
+    <div>
+      <p className={labelStijl}>
+        {label}
+      </p>
+
+      <div
+        className={`mt-1.5 min-h-10 rounded-xl border px-3.5 py-2.5 text-sm ${
+          waarde
+            ? "border-emerald-200 bg-emerald-50 text-emerald-950"
+            : "border-slate-200 bg-slate-50 text-slate-400"
+        }`}
+      >
+        {waarde || placeholder}
+      </div>
+    </div>
+  );
+}
+
+function ontleedInputDatum(
+  waarde: string,
+) {
+  const delen = waarde
+    .split("-")
+    .map(Number);
+
+  if (
+    delen.length !== 3 ||
+    delen.some(Number.isNaN)
+  ) {
+    return null;
+  }
+
+  const [jaar, maand, dag] = delen;
+
+  const datum = new Date(
+    Date.UTC(
+      jaar,
+      maand - 1,
+      dag,
+    ),
+  );
+
+  if (
+    datum.getUTCFullYear() !== jaar ||
+    datum.getUTCMonth() !==
+      maand - 1 ||
+    datum.getUTCDate() !== dag
+  ) {
+    return null;
+  }
+
+  return datum;
+}
+
+function berekenDeadline(
+  datumWaarde: string,
+  aantalDagen: number,
+) {
+  const datum =
+    ontleedInputDatum(datumWaarde);
+
+  if (!datum) {
+    return "";
+  }
+
+  datum.setUTCDate(
+    datum.getUTCDate() +
+      aantalDagen,
+  );
+
+  return new Intl.DateTimeFormat(
+    "nl-BE",
+    {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      timeZone: "UTC",
+    },
+  ).format(datum);
+}
+
+function haalAttestIdUitLink(
+  link: string,
+) {
+  try {
+    const url = new URL(link);
+
+    if (
+      url.protocol !== "https:" ||
+      url.hostname.toLowerCase() !==
+        "asbestinventaris.ovam.be"
+    ) {
+      return "";
+    }
+
+    const onderdelen =
+      url.pathname
+        .split("/")
+        .filter(Boolean);
+
+    if (
+      onderdelen.length !== 2 ||
+      onderdelen[0].toLowerCase() !==
+        "asbestinventaris"
+    ) {
+      return "";
+    }
+
+    const mogelijkId =
+      onderdelen[1].toLowerCase();
+
+    const uuidPatroon =
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+    return uuidPatroon.test(
+      mogelijkId,
+    )
+      ? mogelijkId
+      : "";
+  } catch {
+    return "";
+  }
+}
+
+export default function DeskcontroleBewerkFormulier({
+  id,
+  fout,
+  deskcontrole,
+  leden,
+  procescertificaten,
+}: FormulierProps) {
+  const [lidId, setLidId] =
+    useState(
+      String(deskcontrole.lidId),
+    );
+
+  const [
+    procescertificaatId,
+    setProcescertificaatId,
+  ] = useState(
+    String(
+      deskcontrole
+        .procescertificaatId,
+    ),
+  );
+
+  const [
+    datumControle,
+    setDatumControle,
+  ] = useState(
+    deskcontrole.datumControle,
+  );
+
+  const [
+    finalisatieDatum,
+    setFinalisatieDatum,
+  ] = useState(
+    deskcontrole.finalisatieDatum,
+  );
+
+  const [
+    linkAttest,
+    setLinkAttest,
+  ] = useState(
+    deskcontrole.linkAttest,
+  );
+
+  const geselecteerdLid =
+    useMemo(
+      () =>
+        leden.find(
+          (lid) =>
+            lid.id === Number(lidId),
+        ) ?? null,
+      [leden, lidId],
+    );
+
+  const geselecteerdProcescertificaat =
+    useMemo(
+      () =>
+        procescertificaten.find(
+          (certificaat) =>
+            certificaat.id ===
+            Number(
+              procescertificaatId,
+            ),
+        ) ?? null,
+      [
+        procescertificaten,
+        procescertificaatId,
+      ],
+    );
+
+  const attestId =
+    haalAttestIdUitLink(
+      linkAttest.trim(),
+    );
+
+  const deadlineSanctie =
+    berekenDeadline(
+      datumControle,
+      21,
+    );
+
+  const deadlineCorrectie =
+    berekenDeadline(
+      finalisatieDatum,
+      30,
+    );
+
+  const opslaan =
+    wijzigDeskcontrole.bind(
+      null,
+      id,
+    );
+
+  return (
+    <form
+      action={opslaan}
+      className="space-y-8 p-6 sm:p-8"
+    >
+      {fout && (
+        <div
+          role="alert"
+          className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700"
+        >
+          {fout}
+        </div>
+      )}
+
+      <section>
+        <h2 className="text-lg font-bold text-slate-950">
+          Algemene gegevens
+        </h2>
+
+        <div className="mt-5 grid gap-5 md:grid-cols-2">
+          <div>
+            <label
+              htmlFor="auditeur"
+              className={labelStijl}
+            >
+              Auditeur *
+            </label>
+
+            <input
+              id="auditeur"
+              name="auditeur"
+              required
+              defaultValue={
+                deskcontrole.auditeur
+              }
+              className={invoerStijl}
+            />
+          </div>
+
+          <div>
+            <label
+              htmlFor="attestnummer"
+              className={labelStijl}
+            >
+              Attestnummer *
+            </label>
+
+            <input
+              id="attestnummer"
+              name="attestnummer"
+              required
+              defaultValue={
+                deskcontrole.attestnummer
+              }
+              className={invoerStijl}
+            />
+          </div>
+
+          <div className="md:col-span-2">
+            <label
+              htmlFor="linkAttest"
+              className={labelStijl}
+            >
+              Link Attest *
+            </label>
+
+            <input
+              id="linkAttest"
+              name="linkAttest"
+              type="url"
+              required
+              value={linkAttest}
+              onChange={(event) =>
+                setLinkAttest(
+                  event.target.value,
+                )
+              }
+              className={invoerStijl}
+            />
+          </div>
+
+          <div className="md:col-span-2">
+            <Leesveld
+              label="ID uit attestlink"
+              waarde={attestId}
+              placeholder="Geen geldig attest-ID gevonden"
+            />
+          </div>
+        </div>
+      </section>
+
+      <section className="border-t border-slate-200 pt-8">
+        <h2 className="text-lg font-bold text-slate-950">
+          Persoonscertificaat
+        </h2>
+
+        <div className="mt-5 grid gap-5 md:grid-cols-2">
+          <div className="md:col-span-2">
+            <label
+              htmlFor="lidId"
+              className={labelStijl}
+            >
+              Naam ADI *
+            </label>
+
+            <select
+              id="lidId"
+              name="lidId"
+              required
+              value={lidId}
+              onChange={(event) =>
+                setLidId(
+                  event.target.value,
+                )
+              }
+              className={invoerStijl}
+            >
+              {leden.map((lid) => (
+                <option
+                  key={lid.id}
+                  value={lid.id}
+                >
+                  {lid.naamPersoon}{" "}
+                  {lid.certificaatnummer}
+                  {lid.verwijderd
+                    ? " (verwijderd)"
+                    : ""}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <Leesveld
+            label="PersoonsID"
+            waarde={
+              geselecteerdLid?.ovamId
+            }
+          />
+
+          <Leesveld
+            label="Persoonscertificaat"
+            waarde={
+              geselecteerdLid
+                ?.certificaatnummer
+            }
+          />
+
+          <div className="md:col-span-2">
+            <Leesveld
+              label="Certificatieplatform"
+              waarde={
+                geselecteerdLid
+                  ?.certificatiePlatform
+              }
+              placeholder="Geen certificatieplatform geregistreerd"
+            />
+          </div>
+        </div>
+      </section>
+
+      <section className="border-t border-slate-200 pt-8">
+        <h2 className="text-lg font-bold text-slate-950">
+          Procescertificaat
+        </h2>
+
+        <div className="mt-5 grid gap-5 md:grid-cols-2">
+          <div className="md:col-span-2">
+            <label
+              htmlFor="procescertificaatId"
+              className={labelStijl}
+            >
+              Bedrijfsnaam *
+            </label>
+
+            <select
+              id="procescertificaatId"
+              name="procescertificaatId"
+              required
+              value={
+                procescertificaatId
+              }
+              onChange={(event) =>
+                setProcescertificaatId(
+                  event.target.value,
+                )
+              }
+              className={invoerStijl}
+            >
+              {procescertificaten.map(
+                (certificaat) => (
+                  <option
+                    key={certificaat.id}
+                    value={certificaat.id}
+                  >
+                    {
+                      certificaat
+                        .naamBedrijf
+                    }{" "}
+                    {
+                      certificaat
+                        .certificaatnummer
+                    }
+                    {certificaat.verwijderd
+                      ? " (verwijderd)"
+                      : ""}
+                  </option>
+                ),
+              )}
+            </select>
+          </div>
+
+          <Leesveld
+            label="Ondernemingsnummer / EU-btw-nummer"
+            waarde={
+              geselecteerdProcescertificaat
+                ? formatteerOndernemingsnummer(
+                    geselecteerdProcescertificaat.kboNummer,
+                  )
+                : ""
+            }
+          />
+
+          <Leesveld
+            label="Procescertificaat"
+            waarde={
+              geselecteerdProcescertificaat
+                ?.certificaatnummer
+            }
+          />
+        </div>
+      </section>
+
+      <section className="border-t border-slate-200 pt-8">
+        <h2 className="text-lg font-bold text-slate-950">
+          Controle en opvolging
+        </h2>
+
+        <div className="mt-5 grid gap-5 md:grid-cols-2">
+          <div>
+            <label
+              htmlFor="status"
+              className={labelStijl}
+            >
+              Status *
+            </label>
+
+            <select
+              id="status"
+              name="status"
+              required
+              defaultValue={
+                deskcontrole.status
+              }
+              className={invoerStijl}
+            >
+              <option value="GEEN">
+                Geen
+              </option>
+
+              <option value="IN_OPMAAK">
+                In opmaak
+              </option>
+
+              <option value="GEACTUALISEERD">
+                Geactualiseerd
+              </option>
+              <option value="AFGEROND">
+                Afgerond
+              </option>
+
+            </select>
+          </div>
+
+          <div>
+            <label
+              htmlFor="typeControle"
+              className={labelStijl}
+            >
+              Type controle *
+            </label>
+
+            <select
+              id="typeControle"
+              name="typeControle"
+              required
+              defaultValue={
+                deskcontrole
+                  .typeControle
+              }
+              className={invoerStijl}
+            >
+              <option value="NIEUWE_CONTROLE">
+                Nieuwe controle
+              </option>
+
+              <option value="OPVOLGING">
+                Opvolging
+              </option>
+            </select>
+          </div>
+
+          <div>
+            <label
+              htmlFor="datumControle"
+              className={labelStijl}
+            >
+              Datum controle *
+            </label>
+
+            <input
+              id="datumControle"
+              name="datumControle"
+              type="date"
+              required
+              value={datumControle}
+              onChange={(event) =>
+                setDatumControle(
+                  event.target.value,
+                )
+              }
+              className={invoerStijl}
+            />
+          </div>
+
+          <Leesveld
+            label="Deadline Sanctie"
+            waarde={deadlineSanctie}
+            placeholder="Datum controle + 21 dagen"
+          />
+
+          <div>
+            <label
+              htmlFor="finalisatieDatum"
+              className={labelStijl}
+            >
+              Finalisatie Datum
+            </label>
+
+            <input
+              id="finalisatieDatum"
+              name="finalisatieDatum"
+              type="date"
+              value={finalisatieDatum}
+              onChange={(event) =>
+                setFinalisatieDatum(
+                  event.target.value,
+                )
+              }
+              className={invoerStijl}
+            />
+          </div>
+
+          <Leesveld
+            label="Deadline Correctie"
+            waarde={deadlineCorrectie}
+            placeholder="Finalisatie Datum + 30 dagen"
+          />
+        </div>
+
+        <div className="mt-5 grid gap-3 md:grid-cols-3">
+          <label className="flex cursor-pointer items-start gap-3 rounded-2xl border border-slate-300 p-4 hover:border-emerald-400 hover:bg-emerald-50">
+            <input
+              type="checkbox"
+              name="mailSanctieVerzonden"
+              defaultChecked={
+                deskcontrole
+                  .mailSanctieVerzonden
+              }
+              className="mt-0.5 size-4 accent-emerald-700"
+            />
+
+            <span className="text-sm font-semibold text-slate-900">
+              Sanctiemail verzonden
+            </span>
+          </label>
+
+          <label className="flex cursor-pointer items-start gap-3 rounded-2xl border border-slate-300 p-4 hover:border-emerald-400 hover:bg-emerald-50">
+            <input
+              type="checkbox"
+              name="mailCorrectieVerzonden"
+              defaultChecked={
+                deskcontrole
+                  .mailCorrectieVerzonden
+              }
+              className="mt-0.5 size-4 accent-emerald-700"
+            />
+
+            <span className="text-sm font-semibold text-slate-900">
+              Correctiemail verzonden
+            </span>
+          </label>
+
+          <label className="flex cursor-pointer items-start gap-3 rounded-2xl border border-slate-300 p-4 hover:border-emerald-400 hover:bg-emerald-50">
+            <input
+              type="checkbox"
+              name="voorwaardelijkeOpheffing"
+              defaultChecked={
+                deskcontrole
+                  .voorwaardelijkeOpheffing
+              }
+              className="mt-0.5 size-4 accent-emerald-700"
+            />
+
+            <span className="text-sm font-semibold text-slate-900">
+              Voorwaardelijke opheffing
+            </span>
+          </label>
+        </div>
+      </section>
+
+      <section className="border-t border-slate-200 pt-8">
+        <h2 className="text-lg font-bold text-slate-950">
+          Aanvullende informatie
+        </h2>
+
+        <div className="mt-5 grid gap-5 md:grid-cols-2">
+          <div>
+            <label
+              htmlFor="oneDrive"
+              className={labelStijl}
+            >
+              OneDrive
+            </label>
+
+            <input
+              id="oneDrive"
+              name="oneDrive"
+              type="url"
+              defaultValue={
+                deskcontrole.oneDrive ??
+                ""
+              }
+              placeholder="https://..."
+              className={invoerStijl}
+            />
+          </div>
+
+          <div>
+            <label
+              htmlFor="adres"
+              className={labelStijl}
+            >
+              Adres
+            </label>
+
+            <input
+              id="adres"
+              name="adres"
+              defaultValue={
+                deskcontrole.adres ?? ""
+              }
+              className={invoerStijl}
+            />
+          </div>
+
+          <div className="md:col-span-2">
+            <label
+              htmlFor="opmerkingen"
+              className={labelStijl}
+            >
+              Opmerkingen
+            </label>
+
+            <textarea
+              id="opmerkingen"
+              name="opmerkingen"
+              rows={6}
+              maxLength={5000}
+              defaultValue={
+                deskcontrole.opmerkingen ??
+                ""
+              }
+              className={invoerStijl}
+            />
+          </div>
+        </div>
+      </section>
+
+      <footer className="flex flex-col-reverse gap-3 border-t border-slate-200 pt-6 sm:flex-row sm:justify-end">
+        <Link
+          href="/deskcontroles"
+          className="rounded-xl border border-slate-300 bg-white px-5 py-3 text-center text-sm font-semibold text-slate-700 hover:bg-slate-50"
+        >
+          Annuleren
+        </Link>
+
+        <OpslaanKnop />
+      </footer>
+    </form>
+  );
+}
