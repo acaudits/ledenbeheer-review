@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { UitloggenButton } from "@/components/UitloggenButton";
 import { BeheerderLink } from "@/components/BeheerderLink";
 
@@ -96,6 +96,26 @@ const navigatie = [
     ),
   },
 
+  {
+    naam: "Atteststatistieken",
+    href: "/atteststatistieken",
+    icoon: (
+      <svg
+        viewBox="0 0 24 24"
+        fill="none"
+        className="size-5"
+      >
+        <path
+          d="M5 20V10m7 10V4m7 16v-7M3 20h18"
+          stroke="currentColor"
+          strokeWidth="1.8"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      </svg>
+    ),
+  },
+
 ];
 
 function isActief(pathname: string, href: string) {
@@ -108,11 +128,13 @@ function isActief(pathname: string, href: string) {
 
 type MenuInhoudProps = {
   pathname: string;
+  rol: string | null;
   sluitMenu?: () => void;
 };
 
 function MenuInhoud({
   pathname,
+  rol,
   sluitMenu,
 }: MenuInhoudProps) {
   return (
@@ -140,7 +162,14 @@ function MenuInhoud({
           Navigatie
         </p>
 
-        {navigatie.map((item) => {
+        {navigatie
+          .filter(
+            (item) =>
+              item.href !==
+                "/atteststatistieken" ||
+              rol === "BEHEERDER",
+          )
+          .map((item) => {
           const actief = isActief(pathname, item.href);
 
           return (
@@ -173,7 +202,10 @@ function MenuInhoud({
 
       <div className="space-y-3 border-t border-white/10 p-4">
 
-        <BeheerderLink sluitMenu={sluitMenu} />
+        <BeheerderLink
+          rol={rol}
+          sluitMenu={sluitMenu}
+        />
         <UitloggenButton sluitMenu={sluitMenu} />
 
         <p className="pt-2 text-center text-xs text-slate-600">
@@ -187,6 +219,54 @@ function MenuInhoud({
 export function Navigation() {
   const pathname = usePathname();
   const [mobielOpen, setMobielOpen] = useState(false);
+  const [rol, setRol] = useState<string | null>(null);
+
+  useEffect(() => {
+    let actief = true;
+
+    async function laadRol() {
+      try {
+        const response =
+          await fetch(
+            "/api/auth/mij",
+            {
+              credentials:
+                "include",
+              cache:
+                "no-store",
+            },
+          );
+
+        if (!response.ok) {
+          return;
+        }
+
+        const gegevens =
+          await response.json();
+
+        if (
+          actief &&
+          typeof gegevens.rol ===
+            "string"
+        ) {
+          setRol(
+            gegevens.rol,
+          );
+        }
+      } catch (fout) {
+        console.error(
+          "Gebruikersrol ophalen mislukt:",
+          fout,
+        );
+      }
+    }
+
+    laadRol();
+
+    return () => {
+      actief = false;
+    };
+  }, []);
 
   function openMobielMenu() {
     setMobielOpen(true);
@@ -200,7 +280,10 @@ export function Navigation() {
     <>
       {/* Navigatie op desktop */}
       <aside className="fixed inset-y-0 left-0 z-40 hidden w-72 flex-col overflow-y-auto border-r border-white/5 bg-[#071512] lg:flex">
-        <MenuInhoud pathname={pathname} />
+        <MenuInhoud
+          pathname={pathname}
+          rol={rol}
+        />
       </aside>
 
       {/* Header op smartphone en tablet */}
@@ -277,6 +360,7 @@ export function Navigation() {
 
             <MenuInhoud
               pathname={pathname}
+              rol={rol}
               sluitMenu={sluitMobielMenu}
             />
           </aside>

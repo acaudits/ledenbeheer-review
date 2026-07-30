@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { revalidatePath } from "next/cache";
 import { notFound, redirect } from "next/navigation";
+import { vereisMachtiging } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
@@ -30,6 +31,8 @@ export default async function BewerkPersoonscertificaatPage({
   params,
   searchParams,
 }: PaginaProps) {
+  await vereisMachtiging("CERTIFICATEN_BEHEREN");
+
   const { id: idTekst } = await params;
   const parameters = await searchParams;
   const id = Number(idTekst);
@@ -68,6 +71,8 @@ export default async function BewerkPersoonscertificaatPage({
 
   async function opslaan(formData: FormData) {
     "use server";
+
+    await vereisMachtiging("CERTIFICATEN_BEHEREN");
 
     const naamPersoon = tekst(formData, "naamPersoon");
     const telefoonnummer = optioneleTekst(

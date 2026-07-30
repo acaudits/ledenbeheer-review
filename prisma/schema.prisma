@@ -189,21 +189,29 @@ model DeskcontroleVaststelling {
   @@map("deskcontrole_vaststellingen")
 }
 
+enum Gebruikersrol {
+  BEHEERDER
+  ADMINISTRATIEF
+  AUDITEUR
+}
+
 model ToegestaneGebruiker {
-  id                 Int       @id @default(autoincrement())
-  email              String    @unique
+  id                 Int           @id @default(autoincrement())
+  email              String        @unique
   naam               String?
-  beheerder          Boolean   @default(false)
-  actief             Boolean   @default(true)
-  authUserId         String?   @unique @map("auth_user_id")
-  uitgenodigdOp      DateTime? @map("uitgenodigd_op")
-  aangemaaktOp       DateTime  @default(now()) @map("aangemaakt_op")
-  bijgewerktOp       DateTime  @updatedAt @map("bijgewerkt_op")
-  wachtwoordWijzigen Boolean   @default(true)
+  rol                Gebruikersrol @default(AUDITEUR)
+  beheerder          Boolean       @default(false)
+  actief             Boolean       @default(true)
+  authUserId         String?       @unique @map("auth_user_id")
+  uitgenodigdOp      DateTime?     @map("uitgenodigd_op")
+  aangemaaktOp       DateTime      @default(now()) @map("aangemaakt_op")
+  bijgewerktOp       DateTime      @updatedAt @map("bijgewerkt_op")
+  wachtwoordWijzigen Boolean       @default(true)
 
   @@index([email])
   @@index([actief])
   @@index([beheerder])
+  @@index([rol])
   @@map("toegestane_gebruikers")
 }
 

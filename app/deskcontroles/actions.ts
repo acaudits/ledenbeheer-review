@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { vereisIngelogdeGebruiker } from "@/lib/auth";
+import { vereisMachtiging } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
 type DeskcontroleStatusWaarde =
@@ -188,7 +188,7 @@ export async function maakDeskcontroleAan(
   _vorigeStatus: DeskcontroleFormState,
   formData: FormData,
 ): Promise<DeskcontroleFormState> {
-  await vereisIngelogdeGebruiker();
+  await vereisMachtiging("DESKCONTROLES_BEHEREN");
 
   const auditeur = tekst(
     formData,

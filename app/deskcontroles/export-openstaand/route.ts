@@ -1,6 +1,6 @@
 import ExcelJS from "exceljs";
 
-import { vereisIngelogdeGebruiker } from "@/lib/auth";
+import { vereisMachtiging } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic =
@@ -86,7 +86,7 @@ function booleanLabel(
 
 
 export async function GET() {
-  await vereisIngelogdeGebruiker();
+  await vereisMachtiging("DESKCONTROLES_EXCEL_EXPORTEREN");
 
   const deskcontroles =
     await prisma.deskcontrole.findMany({

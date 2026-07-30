@@ -4,6 +4,8 @@ import {
   type CertificaatKolom,
 } from "@/components/CertificatenTabel";
 import { prisma } from "@/lib/prisma";
+import { vereisIngelogdeGebruiker } from "@/lib/auth";
+import { heeftMachtiging } from "@/lib/autorisatie";
 
 export const dynamic = "force-dynamic";
 
@@ -66,6 +68,13 @@ const kolommen: CertificaatKolom[] = [
 ];
 
 export default async function PersoonscertificatenPage() {
+  const gebruiker = await vereisIngelogdeGebruiker();
+
+  const magBeheren = heeftMachtiging(
+    gebruiker.rol,
+    "CERTIFICATEN_BEHEREN",
+  );
+
   const leden = await prisma.lid.findMany({
     where: {
       verwijderdOp: null,
@@ -99,10 +108,18 @@ export default async function PersoonscertificatenPage() {
         compact
         titel="Persoonscertificaten"
         beschrijving={`${leden.length} actieve persoonscertificaten`}
-        actieTekst="Nieuw persoonscertificaat"
-        actieHref="/persoonscertificaten/nieuw"
-        secundaireActieTekst="Verwijderde"
-        secundaireActieHref="/persoonscertificaten/verwijderd"
+        actieTekst={
+          magBeheren ? "Nieuw persoonscertificaat" : undefined
+        }
+        actieHref={
+          magBeheren ? "/persoonscertificaten/nieuw" : undefined
+        }
+        secundaireActieTekst={
+          magBeheren ? "Verwijderde" : undefined
+        }
+        secundaireActieHref={
+          magBeheren ? "/persoonscertificaten/verwijderd" : undefined
+        }
       />
 
       <CertificatenTabel
@@ -115,6 +132,7 @@ export default async function PersoonscertificatenPage() {
         nieuwTekst="Nieuw persoonscertificaat"
         bewerkBasisHref="/persoonscertificaten"
         soort="persoon"
+        magBeheren={magBeheren}
       />
     </>
   );

@@ -5,6 +5,8 @@ import {
 } from "@/components/CertificatenTabel";
 import { formatteerOndernemingsnummer } from "@/lib/ondernemingsnummer";
 import { prisma } from "@/lib/prisma";
+import { vereisIngelogdeGebruiker } from "@/lib/auth";
+import { heeftMachtiging } from "@/lib/autorisatie";
 
 export const dynamic = "force-dynamic";
 
@@ -62,6 +64,13 @@ const kolommen: CertificaatKolom[] = [
 ];
 
 export default async function ProcescertificatenPage() {
+  const gebruiker = await vereisIngelogdeGebruiker();
+
+  const magBeheren = heeftMachtiging(
+    gebruiker.rol,
+    "CERTIFICATEN_BEHEREN",
+  );
+
   const procescertificaten =
     await prisma.procescertificaat.findMany({
       where: {
@@ -106,10 +115,18 @@ export default async function ProcescertificatenPage() {
         compact
         titel="Procescertificaten"
         beschrijving={`${procescertificaten.length} actieve procescertificaten`}
-        actieTekst="Nieuw procescertificaat"
-        actieHref="/procescertificaten/nieuw"
-        secundaireActieTekst="Verwijderde"
-        secundaireActieHref="/procescertificaten/verwijderd"
+        actieTekst={
+          magBeheren ? "Nieuw procescertificaat" : undefined
+        }
+        actieHref={
+          magBeheren ? "/procescertificaten/nieuw" : undefined
+        }
+        secundaireActieTekst={
+          magBeheren ? "Verwijderde" : undefined
+        }
+        secundaireActieHref={
+          magBeheren ? "/procescertificaten/verwijderd" : undefined
+        }
       />
 
       <CertificatenTabel
@@ -122,6 +139,7 @@ export default async function ProcescertificatenPage() {
         nieuwTekst="Nieuw procescertificaat"
         bewerkBasisHref="/procescertificaten"
         soort="proces"
+        magBeheren={magBeheren}
       />
     </>
   );

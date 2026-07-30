@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
-import { vereisIngelogdeGebruiker } from "@/lib/auth";
+import { vereisMachtiging } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
 import DeskcontroleBewerkFormulier from "./DeskcontroleBewerkFormulier";
@@ -30,7 +30,7 @@ export default async function BewerkDeskcontrolePage({
   params,
   searchParams,
 }: PaginaProps) {
-  await vereisIngelogdeGebruiker();
+  await vereisMachtiging("DESKCONTROLES_BEHEREN");
 
   const { id: idTekst } =
     await params;

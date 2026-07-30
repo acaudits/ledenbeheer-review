@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { vereisIngelogdeGebruiker } from "@/lib/auth";
+import { vereisMachtiging } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import DeskcontroleFormulier from "./DeskcontroleFormulier";
 import ExcelDeskcontroleImport from "./ExcelDeskcontroleImport";
@@ -8,7 +8,7 @@ import ExcelDeskcontroleImport from "./ExcelDeskcontroleImport";
 export const dynamic = "force-dynamic";
 
 export default async function NieuweDeskcontrolePage() {
-  await vereisIngelogdeGebruiker();
+  await vereisMachtiging("DESKCONTROLES_BEHEREN");
 
   const [leden, procescertificaten] =
     await Promise.all([

@@ -1,4 +1,6 @@
 import { NextResponse } from "next/server";
+import { haalIngelogdeGebruikerOp } from "@/lib/auth";
+import { heeftMachtiging } from "@/lib/autorisatie";
 import { prisma } from "@/lib/prisma";
 
 type Verzoek = {
@@ -9,6 +11,25 @@ type Verzoek = {
 
 export async function POST(request: Request) {
   try {
+    const gebruiker = await haalIngelogdeGebruikerOp();
+
+    if (
+      !gebruiker?.actief ||
+      !heeftMachtiging(
+        gebruiker.rol,
+        "CERTIFICATEN_BEHEREN",
+      )
+    ) {
+      return NextResponse.json(
+        {
+          message: "Je hebt geen toestemming om certificaten te wijzigen.",
+        },
+        {
+          status: 403,
+        },
+      );
+    }
+
     const body = (await request.json()) as Verzoek;
 
     const id = Number(body.id);

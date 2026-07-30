@@ -94,24 +94,40 @@ export function GebruikerToevoegenForm() {
         </p>
       </div>
 
-      <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-slate-200 bg-slate-50 p-4">
-        <input
-          name="beheerder"
-          type="checkbox"
-          className="mt-0.5 size-4 rounded border-slate-300 text-emerald-700 focus:ring-emerald-600"
-        />
+      <div>
+        <label
+          htmlFor="rol"
+          className="mb-2 block text-sm font-semibold text-slate-700"
+        >
+          Rol *
+        </label>
 
-        <span>
-          <span className="block text-sm font-semibold text-slate-800">
+        <select
+          id="rol"
+          name="rol"
+          required
+          defaultValue="AUDITEUR"
+          className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-slate-900 outline-none transition focus:border-emerald-600 focus:ring-4 focus:ring-emerald-100"
+        >
+          <option value="AUDITEUR">
+            Auditeur
+          </option>
+
+          <option value="ADMINISTRATIEF">
+            Administratief
+          </option>
+
+          <option value="BEHEERDER">
             Beheerder
-          </span>
+          </option>
+        </select>
 
-          <span className="mt-1 block text-xs leading-5 text-slate-500">
-            Beheerders mogen andere gebruikers toevoegen en
-            activeren of deactiveren.
-          </span>
-        </span>
-      </label>
+        <p className="mt-2 text-xs leading-5 text-slate-500">
+          Beheerders hebben volledige toegang.
+          Administratieve gebruikers beheren certificaten.
+          Auditeurs beheren controles.
+        </p>
+      </div>
 
       <button
         type="submit"

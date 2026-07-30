@@ -3,6 +3,7 @@ import { CopyButton } from "@/components/CopyButton";
 import { HerstelButton } from "@/components/CertificaatStatusButton";
 import { formatteerOndernemingsnummer } from "@/lib/ondernemingsnummer";
 import { prisma } from "@/lib/prisma";
+import { vereisMachtiging } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -26,6 +27,8 @@ function datum(
 }
 
 export default async function VerwijderdeProcescertificatenPage() {
+  await vereisMachtiging("CERTIFICATEN_BEHEREN");
+
   const certificaten =
     await prisma.procescertificaat.findMany({
       where: {

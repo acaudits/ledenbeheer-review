@@ -3,7 +3,7 @@
 import ExcelJS from "exceljs";
 import { revalidatePath } from "next/cache";
 
-import { vereisIngelogdeGebruiker } from "@/lib/auth";
+import { vereisMachtiging } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
 export type StatusExcelImportState = {
@@ -152,7 +152,7 @@ export async function importeerDeskcontroleStatussen(
     StatusExcelImportState,
   formData: FormData,
 ): Promise<StatusExcelImportState> {
-  await vereisIngelogdeGebruiker();
+  await vereisMachtiging("DESKCONTROLES_STATUS_IMPORTEREN");
 
   const bestandWaarde =
     formData.get(

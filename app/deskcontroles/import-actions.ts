@@ -3,7 +3,7 @@
 import ExcelJS from "exceljs";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { vereisIngelogdeGebruiker } from "@/lib/auth";
+import { vereisMachtiging } from "@/lib/auth";
 import {
   isGeldigOndernemingsnummer,
   normaliseerOndernemingsnummer,
@@ -450,7 +450,7 @@ export async function importeerDeskcontroleUitExcel(
   _vorigeStatus: ExcelImportState,
   formData: FormData,
 ): Promise<ExcelImportState> {
-  await vereisIngelogdeGebruiker();
+  await vereisMachtiging("DESKCONTROLES_BEHEREN");
 
   const errors: NonNullable<
     ExcelImportState["errors"]

@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { isGebruikersrol } from "@/lib/autorisatie";
 import { prisma } from "@/lib/prisma";
 import { vereisBeheerder } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -41,8 +42,20 @@ export async function maakGebruikerAan(
     formData.get("tijdelijkWachtwoord") ?? "",
   );
 
+  const rolWaarde = String(
+    formData.get("rol") ?? "",
+  );
+
+  if (!isGebruikersrol(rolWaarde)) {
+    return {
+      succes: false,
+      melding:
+        "Selecteer een geldige gebruikersrol.",
+    };
+  }
+
   const beheerder =
-    formData.get("beheerder") === "on";
+    rolWaarde === "BEHEERDER";
 
   if (!email) {
     return {
@@ -114,6 +127,7 @@ export async function maakGebruikerAan(
       data: {
         email,
         naam: naam || null,
+        rol: rolWaarde,
         beheerder,
         actief: true,
         wachtwoordWijzigen: true,
@@ -364,4 +378,88 @@ export async function wijzigGebruikerStatus(
   }
 
   revalidatePath("/gebruikers");
+}
+
+
+export async function wijzigGebruikerRol(
+  formData: FormData,
+) {
+  const huidigeBeheerder =
+    await vereisBeheerder();
+
+  const id = Number(
+    formData.get("id"),
+  );
+
+  const rolWaarde = String(
+    formData.get("rol") ?? "",
+  );
+
+  if (
+    !Number.isInteger(id) ||
+    id <= 0
+  ) {
+    throw new Error(
+      "Ongeldige gebruiker.",
+    );
+  }
+
+  if (
+    !isGebruikersrol(
+      rolWaarde,
+    )
+  ) {
+    throw new Error(
+      "Ongeldige gebruikersrol.",
+    );
+  }
+
+  const gebruiker =
+    await prisma
+      .toegestaneGebruiker
+      .findUnique({
+        where: {
+          id,
+        },
+      });
+
+  if (!gebruiker) {
+    throw new Error(
+      "De gebruiker werd niet gevonden.",
+    );
+  }
+
+  if (
+    gebruiker.id ===
+      huidigeBeheerder.id &&
+    rolWaarde !== "BEHEERDER"
+  ) {
+    throw new Error(
+      "Je kunt je eigen beheerdersrol niet verwijderen.",
+    );
+  }
+
+  await prisma
+    .toegestaneGebruiker
+    .update({
+      where: {
+        id,
+      },
+
+      data: {
+        rol: rolWaarde,
+
+        /*
+         * Tijdelijk synchroon houden zolang
+         * oudere componenten dit veld gebruiken.
+         */
+        beheerder:
+          rolWaarde ===
+          "BEHEERDER",
+      },
+    });
+
+  revalidatePath(
+    "/gebruikers",
+  );
 }

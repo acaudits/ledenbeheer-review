@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
+import { vereisMachtiging } from "@/lib/auth";
 import LidFormulier from "./LidFormulier";
 
 export const dynamic = "force-dynamic";
@@ -9,6 +10,8 @@ export const metadata = {
 };
 
 export default async function NieuwPersoonscertificaatPage() {
+  await vereisMachtiging("CERTIFICATEN_BEHEREN");
+
   const resultaten = await prisma.procescertificaat.findMany({
     select: {
       naamBedrijf: true,

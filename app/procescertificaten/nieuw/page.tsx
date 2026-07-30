@@ -1,11 +1,14 @@
 import Link from "next/link";
+import { vereisMachtiging } from "@/lib/auth";
 import ProcescertificaatFormulier from "./ProcescertificaatFormulier";
 
 export const metadata = {
   title: "Nieuw procescertificaat | SKH CRM",
 };
 
-export default function NieuwProcescertificaatPage() {
+export default async function NieuwProcescertificaatPage() {
+  await vereisMachtiging("CERTIFICATEN_BEHEREN");
+
   return (
     <div className="mx-auto max-w-4xl">
       <Link

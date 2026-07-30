@@ -3,7 +3,7 @@ import {
   type DeskcontroleKolom,
 } from "@/components/DeskcontrolesTabel";
 import { PageHeader } from "@/components/PageHeader";
-import { vereisIngelogdeGebruiker } from "@/lib/auth";
+import { vereisMachtiging } from "@/lib/auth";
 import { formatteerOndernemingsnummer } from "@/lib/ondernemingsnummer";
 import { prisma } from "@/lib/prisma";
 
@@ -143,7 +143,7 @@ const kolommen: DeskcontroleKolom[] = [
 ];
 
 export default async function VerwijderdeDeskcontrolesPage() {
-  await vereisIngelogdeGebruiker();
+  await vereisMachtiging("DESKCONTROLES_BEHEREN");
 
   const deskcontroles =
     await prisma.deskcontrole.findMany({

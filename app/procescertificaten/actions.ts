@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { vereisIngelogdeGebruiker } from "@/lib/auth";
+import { vereisMachtiging } from "@/lib/auth";
 import {
   isGeldigOndernemingsnummer,
   normaliseerOndernemingsnummer,
@@ -100,7 +100,7 @@ export async function maakProcescertificaatAan(
   _vorigeStatus: ProcescertificaatFormState,
   formData: FormData,
 ): Promise<ProcescertificaatFormState> {
-  await vereisIngelogdeGebruiker();
+  await vereisMachtiging("CERTIFICATEN_BEHEREN");
 
   const naamBedrijf = tekst(
     formData,

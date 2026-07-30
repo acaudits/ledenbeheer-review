@@ -4,7 +4,7 @@ import {
   notFound,
   redirect,
 } from "next/navigation";
-import { vereisIngelogdeGebruiker } from "@/lib/auth";
+import { vereisMachtiging } from "@/lib/auth";
 import {
   isGeldigOndernemingsnummer,
   normaliseerOndernemingsnummer,
@@ -75,7 +75,7 @@ export default async function BewerkProcescertificaatPage({
   params,
   searchParams,
 }: PaginaProps) {
-  await vereisIngelogdeGebruiker();
+  await vereisMachtiging("CERTIFICATEN_BEHEREN");
 
   const { id: idTekst } =
     await params;
@@ -110,7 +110,7 @@ export default async function BewerkProcescertificaatPage({
   ) {
     "use server";
 
-    await vereisIngelogdeGebruiker();
+    await vereisMachtiging("CERTIFICATEN_BEHEREN");
 
     const naamBedrijf = tekst(
       formData,

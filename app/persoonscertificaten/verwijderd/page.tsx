@@ -2,6 +2,7 @@ import Link from "next/link";
 import { CopyButton } from "@/components/CopyButton";
 import { HerstelButton } from "@/components/CertificaatStatusButton";
 import { prisma } from "@/lib/prisma";
+import { vereisMachtiging } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -20,6 +21,8 @@ function datum(datumWaarde: Date | null) {
 }
 
 export default async function VerwijderdePersoonscertificatenPage() {
+  await vereisMachtiging("CERTIFICATEN_BEHEREN");
+
   const leden = await prisma.lid.findMany({
     where: {
       verwijderdOp: {

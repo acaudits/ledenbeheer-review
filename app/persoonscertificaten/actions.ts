@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { vereisMachtiging } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
 export type LidFormState = {
@@ -29,6 +30,8 @@ export async function maakLidAan(
   _vorigeStatus: LidFormState,
   formData: FormData,
 ): Promise<LidFormState> {
+  await vereisMachtiging("CERTIFICATEN_BEHEREN");
+
   const naamPersoon = verplichteTekst(
     formData,
     "naamPersoon",

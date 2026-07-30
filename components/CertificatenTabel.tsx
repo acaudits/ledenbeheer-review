@@ -1,10 +1,10 @@
 "use client";
 
-import { VerwijderButton } from "@/components/CertificaatStatusButton";
+import { VerwijderButton as BasisVerwijderButton } from "@/components/CertificaatStatusButton";
 import { CopyButton } from "@/components/CopyButton";
 import { OpmerkingDialog } from "@/components/OpmerkingDialog";
-import Link from "next/link";
-import { useMemo, useState } from "react";
+import NextLink from "next/link";
+import { useMemo, useState, type ComponentProps } from "react";
 
 export type CertificaatKolom = {
   sleutel: string;
@@ -27,6 +27,7 @@ type CertificatenTabelProps = {
   nieuwTekst: string;
   bewerkBasisHref: string;
   soort: "persoon" | "proces";
+  magBeheren: boolean;
 };
 
 type Sorteerrichting =
@@ -141,7 +142,41 @@ export function CertificatenTabel({
   nieuwTekst,
   bewerkBasisHref,
   soort,
+  magBeheren,
 }: CertificatenTabelProps) {
+  function Link(
+    props: ComponentProps<typeof NextLink>,
+  ) {
+    const bestemming =
+      typeof props.href === "string"
+        ? props.href
+        : "";
+
+    const isBeheerlink =
+      bestemming === nieuwHref ||
+      bestemming.startsWith(
+        `${bewerkBasisHref}/`,
+      );
+
+    if (!magBeheren && isBeheerlink) {
+      return null;
+    }
+
+    return <NextLink {...props} />;
+  }
+
+  function VerwijderButton(
+    props: ComponentProps<
+      typeof BasisVerwijderButton
+    >,
+  ) {
+    if (!magBeheren) {
+      return null;
+    }
+
+    return <BasisVerwijderButton {...props} />;
+  }
+
   const [zoekterm, setZoekterm] = useState("");
 
   const [kolomFilters, setKolomFilters] =
@@ -491,7 +526,13 @@ export function CertificatenTabel({
   }
 
   return (
-    <section className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
+    <section
+      className={`overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm ${
+        magBeheren
+          ? ""
+          : "[&_th:last-child]:hidden [&_td:last-child]:hidden"
+      }`}
+    >
       <div className="border-b border-slate-200 p-4 sm:p-5">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div>

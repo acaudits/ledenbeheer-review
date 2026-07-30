@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
-import { vereisIngelogdeGebruiker } from "@/lib/auth";
+import { vereisMachtiging } from "@/lib/auth";
 
 type WijzigOpmerkingenResultaat = {
   succes: boolean;
@@ -14,7 +14,7 @@ export async function wijzigDeskcontroleOpmerkingen(
   id: number,
   nieuweOpmerkingen: string,
 ): Promise<WijzigOpmerkingenResultaat> {
-  await vereisIngelogdeGebruiker();
+  await vereisMachtiging("DESKCONTROLES_BEHEREN");
 
   if (!Number.isInteger(id) || id <= 0) {
     return {

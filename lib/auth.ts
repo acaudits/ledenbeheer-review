@@ -1,45 +1,105 @@
 import "server-only";
 
-import { redirect } from "next/navigation";
-import { prisma } from "@/lib/prisma";
-import { createClient } from "@/lib/supabase/server";
+import {
+  redirect,
+} from "next/navigation";
+
+import {
+  heeftMachtiging,
+  isGebruikersrol,
+  type GebruikersrolWaarde,
+  type Machtiging,
+} from "@/lib/autorisatie";
+import {
+  prisma,
+} from "@/lib/prisma";
+import {
+  createClient,
+} from "@/lib/supabase/server";
 
 export async function haalIngelogdeGebruikerOp() {
-  const supabase = await createClient();
+  const supabase =
+    await createClient();
 
   const {
-    data: { user },
-  } = await supabase.auth.getUser();
+    data: {
+      user,
+    },
+  } =
+    await supabase.auth.getUser();
 
   if (!user?.email) {
     return null;
   }
 
-  const email = user.email.trim().toLowerCase();
+  const email =
+    user.email
+      .trim()
+      .toLowerCase();
 
-  return prisma.toegestaneGebruiker.findUnique({
-    where: {
-      email,
-    },
-  });
+  return prisma
+    .toegestaneGebruiker
+    .findUnique({
+      where: {
+        email,
+      },
+    });
 }
 
 export async function vereisIngelogdeGebruiker() {
-  const gebruiker = await haalIngelogdeGebruikerOp();
+  const gebruiker =
+    await haalIngelogdeGebruikerOp();
 
   if (!gebruiker?.actief) {
-    redirect("/inloggen");
+    redirect(
+      "/inloggen",
+    );
+  }
+
+  return gebruiker;
+}
+
+export async function vereisRol(
+  ...toegelatenRollen:
+    GebruikersrolWaarde[]
+) {
+  const gebruiker =
+    await vereisIngelogdeGebruiker();
+
+  if (
+    !isGebruikersrol(
+      gebruiker.rol,
+    ) ||
+    !toegelatenRollen.includes(
+      gebruiker.rol,
+    )
+  ) {
+    redirect("/");
+  }
+
+  return gebruiker;
+}
+
+export async function vereisMachtiging(
+  machtiging: Machtiging,
+) {
+  const gebruiker =
+    await vereisIngelogdeGebruiker();
+
+  if (
+    !heeftMachtiging(
+      gebruiker.rol,
+      machtiging,
+    )
+  ) {
+    redirect("/");
   }
 
   return gebruiker;
 }
 
 export async function vereisBeheerder() {
-  const gebruiker = await vereisIngelogdeGebruiker();
-
-  if (!gebruiker.beheerder) {
-    redirect("/");
-  }
-
-  return gebruiker;
+  return vereisRol(
+    "BEHEERDER",
+  );
 }

@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
-import { vereisIngelogdeGebruiker } from "@/lib/auth";
+import { vereisMachtiging } from "@/lib/auth";
 
 function controleerId(id: number) {
   if (!Number.isInteger(id) || id <= 0) {
@@ -11,7 +11,7 @@ function controleerId(id: number) {
 }
 
 export async function verwijderDeskcontrole(id: number) {
-  await vereisIngelogdeGebruiker();
+  await vereisMachtiging("DESKCONTROLES_BEHEREN");
   controleerId(id);
 
   const deskcontrole = await prisma.deskcontrole.findFirst({
@@ -50,7 +50,7 @@ export async function verwijderDeskcontrole(id: number) {
 }
 
 export async function herstelDeskcontrole(id: number) {
-  await vereisIngelogdeGebruiker();
+  await vereisMachtiging("DESKCONTROLES_BEHEREN");
   controleerId(id);
 
   const deskcontrole = await prisma.deskcontrole.findFirst({

@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
-import { vereisIngelogdeGebruiker } from "@/lib/auth";
+import { vereisMachtiging } from "@/lib/auth";
 
 const toegestaneStatussen = [
   "GEEN",
@@ -54,7 +54,7 @@ export async function wijzigDeskcontroleStatus(
   id: number,
   status: string,
 ): Promise<ActieResultaat> {
-  await vereisIngelogdeGebruiker();
+  await vereisMachtiging("DESKCONTROLES_BEHEREN");
 
   if (!isGeldigId(id)) {
     return {
@@ -106,7 +106,7 @@ export async function wijzigDeskcontroleSelectievak(
   veld: string,
   waarde: boolean,
 ): Promise<ActieResultaat> {
-  await vereisIngelogdeGebruiker();
+  await vereisMachtiging("DESKCONTROLES_BEHEREN");
 
   if (!isGeldigId(id)) {
     return {
