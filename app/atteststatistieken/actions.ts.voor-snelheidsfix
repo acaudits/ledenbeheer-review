@@ -376,12 +376,7 @@ async function normaliseerExcelXmlElementPrefixes(
     type: "nodebuffer",
     compression: "DEFLATE",
     compressionOptions: {
-      /*
-       * Dit bestand is alleen een tijdelijke buffer
-       * voor ExcelJS. Maximale compressie is daarom
-       * niet nodig en vertraagt grote imports.
-       */
-      level: 1,
+      level: 6,
     },
   });
 }
