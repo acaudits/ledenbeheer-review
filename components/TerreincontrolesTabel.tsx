@@ -1,13 +1,14 @@
 "use client";
 
-import Link from "next/link";
+import NextLink from "next/link";
 import {
+  type ComponentProps,
   useMemo,
   useState,
 } from "react";
 import {
-  TerreincontroleFactuurSelect,
-  TerreincontroleStatusSelect,
+  TerreincontroleFactuurSelect as BasisTerreincontroleFactuurSelect,
+  TerreincontroleStatusSelect as BasisTerreincontroleStatusSelect,
 } from "@/components/TerreincontroleSnelleVelden";
 
 type TerreincontroleStatus =
@@ -64,6 +65,7 @@ export type TerreincontroleRij = {
 
 type TerreincontrolesTabelProps = {
   rijen: TerreincontroleRij[];
+  magBeheren: boolean;
 };
 
 function formatteerDatum(
@@ -173,7 +175,68 @@ function bevatZoekterm(
 
 export function TerreincontrolesTabel({
   rijen,
+  magBeheren,
 }: TerreincontrolesTabelProps) {
+  function Link(
+    props: ComponentProps<typeof NextLink>,
+  ) {
+    const href =
+      typeof props.href === "string"
+        ? props.href
+        : "";
+
+    if (
+      !magBeheren &&
+      href.endsWith("/bewerken")
+    ) {
+      return null;
+    }
+
+    return <NextLink {...props} />;
+  }
+
+  function TerreincontroleStatusSelect(
+    props: ComponentProps<
+      typeof BasisTerreincontroleStatusSelect
+    >,
+  ) {
+    if (!magBeheren) {
+      return (
+        <span className="font-semibold text-slate-700">
+          {props.beginwaarde ??
+            "Geen status"}
+        </span>
+      );
+    }
+
+    return (
+      <BasisTerreincontroleStatusSelect
+        {...props}
+      />
+    );
+  }
+
+  function TerreincontroleFactuurSelect(
+    props: ComponentProps<
+      typeof BasisTerreincontroleFactuurSelect
+    >,
+  ) {
+    if (!magBeheren) {
+      return (
+        <span className="font-semibold text-slate-700">
+          {props.beginwaarde
+            ? "Ja"
+            : "Nee"}
+        </span>
+      );
+    }
+
+    return (
+      <BasisTerreincontroleFactuurSelect
+        {...props}
+      />
+    );
+  }
   const [
     zoekopdracht,
     setZoekopdracht,

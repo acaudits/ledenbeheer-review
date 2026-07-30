@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import TerreincontroleHerstelKnop from "@/components/TerreincontroleHerstelKnop";
+import { vereisMachtiging } from "@/lib/auth";
 import {
   prisma,
 } from "@/lib/prisma";
@@ -49,6 +50,8 @@ function formatteerDatumTijd(
 }
 
 export default async function VerwijderdeTerreincontrolesPage() {
+  await vereisMachtiging("TERREINCONTROLES_BEHEREN");
+
   const terreincontroles =
     await prisma.terreincontrole.findMany(
       {

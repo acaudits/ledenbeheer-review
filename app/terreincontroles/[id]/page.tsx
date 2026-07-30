@@ -1,9 +1,12 @@
-import Link from "next/link";
+import NextLink from "next/link";
+import type { ComponentProps } from "react";
 import { notFound } from "next/navigation";
 
+import { vereisMachtiging } from "@/lib/auth";
+import { heeftMachtiging } from "@/lib/autorisatie";
 import { prisma } from "@/lib/prisma";
 import { maakGoogleMapsUrl } from "@/lib/terreincontrole";
-import TerreincontroleVerwijderKnop from "@/components/TerreincontroleVerwijderKnop";
+import BasisTerreincontroleVerwijderKnop from "@/components/TerreincontroleVerwijderKnop";
 
 export const dynamic =
   "force-dynamic";
@@ -113,6 +116,51 @@ function statusStijl(
 export default async function TerreincontroleDetailPage({
   params,
 }: PaginaProps) {
+  const gebruiker =
+    await vereisMachtiging(
+      "TERREINCONTROLES_BEKIJKEN",
+    );
+
+  const magBeheren =
+    heeftMachtiging(
+      gebruiker.rol,
+      "TERREINCONTROLES_BEHEREN",
+    );
+
+  function Link(
+    props: ComponentProps<typeof NextLink>,
+  ) {
+    const href =
+      typeof props.href === "string"
+        ? props.href
+        : "";
+
+    if (
+      !magBeheren &&
+      href.endsWith("/bewerken")
+    ) {
+      return null;
+    }
+
+    return <NextLink {...props} />;
+  }
+
+  function TerreincontroleVerwijderKnop(
+    props: ComponentProps<
+      typeof BasisTerreincontroleVerwijderKnop
+    >,
+  ) {
+    if (!magBeheren) {
+      return null;
+    }
+
+    return (
+      <BasisTerreincontroleVerwijderKnop
+        {...props}
+      />
+    );
+  }
+
   const { id: idTekst } =
     await params;
 

@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 
-import { vereisIngelogdeGebruiker } from "@/lib/auth";
+import { vereisMachtiging } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
 type TerreincontroleStatusWaarde =
@@ -55,7 +55,8 @@ export async function wijzigTerreincontroleStatus(
   status:
     TerreincontroleStatusWaarde,
 ): Promise<SnelleActieResultaat> {
-  await vereisIngelogdeGebruiker();
+  await vereisMachtiging("TERREINCONTROLES_BEHEREN");
+
 
   if (
     !Number.isSafeInteger(id) ||
@@ -123,7 +124,8 @@ export async function wijzigTerreincontroleFactuur(
   id: number,
   factuurVerzonden: boolean,
 ): Promise<SnelleActieResultaat> {
-  await vereisIngelogdeGebruiker();
+  await vereisMachtiging("TERREINCONTROLES_BEHEREN");
+
 
   if (
     !Number.isSafeInteger(id) ||

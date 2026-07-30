@@ -1,17 +1,56 @@
-import Link from "next/link";
+import NextLink from "next/link";
+import type { ComponentProps } from "react";
 
 import {
   TerreincontrolesTabel,
   type TerreincontroleRij,
 } from "@/components/TerreincontrolesTabel";
-import { vereisIngelogdeGebruiker } from "@/lib/auth";
+import { vereisMachtiging } from "@/lib/auth";
+import { heeftMachtiging } from "@/lib/autorisatie";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic =
   "force-dynamic";
 
 export default async function TerreincontrolesPage() {
-  await vereisIngelogdeGebruiker();
+  const gebruiker =
+    await vereisMachtiging(
+      "TERREINCONTROLES_BEKIJKEN",
+    );
+
+  const magBeheren =
+    heeftMachtiging(
+      gebruiker.rol,
+      "TERREINCONTROLES_BEHEREN",
+    );
+
+  const magExporteren =
+    heeftMachtiging(
+      gebruiker.rol,
+      "TERREINCONTROLES_EXPORTEREN",
+    );
+
+  function Link(
+    props: ComponentProps<typeof NextLink>,
+  ) {
+    const href =
+      typeof props.href === "string"
+        ? props.href
+        : "";
+
+    if (
+      !magBeheren &&
+      (
+        href === "/terreincontroles/nieuw" ||
+        href === "/terreincontroles/verwijderd"
+      )
+    ) {
+      return null;
+    }
+
+    return <NextLink {...props} />;
+  }
+
 
   const terreincontroles =
     await prisma.terreincontrole.findMany({
@@ -188,12 +227,14 @@ export default async function TerreincontrolesPage() {
             Verwijderde terreincontroles
           </Link>
 
-          <a
+          {magExporteren ? (
+<a
             href="/terreincontroles/export"
             className="inline-flex h-11 items-center justify-center rounded-xl border border-emerald-300 bg-emerald-50 px-5 text-sm font-semibold text-emerald-800 shadow-sm transition hover:bg-emerald-100"
           >
             Exporteren naar Excel
           </a>
+          ) : null}
 
           <Link
             href="/terreincontroles/nieuw"
@@ -207,6 +248,7 @@ export default async function TerreincontrolesPage() {
 
       <TerreincontrolesTabel
         rijen={rijen}
+        magBeheren={magBeheren}
       />
     </div>
   );

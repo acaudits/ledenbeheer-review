@@ -4,6 +4,7 @@ import {
   revalidatePath,
 } from "next/cache";
 
+import { vereisMachtiging } from "@/lib/auth";
 import {
   prisma,
 } from "@/lib/prisma";
@@ -41,6 +42,8 @@ function vernieuwPaden(
 export async function verwijderTerreincontrole(
   id: number,
 ): Promise<ActieResultaat> {
+  await vereisMachtiging("TERREINCONTROLES_BEHEREN");
+
   if (!isGeldigId(id)) {
     return {
       succes: false,
@@ -96,6 +99,8 @@ export async function verwijderTerreincontrole(
 export async function herstelTerreincontrole(
   id: number,
 ): Promise<ActieResultaat> {
+  await vereisMachtiging("TERREINCONTROLES_BEHEREN");
+
   if (!isGeldigId(id)) {
     return {
       succes: false,

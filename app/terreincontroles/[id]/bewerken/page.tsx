@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
+import { vereisMachtiging } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
 import TerreincontroleBewerkFormulier, {
@@ -31,6 +32,8 @@ function datumVoorInput(
 export default async function TerreincontroleBewerkenPage({
   params,
 }: PaginaProps) {
+  await vereisMachtiging("TERREINCONTROLES_BEHEREN");
+
   const { id: idTekst } =
     await params;
 

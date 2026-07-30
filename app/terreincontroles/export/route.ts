@@ -1,7 +1,7 @@
 import ExcelJS from "exceljs";
 
 import {
-  vereisIngelogdeGebruiker,
+  vereisMachtiging,
 } from "@/lib/auth";
 import {
   prisma,
@@ -38,7 +38,8 @@ function bestandsdatum() {
 }
 
 export async function GET() {
-  await vereisIngelogdeGebruiker();
+  await vereisMachtiging("TERREINCONTROLES_EXPORTEREN");
+
 
   const terreincontroles =
     await prisma.terreincontrole.findMany(

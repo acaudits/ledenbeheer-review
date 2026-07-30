@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-import { vereisIngelogdeGebruiker } from "@/lib/auth";
+import { vereisMachtiging } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
 import HandmatigeTerreincontroleForm from "./HandmatigeTerreincontroleForm";
@@ -10,7 +10,8 @@ export const dynamic =
   "force-dynamic";
 
 export default async function NieuweTerreincontrolePage() {
-  await vereisIngelogdeGebruiker();
+  await vereisMachtiging("TERREINCONTROLES_BEHEREN");
+
 
   const [
     leden,

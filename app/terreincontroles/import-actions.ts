@@ -3,7 +3,7 @@
 import ExcelJS from "exceljs";
 import { revalidatePath } from "next/cache";
 
-import { vereisIngelogdeGebruiker } from "@/lib/auth";
+import { vereisMachtiging } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import {
   haalAttestIdUitUrl,
@@ -705,7 +705,8 @@ export async function leesTerreincontrolesUitExcel(
     TerreincontroleExcelState,
   formData: FormData,
 ): Promise<TerreincontroleExcelState> {
-  await vereisIngelogdeGebruiker();
+  await vereisMachtiging("TERREINCONTROLES_BEHEREN");
+
 
   const bestandWaarde =
     formData.get(
@@ -1261,7 +1262,8 @@ export async function bevestigTerreincontrolesUitExcel(
     TerreincontroleBevestigState,
   formData: FormData,
 ): Promise<TerreincontroleBevestigState> {
-  await vereisIngelogdeGebruiker();
+  await vereisMachtiging("TERREINCONTROLES_BEHEREN");
+
 
   const importGegevens =
     normaliseerTekst(
