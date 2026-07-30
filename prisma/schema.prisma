@@ -206,3 +206,66 @@ model ToegestaneGebruiker {
   @@index([beheerder])
   @@map("toegestane_gebruikers")
 }
+
+model AttestPersoonStatistiek {
+  id             Int    @id @default(autoincrement())
+  persoonsId     String @unique @map("persoons_id") @db.VarChar(100)
+  naam           String @db.VarChar(255)
+  aantalAttesten Int    @map("aantal_attesten")
+
+  bronBestandsnaam String? @map("bron_bestandsnaam") @db.VarChar(255)
+
+  aangemaaktOp DateTime @default(now()) @map("aangemaakt_op")
+  bijgewerktOp DateTime @updatedAt @map("bijgewerkt_op")
+
+  @@index([naam])
+  @@index([aantalAttesten])
+  @@map("attest_persoon_statistieken")
+}
+
+model AttestBedrijfStatistiek {
+  id                  Int    @id @default(autoincrement())
+  bedrijfsnaam        String @db.VarChar(500)
+  bedrijfsnaamSleutel String @unique @map("bedrijfsnaam_sleutel") @db.VarChar(500)
+  aantalAttesten      Int    @map("aantal_attesten")
+
+  bronBestandsnaam String? @map("bron_bestandsnaam") @db.VarChar(255)
+
+  aangemaaktOp DateTime @default(now()) @map("aangemaakt_op")
+  bijgewerktOp DateTime @updatedAt @map("bijgewerkt_op")
+
+  @@index([bedrijfsnaam])
+  @@index([aantalAttesten])
+  @@map("attest_bedrijf_statistieken")
+}
+
+model AttestCorrectie {
+  id             Int    @id @default(autoincrement())
+  persoonsId     String @map("persoons_id") @db.VarChar(100)
+  bedrijfsnaam   String @db.VarChar(500)
+  naam           String @db.VarChar(255)
+  aantalAttesten Int    @map("aantal_attesten")
+
+  aangemaaktOp DateTime @default(now()) @map("aangemaakt_op")
+  bijgewerktOp DateTime @updatedAt @map("bijgewerkt_op")
+
+  @@index([persoonsId])
+  @@index([bedrijfsnaam])
+  @@index([naam])
+  @@map("attest_correcties")
+}
+
+model AttestStatistiekImport {
+  id Int @id
+
+  bronBestandsnaam String   @map("bron_bestandsnaam") @db.VarChar(255)
+  geimporteerdOp   DateTime @default(now()) @map("geimporteerd_op")
+
+  aantalExcelRijen Int @map("aantal_excel_rijen")
+  aantalPersonen   Int @map("aantal_personen")
+  aantalBedrijven  Int @map("aantal_bedrijven")
+
+  correctiesToegepastOp DateTime? @map("correcties_toegepast_op")
+
+  @@map("attest_statistiek_imports")
+}
