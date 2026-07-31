@@ -130,6 +130,7 @@ export async function proxy(request: NextRequest) {
           actief: true,
           authUserId: true,
           wachtwoordWijzigen: true,
+          profielVoltooidOp: true,
         },
       });
 
@@ -197,6 +198,58 @@ export async function proxy(request: NextRequest) {
 
       return NextResponse.redirect(
         wachtwoordUrl,
+      );
+    }
+
+    const isProfielVoltooienRoute =
+      request.nextUrl.pathname ===
+      "/profiel-voltooien";
+
+    /*
+     * Na het instellen van het wachtwoord moet de gebruiker
+     * eerst zijn profiel voltooien.
+     */
+    if (
+      !toegestaneGebruiker.wachtwoordWijzigen &&
+      !toegestaneGebruiker.profielVoltooidOp &&
+      !isProfielVoltooienRoute
+    ) {
+      if (request.nextUrl.pathname.startsWith("/api/")) {
+        return NextResponse.json(
+          {
+            message:
+              "Je moet eerst je profiel voltooien.",
+            profielVoltooien: true,
+          },
+          { status: 403 },
+        );
+      }
+
+      const profielUrl =
+        request.nextUrl.clone();
+
+      profielUrl.pathname =
+        "/profiel-voltooien";
+
+      profielUrl.search = "";
+
+      return NextResponse.redirect(
+        profielUrl,
+      );
+    }
+
+    if (
+      toegestaneGebruiker.profielVoltooidOp &&
+      isProfielVoltooienRoute
+    ) {
+      const startUrl =
+        request.nextUrl.clone();
+
+      startUrl.pathname = "/";
+      startUrl.search = "";
+
+      return NextResponse.redirect(
+        startUrl,
       );
     }
 

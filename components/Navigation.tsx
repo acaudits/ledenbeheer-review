@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { UitloggenButton } from "@/components/UitloggenButton";
 import { BeheerderLink } from "@/components/BeheerderLink";
+import { ProfielLink } from "@/components/ProfielLink";
 
 
 const navigatie = [
@@ -201,6 +202,9 @@ function MenuInhoud({
       </nav>
 
       <div className="space-y-3 border-t border-white/10 p-4">
+        <ProfielLink
+          sluitMenu={sluitMenu}
+        />
 
         <BeheerderLink
           rol={rol}

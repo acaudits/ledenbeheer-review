@@ -70,10 +70,12 @@ enum TerreincontroleStatus {
 }
 
 model Terreincontrole {
-  id               Int                    @id @default(autoincrement())
-  auditeur         String?                @db.VarChar(255)
-  factuurVerzonden Boolean                @default(false) @map("factuur_verzonden")
-  status           TerreincontroleStatus?
+  id                  Int                    @id @default(autoincrement())
+  auditeur            String?                @db.VarChar(255)
+  auditeurGebruikerId Int?                   @map("auditeur_gebruiker_id")
+  auditeurGebruiker   ToegestaneGebruiker?   @relation("TerreincontroleAuditeur", fields: [auditeurGebruikerId], references: [id], onDelete: SetNull)
+  factuurVerzonden    Boolean                @default(false) @map("factuur_verzonden")
+  status              TerreincontroleStatus?
 
   inspectielocatie   String?  @db.VarChar(1000)
   bouwjaar           Int?
@@ -111,6 +113,7 @@ model Terreincontrole {
 
   @@index([ovamId])
   @@index([status])
+  @@index([auditeurGebruikerId])
   @@index([datumPlaatsbezoek])
   @@index([verwijderdOp])
   @@index([postcode])
@@ -121,10 +124,12 @@ model Terreincontrole {
 model Deskcontrole {
   id Int @id @default(autoincrement())
 
-  attestId     String? @unique @map("attest_id") @db.Uuid
-  auditeur     String?
-  linkAttest   String? @unique @map("link_attest")
-  attestnummer String? @unique
+  attestId            String?              @unique @map("attest_id") @db.Uuid
+  auditeur            String?
+  auditeurGebruikerId Int?                 @map("auditeur_gebruiker_id")
+  auditeurGebruiker   ToegestaneGebruiker? @relation("DeskcontroleAuditeur", fields: [auditeurGebruikerId], references: [id], onDelete: SetNull)
+  linkAttest          String?              @unique @map("link_attest")
+  attestnummer        String?              @unique
 
   lidId Int @map("lid_id")
   lid   Lid @relation(fields: [lidId], references: [id], onDelete: Restrict)
@@ -157,6 +162,7 @@ model Deskcontrole {
 
   @@index([lidId])
   @@index([procescertificaatId])
+  @@index([auditeurGebruikerId])
   @@index([status])
   @@index([typeControle])
   @@index([datumControle])
@@ -199,6 +205,9 @@ model ToegestaneGebruiker {
   id                 Int           @id @default(autoincrement())
   email              String        @unique
   naam               String?
+  voornaam           String?
+  achternaam         String?
+  profielVoltooidOp  DateTime?     @map("profiel_voltooid_op")
   rol                Gebruikersrol @default(AUDITEUR)
   beheerder          Boolean       @default(false)
   actief             Boolean       @default(true)
@@ -207,6 +216,9 @@ model ToegestaneGebruiker {
   aangemaaktOp       DateTime      @default(now()) @map("aangemaakt_op")
   bijgewerktOp       DateTime      @updatedAt @map("bijgewerkt_op")
   wachtwoordWijzigen Boolean       @default(true)
+
+  deskcontroles    Deskcontrole[]    @relation("DeskcontroleAuditeur")
+  terreincontroles Terreincontrole[] @relation("TerreincontroleAuditeur")
 
   @@index([email])
   @@index([actief])

@@ -212,6 +212,16 @@ export default async function GebruikersPage() {
                                 Wachtwoord wijzigen
                               </span>
                             )}
+
+                            {!gebruiker.profielVoltooidOp ? (
+                              <span className="inline-flex rounded-full bg-orange-50 px-2.5 py-1 text-xs font-semibold text-orange-700">
+                                Profiel onvolledig
+                              </span>
+                            ) : (
+                              <span className="inline-flex rounded-full bg-sky-50 px-2.5 py-1 text-xs font-semibold text-sky-700">
+                                Profiel voltooid
+                              </span>
+                            )}
                           </div>
                         </td>
 

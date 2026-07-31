@@ -62,21 +62,6 @@ export default function WachtwoordInstellenPage() {
       setFout("De twee wachtwoorden zijn niet hetzelfde.");
       return;
     }
-    const statusResponse = await fetch("/api/auth/wachtwoord-gewijzigd", {
-      method: "POST",
-      credentials: "include",
-    });
-    
-    const statusGegevens = await statusResponse.json().catch(() => null);
-    
-    if (!statusResponse.ok) {
-      throw new Error(
-        statusGegevens?.melding ??
-          "Het wachtwoord werd gewijzigd, maar de accountstatus kon niet worden bijgewerkt.",
-      );
-    }
-    
-
     setBezig(true);
 
     try {

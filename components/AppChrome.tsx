@@ -12,6 +12,7 @@ function isPubliekeRoute(pathname: string) {
     pathname === "/inloggen" ||
     pathname === "/wachtwoord-vergeten" ||
     pathname === "/wachtwoord-instellen" ||
+    pathname === "/profiel-voltooien" ||
     pathname.startsWith("/auth/")
   );
 }
