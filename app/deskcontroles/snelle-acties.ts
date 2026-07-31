@@ -202,3 +202,90 @@ export async function wijzigDeskcontroleSelectievak(
   };
 }
 
+export async function wijzigMeerdereDeskcontroleStatussen(
+  ids: number[],
+  status: string,
+): Promise<ActieResultaat> {
+  await vereisMachtiging(
+    "DESKCONTROLES_BEHEREN",
+  );
+
+  if (!Array.isArray(ids)) {
+    return {
+      succes: false,
+      melding:
+        "Er werd geen geldige selectie ontvangen.",
+    };
+  }
+
+  const uniekeIds = Array.from(
+    new Set(ids),
+  ).filter(isGeldigId);
+
+  if (uniekeIds.length === 0) {
+    return {
+      succes: false,
+      melding:
+        "Selecteer minstens één deskcontrole.",
+    };
+  }
+
+  if (uniekeIds.length > 200) {
+    return {
+      succes: false,
+      melding:
+        "Er kunnen maximaal 200 deskcontroles tegelijk worden aangepast.",
+    };
+  }
+
+  if (!isToegestaneStatus(status)) {
+    return {
+      succes: false,
+      melding: "Ongeldige status.",
+    };
+  }
+
+  const resultaat =
+    await prisma.deskcontrole.updateMany({
+      where: {
+        id: {
+          in: uniekeIds,
+        },
+        verwijderdOp: null,
+      },
+      data: {
+        status,
+      },
+    });
+
+  if (resultaat.count === 0) {
+    return {
+      succes: false,
+      melding:
+        "Er werden geen actieve deskcontroles aangepast.",
+    };
+  }
+
+  revalidatePath("/");
+  revalidatePath("/deskcontroles");
+  revalidatePath("/mijn-overzicht");
+  revalidatePath("/meldingen");
+
+  for (const id of uniekeIds) {
+    revalidatePath(
+      `/deskcontroles/${id}`,
+    );
+    revalidatePath(
+      `/deskcontroles/${id}/bewerken`,
+    );
+  }
+
+  return {
+    succes: true,
+    melding:
+      resultaat.count === 1
+        ? "1 deskcontrole werd aangepast."
+        : `${resultaat.count} deskcontroles werden aangepast.`,
+  };
+}
+

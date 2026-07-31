@@ -16,6 +16,7 @@ import {
 } from "@/components/DeskcontroleSnelleVelden";
 import { useRouter } from "next/navigation";
 import { DeskcontroleAfgerondSelectievak } from "@/components/DeskcontroleAfgerondSelectievak";
+import { DeskcontroleBulkActies } from "@/components/DeskcontroleBulkActies";
 
 export type DeskcontroleKolom = {
   sleutel: string;
@@ -276,6 +277,13 @@ export function DeskcontrolesTabel({
 
   const router = useRouter();
 
+  const [
+    geselecteerdeIds,
+    setGeselecteerdeIds,
+  ] = useState<Set<number>>(
+    () => new Set(),
+  );
+
   const [zoekterm, setZoekterm] = useState("");
 
   const [filters, setFilters] = useState<
@@ -528,6 +536,76 @@ export function DeskcontrolesTabel({
     dashboardFilter,
   ]);
 
+  const geselecteerdeZichtbareIds =
+    useMemo(
+      () =>
+        zichtbareRijen
+          .map((rij) => Number(rij.id))
+          .filter((id) =>
+            geselecteerdeIds.has(id),
+          ),
+      [
+        zichtbareRijen,
+        geselecteerdeIds,
+      ],
+    );
+
+  const alleZichtbareGeselecteerd =
+    zichtbareRijen.length > 0 &&
+    zichtbareRijen.every((rij) =>
+      geselecteerdeIds.has(
+        Number(rij.id),
+      ),
+    );
+
+  function wijzigRijSelectie(
+    id: number,
+    geselecteerd: boolean,
+  ) {
+    setGeselecteerdeIds(
+      (huidige) => {
+        const volgende =
+          new Set(huidige);
+
+        if (geselecteerd) {
+          volgende.add(id);
+        } else {
+          volgende.delete(id);
+        }
+
+        return volgende;
+      },
+    );
+  }
+
+  function wijzigAlleZichtbareSelectie(
+    geselecteerd: boolean,
+  ) {
+    setGeselecteerdeIds(
+      (huidige) => {
+        const volgende =
+          new Set(huidige);
+
+        for (const rij of zichtbareRijen) {
+          const id = Number(rij.id);
+
+          if (geselecteerd) {
+            volgende.add(id);
+          } else {
+            volgende.delete(id);
+          }
+        }
+
+        return volgende;
+      },
+    );
+  }
+
+  function wisSelectie() {
+    setGeselecteerdeIds(
+      new Set(),
+    );
+  }
 
   function wijzigSortering(sleutel: string) {
     setSortering((huidige) => {
@@ -573,6 +651,7 @@ export function DeskcontrolesTabel({
     setSortering(null);
     setActieveFilterSleutel(null);
     setDashboardFilter(null);
+    wisSelectie();
 
     window.dispatchEvent(
       new CustomEvent(
@@ -791,6 +870,18 @@ export function DeskcontrolesTabel({
         </div>
       )}
 
+      {magBeheren &&
+      modus === "actief" &&
+      geselecteerdeZichtbareIds.length >
+        0 ? (
+        <DeskcontroleBulkActies
+          geselecteerdeIds={
+            geselecteerdeZichtbareIds
+          }
+          naSucces={wisSelectie}
+        />
+      ) : null}
+
       {zichtbareRijen.length === 0 ? (
         <div className="px-6 py-16 text-center">
           <h3 className="text-lg font-bold text-slate-950">
@@ -824,6 +915,25 @@ export function DeskcontrolesTabel({
             <table className="w-full min-w-max text-left">
               <thead className="sticky top-0 z-20 bg-slate-50 shadow-sm">
                 <tr>
+                  {magBeheren &&
+                  modus === "actief" ? (
+                    <th className="border-b border-slate-200 bg-slate-50 px-3 py-2.5 text-center">
+                      <input
+                        type="checkbox"
+                        checked={
+                          alleZichtbareGeselecteerd
+                        }
+                        onChange={(event) =>
+                          wijzigAlleZichtbareSelectie(
+                            event.target.checked,
+                          )
+                        }
+                        aria-label="Selecteer alle zichtbare deskcontroles"
+                        className="size-4 rounded border-slate-300 accent-emerald-700"
+                      />
+                    </th>
+                  ) : null}
+
                   {kolommen.map(
                     (kolom, index) => {
                       const actief =
@@ -979,6 +1089,28 @@ export function DeskcontrolesTabel({
                     }`}
 
                   >
+                    {magBeheren &&
+                    modus === "actief" ? (
+                      <td
+                        data-voorkom-rij-navigatie
+                        className="bg-white px-3 py-2 text-center group-hover:bg-[#f7fcfa]"
+                      >
+                        <input
+                          type="checkbox"
+                          checked={geselecteerdeIds.has(
+                            Number(rij.id),
+                          )}
+                          onChange={(event) =>
+                            wijzigRijSelectie(
+                              Number(rij.id),
+                              event.target.checked,
+                            )
+                          }
+                          aria-label={`Selecteer deskcontrole ${rij.id}`}
+                          className="size-4 rounded border-slate-300 accent-emerald-700"
+                        />
+                      </td>
+                    ) : null}
 
                     {kolommen.map(
                       (kolom, index) => {
