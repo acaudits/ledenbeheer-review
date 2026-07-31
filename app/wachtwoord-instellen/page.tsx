@@ -92,9 +92,7 @@ export default function WachtwoordInstellenPage() {
         );
       }
 
-      await supabase.auth.signOut();
-
-      router.replace("/inloggen?gewijzigd=1");
+      router.replace("/profiel-voltooien");
       router.refresh();
     } catch (fout) {
       console.error("Wachtwoord opslaan mislukt:", fout);
