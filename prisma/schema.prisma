@@ -219,12 +219,35 @@ model ToegestaneGebruiker {
 
   deskcontroles    Deskcontrole[]    @relation("DeskcontroleAuditeur")
   terreincontroles Terreincontrole[] @relation("TerreincontroleAuditeur")
+  meldingen        Melding[]
 
   @@index([email])
   @@index([actief])
   @@index([beheerder])
   @@index([rol])
   @@map("toegestane_gebruikers")
+}
+
+model Melding {
+  id          Int                 @id @default(autoincrement())
+  gebruikerId Int                 @map("gebruiker_id")
+  gebruiker   ToegestaneGebruiker @relation(fields: [gebruikerId], references: [id], onDelete: Cascade)
+
+  sleutel String  @db.VarChar(255)
+  type    String  @db.VarChar(50)
+  titel   String  @db.VarChar(255)
+  bericht String  @db.Text
+  href    String? @db.VarChar(2000)
+
+  gelezenOp    DateTime? @map("gelezen_op")
+  aangemaaktOp DateTime  @default(now()) @map("aangemaakt_op")
+  bijgewerktOp DateTime  @updatedAt @map("bijgewerkt_op")
+
+  @@unique([gebruikerId, sleutel])
+  @@index([gebruikerId, gelezenOp])
+  @@index([gebruikerId, aangemaaktOp])
+  @@index([type])
+  @@map("meldingen")
 }
 
 model AttestPersoonStatistiek {
