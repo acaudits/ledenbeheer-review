@@ -95,6 +95,7 @@ function StatistiekKaart({
 type MijnOverzichtPageProps = {
   searchParams: Promise<{
     gebruiker?: string;
+    periode?: string;
   }>;
 };
 
@@ -188,6 +189,51 @@ export default async function MijnOverzichtPage({
     0,
   );
 
+  const periode =
+    parameters.periode === "30" ||
+    parameters.periode === "90" ||
+    parameters.periode === "365"
+      ? parameters.periode
+      : "alles";
+
+  const datumVanaf =
+    periode === "alles"
+      ? null
+      : new Date(vandaag);
+
+  if (datumVanaf) {
+    datumVanaf.setUTCDate(
+      datumVanaf.getUTCDate() -
+        Number(periode),
+    );
+  }
+
+  const deskFilter = {
+    auditeurGebruikerId:
+      gebruiker.id,
+    verwijderdOp: null,
+    ...(datumVanaf
+      ? {
+          datumControle: {
+            gte: datumVanaf,
+          },
+        }
+      : {}),
+  };
+
+  const terreinFilter = {
+    auditeurGebruikerId:
+      gebruiker.id,
+    verwijderdOp: null,
+    ...(datumVanaf
+      ? {
+          datumPlaatsbezoek: {
+            gte: datumVanaf,
+          },
+        }
+      : {}),
+  };
+
   const [
     deskTotaal,
     deskOpen,
@@ -201,17 +247,13 @@ export default async function MijnOverzichtPage({
   ] = await Promise.all([
     prisma.deskcontrole.count({
       where: {
-        auditeurGebruikerId:
-          gebruiker.id,
-        verwijderdOp: null,
+        ...deskFilter,
       },
     }),
 
     prisma.deskcontrole.count({
       where: {
-        auditeurGebruikerId:
-          gebruiker.id,
-        verwijderdOp: null,
+        ...deskFilter,
         status: {
           not: "AFGEROND",
         },
@@ -220,18 +262,14 @@ export default async function MijnOverzichtPage({
 
     prisma.deskcontrole.count({
       where: {
-        auditeurGebruikerId:
-          gebruiker.id,
-        verwijderdOp: null,
+        ...deskFilter,
         status: "AFGEROND",
       },
     }),
 
     prisma.deskcontrole.count({
       where: {
-        auditeurGebruikerId:
-          gebruiker.id,
-        verwijderdOp: null,
+        ...deskFilter,
         status: {
           not: "AFGEROND",
         },
@@ -252,26 +290,20 @@ export default async function MijnOverzichtPage({
 
     prisma.terreincontrole.count({
       where: {
-        auditeurGebruikerId:
-          gebruiker.id,
-        verwijderdOp: null,
+        ...terreinFilter,
       },
     }),
 
     prisma.terreincontrole.count({
       where: {
-        auditeurGebruikerId:
-          gebruiker.id,
-        verwijderdOp: null,
+        ...terreinFilter,
         status: "IN_OPMAAK",
       },
     }),
 
     prisma.terreincontrole.count({
       where: {
-        auditeurGebruikerId:
-          gebruiker.id,
-        verwijderdOp: null,
+        ...terreinFilter,
         datumPlaatsbezoek: {
           gte: vandaag,
         },
@@ -280,9 +312,7 @@ export default async function MijnOverzichtPage({
 
     prisma.deskcontrole.findMany({
       where: {
-        auditeurGebruikerId:
-          gebruiker.id,
-        verwijderdOp: null,
+        ...deskFilter,
       },
       select: {
         id: true,
@@ -310,9 +340,7 @@ export default async function MijnOverzichtPage({
 
     prisma.terreincontrole.findMany({
       where: {
-        auditeurGebruikerId:
-          gebruiker.id,
-        verwijderdOp: null,
+        ...terreinFilter,
       },
       select: {
         id: true,
@@ -359,6 +387,12 @@ export default async function MijnOverzichtPage({
           action="/mijn-overzicht"
           className="-mt-3 mb-6 flex flex-col gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:flex-row sm:items-end"
         >
+          <input
+            type="hidden"
+            name="periode"
+            value={periode}
+          />
+
           <div className="min-w-0 flex-1">
             <label
               htmlFor="gebruiker"
@@ -401,6 +435,59 @@ export default async function MijnOverzichtPage({
           </button>
         </form>
       ) : null}
+
+      <form
+        method="get"
+        action="/mijn-overzicht"
+        className="mb-6 flex flex-col gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:flex-row sm:items-end"
+      >
+        {magGebruikerKiezen ? (
+          <input
+            type="hidden"
+            name="gebruiker"
+            value={gebruiker.id}
+          />
+        ) : null}
+
+        <div className="min-w-0 flex-1">
+          <label
+            htmlFor="periode"
+            className="mb-2 block text-sm font-semibold text-slate-700"
+          >
+            Periode
+          </label>
+
+          <select
+            id="periode"
+            name="periode"
+            defaultValue={periode}
+            className="h-11 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm text-slate-900 outline-none transition focus:border-emerald-600 focus:ring-4 focus:ring-emerald-100"
+          >
+            <option value="30">
+              Laatste 30 dagen
+            </option>
+
+            <option value="90">
+              Laatste 90 dagen
+            </option>
+
+            <option value="365">
+              Laatste 365 dagen
+            </option>
+
+            <option value="alles">
+              Alle gegevens
+            </option>
+          </select>
+        </div>
+
+        <button
+          type="submit"
+          className="inline-flex h-11 items-center justify-center rounded-xl bg-slate-950 px-5 text-sm font-semibold text-white shadow-sm transition hover:bg-slate-800"
+        >
+          Periode toepassen
+        </button>
+      </form>
 
       <div className="-mt-3 mb-7">
         <Link
