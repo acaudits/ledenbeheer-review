@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { UitloggenButton } from "@/components/UitloggenButton";
 import { BeheerderLink } from "@/components/BeheerderLink";
 import { ProfielLink } from "@/components/ProfielLink";
+import { MeldingenLink } from "@/components/MeldingenLink";
 
 
 const navigatie = [
@@ -202,6 +203,10 @@ function MenuInhoud({
       </nav>
 
       <div className="space-y-3 border-t border-white/10 p-4">
+        <MeldingenLink
+          sluitMenu={sluitMenu}
+        />
+
         <ProfielLink
           sluitMenu={sluitMenu}
         />

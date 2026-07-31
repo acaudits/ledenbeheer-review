@@ -174,6 +174,12 @@ export function MeldingenLijst() {
       }
 
       await laadMeldingen();
+
+      window.dispatchEvent(
+        new Event(
+          "meldingen-gewijzigd",
+        ),
+      );
     } catch (fout) {
       setFout(
         fout instanceof Error
@@ -243,6 +249,12 @@ export function MeldingenLijst() {
       }
 
       await laadMeldingen();
+
+      window.dispatchEvent(
+        new Event(
+          "meldingen-gewijzigd",
+        ),
+      );
     } catch (fout) {
       setFout(
         fout instanceof Error
