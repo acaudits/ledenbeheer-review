@@ -193,13 +193,6 @@ export function DeskcontroleContextActies({
               {magBeheren &&
               !verwijderd ? (
                 <>
-                  <a
-                    href="#snelle-acties"
-                    className="inline-flex items-center rounded-xl border border-amber-300 bg-white px-4 py-2 text-sm font-bold text-amber-900 hover:bg-amber-100"
-                  >
-                    Open snelle acties
-                  </a>
-
                   <Link
                     href={`/deskcontroles/${id}/bewerken`}
                     className="inline-flex items-center rounded-xl bg-amber-700 px-4 py-2 text-sm font-bold text-white hover:bg-amber-800"

@@ -228,10 +228,7 @@ export function DeskcontroleDetailSnelleActies({
   }
 
   return (
-    <section
-      id="snelle-acties"
-      className="scroll-mt-6 rounded-2xl border border-emerald-200 bg-emerald-50/60 p-5 shadow-sm"
-    >
+    <section className="rounded-2xl border border-emerald-200 bg-emerald-50/60 p-5 shadow-sm">
       <div className="flex flex-col gap-1">
         <p className="text-xs font-bold uppercase tracking-[0.16em] text-emerald-700">
           Snelle acties
