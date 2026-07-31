@@ -92,9 +92,92 @@ function StatistiekKaart({
   );
 }
 
-export default async function MijnOverzichtPage() {
-  const gebruiker =
+type MijnOverzichtPageProps = {
+  searchParams: Promise<{
+    gebruiker?: string;
+  }>;
+};
+
+export default async function MijnOverzichtPage({
+  searchParams,
+}: MijnOverzichtPageProps) {
+  const ingelogdeGebruiker =
     await vereisIngelogdeGebruiker();
+
+  const parameters =
+    await searchParams;
+
+  const magGebruikerKiezen =
+    ingelogdeGebruiker.rol ===
+    "BEHEERDER";
+
+  const gebruikers =
+    magGebruikerKiezen
+      ? await prisma.toegestaneGebruiker.findMany({
+          where: {
+            actief: true,
+            rol: {
+              in: [
+                "AUDITEUR",
+                "BEHEERDER",
+              ],
+            },
+          },
+          select: {
+            id: true,
+            naam: true,
+            email: true,
+            rol: true,
+          },
+          orderBy: [
+            {
+              naam: "asc",
+            },
+            {
+              email: "asc",
+            },
+          ],
+        })
+      : [];
+
+  let gebruiker =
+    ingelogdeGebruiker;
+
+  if (
+    magGebruikerKiezen &&
+    parameters.gebruiker
+  ) {
+    const gekozenId =
+      Number(
+        parameters.gebruiker,
+      );
+
+    if (
+      Number.isInteger(
+        gekozenId,
+      ) &&
+      gekozenId > 0
+    ) {
+      const gekozenGebruiker =
+        await prisma.toegestaneGebruiker.findFirst({
+          where: {
+            id: gekozenId,
+            actief: true,
+            rol: {
+              in: [
+                "AUDITEUR",
+                "BEHEERDER",
+              ],
+            },
+          },
+        });
+
+      if (gekozenGebruiker) {
+        gebruiker =
+          gekozenGebruiker;
+      }
+    }
+  }
 
   const vandaag = new Date();
 
@@ -256,9 +339,68 @@ export default async function MijnOverzichtPage() {
     <div>
       <PageHeader
         bovenTitel="Persoonlijk"
-        titel={`Welkom, ${gebruiker.voornaam ?? gebruiker.naam ?? "gebruiker"}`}
-        beschrijving="Bekijk je persoonlijke statistieken en de controles die via je gebruikersprofiel aan jou gekoppeld zijn."
+        titel={
+          gebruiker.id ===
+          ingelogdeGebruiker.id
+            ? `Welkom, ${gebruiker.voornaam ?? gebruiker.naam ?? "gebruiker"}`
+            : `Overzicht van ${gebruiker.naam ?? gebruiker.email}`
+        }
+        beschrijving={
+          gebruiker.id ===
+          ingelogdeGebruiker.id
+            ? "Bekijk je persoonlijke statistieken en de controles die via je gebruikersprofiel aan jou gekoppeld zijn."
+            : "Beheerderweergave van de controles die aan deze gebruiker gekoppeld zijn."
+        }
       />
+
+      {magGebruikerKiezen ? (
+        <form
+          method="get"
+          action="/mijn-overzicht"
+          className="-mt-3 mb-6 flex flex-col gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:flex-row sm:items-end"
+        >
+          <div className="min-w-0 flex-1">
+            <label
+              htmlFor="gebruiker"
+              className="mb-2 block text-sm font-semibold text-slate-700"
+            >
+              Overzicht van gebruiker
+            </label>
+
+            <select
+              id="gebruiker"
+              name="gebruiker"
+              defaultValue={
+                gebruiker.id
+              }
+              className="h-11 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm text-slate-900 outline-none transition focus:border-emerald-600 focus:ring-4 focus:ring-emerald-100"
+            >
+              {gebruikers.map(
+                (optie) => (
+                  <option
+                    key={optie.id}
+                    value={optie.id}
+                  >
+                    {optie.naam ??
+                      optie.email}
+                    {optie.rol ===
+                    "BEHEERDER"
+                      ? " (beheerder)"
+                      : ""}
+                  </option>
+                ),
+              )}
+            </select>
+          </div>
+
+          <button
+            type="submit"
+            className="inline-flex h-11 items-center justify-center rounded-xl bg-emerald-700 px-5 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-800"
+          >
+            Overzicht tonen
+          </button>
+        </form>
+      ) : null}
 
       <div className="-mt-3 mb-7">
         <Link
