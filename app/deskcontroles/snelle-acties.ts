@@ -92,7 +92,16 @@ export async function wijzigDeskcontroleStatus(
   revalidatePath("/");
   revalidatePath("/deskcontroles");
   revalidatePath(
+    `/deskcontroles/${id}`,
+  );
+  revalidatePath(
     `/deskcontroles/${id}/bewerken`,
+  );
+  revalidatePath(
+    "/mijn-overzicht",
+  );
+  revalidatePath(
+    "/meldingen",
   );
 
   return {
@@ -175,7 +184,16 @@ export async function wijzigDeskcontroleSelectievak(
   revalidatePath("/");
   revalidatePath("/deskcontroles");
   revalidatePath(
+    `/deskcontroles/${id}`,
+  );
+  revalidatePath(
     `/deskcontroles/${id}/bewerken`,
+  );
+  revalidatePath(
+    "/mijn-overzicht",
+  );
+  revalidatePath(
+    "/meldingen",
   );
 
   return {

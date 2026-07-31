@@ -2,6 +2,7 @@ import NextLink from "next/link";
 import type { ComponentProps } from "react";
 import { notFound } from "next/navigation";
 import { DeskcontroleVaststellingenTabel } from "@/components/DeskcontroleVaststellingenTabel";
+import { DeskcontroleDetailSnelleActies } from "@/components/DeskcontroleDetailSnelleActies";
 import { vereisMachtiging } from "@/lib/auth";
 import { heeftMachtiging } from "@/lib/autorisatie";
 import { formatteerOndernemingsnummer } from "@/lib/ondernemingsnummer";
@@ -290,6 +291,29 @@ export default async function DeskcontroleDetailPage({
           ) : null}
         </div>
       </div>
+
+      {magBeheren &&
+      !deskcontrole.verwijderdOp ? (
+        <DeskcontroleDetailSnelleActies
+          id={deskcontrole.id}
+          status={deskcontrole.status}
+          mailSanctieVerzonden={
+            deskcontrole
+              .mailSanctieVerzonden ??
+            false
+          }
+          mailCorrectieVerzonden={
+            deskcontrole
+              .mailCorrectieVerzonden ??
+            false
+          }
+          voorwaardelijkeOpheffing={
+            deskcontrole
+              .voorwaardelijkeOpheffing ??
+            false
+          }
+        />
+      ) : null}
 
       <section className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
         <header className="bg-gradient-to-r from-[#073c34] to-emerald-700 px-6 py-7 text-white sm:px-8">
