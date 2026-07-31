@@ -106,7 +106,7 @@ export function ProfielLink({
 
   return (
     <Link
-      href="/mijn-profiel"
+      href="/mijn-overzicht"
       onClick={sluitMenu}
       className="flex min-w-0 items-center gap-3 rounded-xl border border-white/10 bg-white/5 px-3 py-3 transition hover:border-emerald-400/30 hover:bg-emerald-400/10"
     >
