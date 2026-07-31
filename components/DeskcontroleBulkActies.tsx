@@ -5,12 +5,20 @@ import {
   useTransition,
 } from "react";
 import { useRouter } from "next/navigation";
-import { wijzigMeerdereDeskcontroleStatussen } from "@/app/deskcontroles/snelle-acties";
+import {
+  wijzigMeerdereDeskcontroleMailmarkeringen,
+  wijzigMeerdereDeskcontroleStatussen,
+} from "@/app/deskcontroles/snelle-acties";
 
 type DeskcontroleBulkActiesProps = {
   geselecteerdeIds: number[];
   naSucces: () => void;
 };
+
+type Bulkactie =
+  | "status"
+  | "mailSanctieVerzonden"
+  | "mailCorrectieVerzonden";
 
 const statussen = [
   {
@@ -37,8 +45,16 @@ export function DeskcontroleBulkActies({
 }: DeskcontroleBulkActiesProps) {
   const router = useRouter();
 
+  const [actie, setActie] =
+    useState<Bulkactie>("status");
+
   const [status, setStatus] =
     useState("IN_OPMAAK");
+
+  const [
+    mailWaarde,
+    setMailWaarde,
+  ] = useState("true");
 
   const [melding, setMelding] =
     useState<string | null>(null);
@@ -49,23 +65,43 @@ export function DeskcontroleBulkActies({
   const aantal =
     geselecteerdeIds.length;
 
-  function wijzigStatus() {
+  function actieOmschrijving() {
+    if (actie === "status") {
+      const statusLabel =
+        statussen.find(
+          (item) =>
+            item.waarde === status,
+        )?.label ?? status;
+
+      return `de status wijzigen naar “${statusLabel}”`;
+    }
+
+    const soort =
+      actie ===
+      "mailSanctieVerzonden"
+        ? "sanctiemail"
+        : "correctiemail";
+
+    return `${soort} als ${
+      mailWaarde === "true"
+        ? "verzonden"
+        : "niet verzonden"
+    } markeren`;
+  }
+
+  function voerActieUit() {
     if (aantal === 0 || isBezig) {
       return;
     }
 
-    const statusLabel =
-      statussen.find(
-        (item) => item.waarde === status,
-      )?.label ?? status;
-
-    const bevestigd = window.confirm(
-      `Wil je de status van ${aantal} ${
-        aantal === 1
-          ? "deskcontrole"
-          : "deskcontroles"
-      } wijzigen naar “${statusLabel}”?`,
-    );
+    const bevestigd =
+      window.confirm(
+        `Wil je voor ${aantal} ${
+          aantal === 1
+            ? "deskcontrole"
+            : "deskcontroles"
+        } ${actieOmschrijving()}?`,
+      );
 
     if (!bevestigd) {
       return;
@@ -76,10 +112,17 @@ export function DeskcontroleBulkActies({
     startTransition(async () => {
       try {
         const resultaat =
-          await wijzigMeerdereDeskcontroleStatussen(
-            geselecteerdeIds,
-            status,
-          );
+          actie === "status"
+            ? await wijzigMeerdereDeskcontroleStatussen(
+                geselecteerdeIds,
+                status,
+              )
+            : await wijzigMeerdereDeskcontroleMailmarkeringen(
+                geselecteerdeIds,
+                actie,
+                mailWaarde ===
+                  "true",
+              );
 
         setMelding(
           resultaat.melding ??
@@ -102,12 +145,12 @@ export function DeskcontroleBulkActies({
         );
       } catch (fout) {
         console.error(
-          "Bulkstatuswijziging mislukt:",
+          "Bulkactie mislukt:",
           fout,
         );
 
         setMelding(
-          "De statuswijziging kon niet worden uitgevoerd.",
+          "De bulkactie kon niet worden uitgevoerd.",
         );
       }
     });
@@ -115,7 +158,7 @@ export function DeskcontroleBulkActies({
 
   return (
     <div className="border-b border-emerald-200 bg-emerald-50 px-4 py-3">
-      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+      <div className="flex flex-col gap-3">
         <div>
           <p className="text-sm font-bold text-emerald-950">
             {aantal}{" "}
@@ -129,41 +172,113 @@ export function DeskcontroleBulkActies({
           </p>
         </div>
 
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-          <label className="sr-only" htmlFor="bulk-status">
-            Nieuwe status
+        <div className="flex flex-col gap-2 xl:flex-row xl:items-center">
+          <label
+            className="sr-only"
+            htmlFor="bulk-actie"
+          >
+            Bulkactie
           </label>
 
           <select
-            id="bulk-status"
-            value={status}
+            id="bulk-actie"
+            value={actie}
             disabled={isBezig}
             onChange={(event) =>
-              setStatus(event.target.value)
+              setActie(
+                event.target
+                  .value as Bulkactie,
+              )
             }
             className="h-10 rounded-xl border border-emerald-300 bg-white px-3 text-sm text-slate-900 outline-none focus:border-emerald-600"
           >
-            {statussen.map((item) => (
-              <option
-                key={item.waarde}
-                value={item.waarde}
-              >
-                {item.label}
-              </option>
-            ))}
+            <option value="status">
+              Status wijzigen
+            </option>
+
+            <option value="mailSanctieVerzonden">
+              Sanctiemail markeren
+            </option>
+
+            <option value="mailCorrectieVerzonden">
+              Correctiemail markeren
+            </option>
           </select>
+
+          {actie === "status" ? (
+            <>
+              <label
+                className="sr-only"
+                htmlFor="bulk-status"
+              >
+                Nieuwe status
+              </label>
+
+              <select
+                id="bulk-status"
+                value={status}
+                disabled={isBezig}
+                onChange={(event) =>
+                  setStatus(
+                    event.target.value,
+                  )
+                }
+                className="h-10 rounded-xl border border-emerald-300 bg-white px-3 text-sm text-slate-900 outline-none focus:border-emerald-600"
+              >
+                {statussen.map(
+                  (item) => (
+                    <option
+                      key={item.waarde}
+                      value={item.waarde}
+                    >
+                      {item.label}
+                    </option>
+                  ),
+                )}
+              </select>
+            </>
+          ) : (
+            <>
+              <label
+                className="sr-only"
+                htmlFor="bulk-mailwaarde"
+              >
+                Mailstatus
+              </label>
+
+              <select
+                id="bulk-mailwaarde"
+                value={mailWaarde}
+                disabled={isBezig}
+                onChange={(event) =>
+                  setMailWaarde(
+                    event.target.value,
+                  )
+                }
+                className="h-10 rounded-xl border border-emerald-300 bg-white px-3 text-sm text-slate-900 outline-none focus:border-emerald-600"
+              >
+                <option value="true">
+                  Verzonden
+                </option>
+
+                <option value="false">
+                  Niet verzonden
+                </option>
+              </select>
+            </>
+          )}
 
           <button
             type="button"
             disabled={
               aantal === 0 || isBezig
             }
-            onClick={wijzigStatus}
+            onClick={voerActieUit}
             className="h-10 rounded-xl bg-emerald-700 px-4 text-sm font-bold text-white hover:bg-emerald-800 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {isBezig
               ? "Bezig…"
-              : "Status toepassen"}
+              : "Actie toepassen"}
           </button>
 
           <button

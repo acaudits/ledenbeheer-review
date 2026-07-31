@@ -289,3 +289,134 @@ export async function wijzigMeerdereDeskcontroleStatussen(
   };
 }
 
+const toegestaneBulkMailvelden = [
+  "mailSanctieVerzonden",
+  "mailCorrectieVerzonden",
+] as const;
+
+type DeskcontroleBulkMailveld =
+  (typeof toegestaneBulkMailvelden)[number];
+
+function isToegestaanBulkMailveld(
+  veld: string,
+): veld is DeskcontroleBulkMailveld {
+  return toegestaneBulkMailvelden.some(
+    (toegestaanVeld) =>
+      toegestaanVeld === veld,
+  );
+}
+
+export async function wijzigMeerdereDeskcontroleMailmarkeringen(
+  ids: number[],
+  veld: string,
+  waarde: boolean,
+): Promise<ActieResultaat> {
+  await vereisMachtiging(
+    "DESKCONTROLES_BEHEREN",
+  );
+
+  if (!Array.isArray(ids)) {
+    return {
+      succes: false,
+      melding:
+        "Er werd geen geldige selectie ontvangen.",
+    };
+  }
+
+  const uniekeIds = Array.from(
+    new Set(ids),
+  ).filter(isGeldigId);
+
+  if (uniekeIds.length === 0) {
+    return {
+      succes: false,
+      melding:
+        "Selecteer minstens één deskcontrole.",
+    };
+  }
+
+  if (uniekeIds.length > 200) {
+    return {
+      succes: false,
+      melding:
+        "Er kunnen maximaal 200 deskcontroles tegelijk worden aangepast.",
+    };
+  }
+
+  if (
+    !isToegestaanBulkMailveld(veld)
+  ) {
+    return {
+      succes: false,
+      melding:
+        "Deze mailmarkering is niet toegestaan.",
+    };
+  }
+
+  const data =
+    veld === "mailSanctieVerzonden"
+      ? {
+          mailSanctieVerzonden:
+            waarde,
+        }
+      : {
+          mailCorrectieVerzonden:
+            waarde,
+        };
+
+  const resultaat =
+    await prisma.deskcontrole.updateMany({
+      where: {
+        id: {
+          in: uniekeIds,
+        },
+        verwijderdOp: null,
+      },
+      data,
+    });
+
+  if (resultaat.count === 0) {
+    return {
+      succes: false,
+      melding:
+        "Er werden geen actieve deskcontroles aangepast.",
+    };
+  }
+
+  revalidatePath("/");
+  revalidatePath("/deskcontroles");
+  revalidatePath("/mijn-overzicht");
+  revalidatePath("/meldingen");
+
+  for (const id of uniekeIds) {
+    revalidatePath(
+      `/deskcontroles/${id}`,
+    );
+    revalidatePath(
+      `/deskcontroles/${id}/bewerken`,
+    );
+  }
+
+  const soort =
+    veld ===
+    "mailSanctieVerzonden"
+      ? "sanctiemail"
+      : "correctiemail";
+
+  return {
+    succes: true,
+    melding:
+      resultaat.count === 1
+        ? `De ${soort} van 1 deskcontrole werd als ${
+            waarde
+              ? "verzonden"
+              : "niet verzonden"
+          } gemarkeerd.`
+        : `De ${soort} van ${resultaat.count} deskcontroles werd als ${
+            waarde
+              ? "verzonden"
+              : "niet verzonden"
+          } gemarkeerd.`,
+  };
+}
+
