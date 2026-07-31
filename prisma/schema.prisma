@@ -220,6 +220,7 @@ model ToegestaneGebruiker {
   deskcontroles    Deskcontrole[]    @relation("DeskcontroleAuditeur")
   terreincontroles Terreincontrole[] @relation("TerreincontroleAuditeur")
   meldingen        Melding[]
+  auditlogs        Auditlog[]
 
   @@index([email])
   @@index([actief])
@@ -248,6 +249,33 @@ model Melding {
   @@index([gebruikerId, aangemaaktOp])
   @@index([type])
   @@map("meldingen")
+}
+
+model Auditlog {
+  id Int @id @default(autoincrement())
+
+  gebruikerId Int?                 @map("gebruiker_id")
+  gebruiker   ToegestaneGebruiker? @relation(fields: [gebruikerId], references: [id], onDelete: SetNull)
+
+  gebruikerNaam  String? @map("gebruiker_naam") @db.VarChar(255)
+  gebruikerEmail String? @map("gebruiker_email") @db.VarChar(320)
+
+  actie      String @db.VarChar(100)
+  entiteit   String @db.VarChar(100)
+  entiteitId Int?   @map("entiteit_id")
+
+  omschrijving String? @db.Text
+  oudeWaarde   Json?   @map("oude_waarde")
+  nieuweWaarde Json?   @map("nieuwe_waarde")
+  metadata     Json?
+
+  aangemaaktOp DateTime @default(now()) @map("aangemaakt_op")
+
+  @@index([gebruikerId, aangemaaktOp])
+  @@index([entiteit, entiteitId, aangemaaktOp])
+  @@index([actie])
+  @@index([aangemaaktOp])
+  @@map("auditlogs")
 }
 
 model AttestPersoonStatistiek {
