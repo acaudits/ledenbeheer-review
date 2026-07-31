@@ -1,8 +1,9 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { prisma } from "@/lib/prisma";
 import { vereisMachtiging } from "@/lib/auth";
+import { schrijfAuditlog } from "@/lib/auditlog";
+import { prisma } from "@/lib/prisma";
 
 const toegestaneStatussen = [
   "GEEN",
@@ -50,45 +51,29 @@ function isToegestaanSelectievak(
   );
 }
 
-export async function wijzigDeskcontroleStatus(
+function selectievakLabel(
+  veld: DeskcontroleSelectievak,
+) {
+  if (
+    veld ===
+    "mailSanctieVerzonden"
+  ) {
+    return "Sanctiemail verzonden";
+  }
+
+  if (
+    veld ===
+    "mailCorrectieVerzonden"
+  ) {
+    return "Correctiemail verzonden";
+  }
+
+  return "Voorwaardelijke opheffing";
+}
+
+function herlaadDeskcontrolePaden(
   id: number,
-  status: string,
-): Promise<ActieResultaat> {
-  await vereisMachtiging("DESKCONTROLES_BEHEREN");
-
-  if (!isGeldigId(id)) {
-    return {
-      succes: false,
-      melding: "Ongeldig deskcontrole-ID.",
-    };
-  }
-
-  if (!isToegestaneStatus(status)) {
-    return {
-      succes: false,
-      melding: "Ongeldige status.",
-    };
-  }
-
-  const resultaat =
-    await prisma.deskcontrole.updateMany({
-      where: {
-        id,
-        verwijderdOp: null,
-      },
-      data: {
-        status,
-      },
-    });
-
-  if (resultaat.count === 0) {
-    return {
-      succes: false,
-      melding:
-        "De deskcontrole bestaat niet of is verwijderd.",
-    };
-  }
-
+) {
   revalidatePath("/");
   revalidatePath("/deskcontroles");
   revalidatePath(
@@ -97,12 +82,133 @@ export async function wijzigDeskcontroleStatus(
   revalidatePath(
     `/deskcontroles/${id}/bewerken`,
   );
-  revalidatePath(
-    "/mijn-overzicht",
-  );
-  revalidatePath(
-    "/meldingen",
-  );
+  revalidatePath("/mijn-overzicht");
+  revalidatePath("/meldingen");
+}
+
+export async function wijzigDeskcontroleStatus(
+  id: number,
+  status: string,
+): Promise<ActieResultaat> {
+  const gebruiker =
+    await vereisMachtiging(
+      "DESKCONTROLES_BEHEREN",
+    );
+
+  if (!isGeldigId(id)) {
+    return {
+      succes: false,
+      melding:
+        "Ongeldig deskcontrole-ID.",
+    };
+  }
+
+  if (
+    !isToegestaneStatus(status)
+  ) {
+    return {
+      succes: false,
+      melding: "Ongeldige status.",
+    };
+  }
+
+  const resultaat =
+    await prisma.$transaction(
+      async (tx) => {
+        const bestaande =
+          await tx.deskcontrole.findFirst({
+            where: {
+              id,
+              verwijderdOp: null,
+            },
+            select: {
+              status: true,
+            },
+          });
+
+        if (!bestaande) {
+          return {
+            gevonden: false,
+            gewijzigd: false,
+          };
+        }
+
+        if (
+          bestaande.status === status
+        ) {
+          return {
+            gevonden: true,
+            gewijzigd: false,
+          };
+        }
+
+        const wijziging =
+          await tx.deskcontrole.updateMany({
+            where: {
+              id,
+              verwijderdOp: null,
+              status:
+                bestaande.status,
+            },
+            data: {
+              status,
+            },
+          });
+
+        if (
+          wijziging.count === 0
+        ) {
+          return {
+            gevonden: false,
+            gewijzigd: false,
+          };
+        }
+
+        await schrijfAuditlog(
+          tx,
+          gebruiker,
+          {
+            actie:
+              "DESKCONTROLE_STATUS_GEWIJZIGD",
+            entiteit:
+              "DESKCONTROLE",
+            entiteitId: id,
+            omschrijving:
+              "Status van de deskcontrole gewijzigd.",
+            oudeWaarde: {
+              status:
+                bestaande.status,
+            },
+            nieuweWaarde: {
+              status,
+            },
+          },
+        );
+
+        return {
+          gevonden: true,
+          gewijzigd: true,
+        };
+      },
+    );
+
+  if (!resultaat.gevonden) {
+    return {
+      succes: false,
+      melding:
+        "De deskcontrole bestaat niet of is verwijderd.",
+    };
+  }
+
+  if (!resultaat.gewijzigd) {
+    return {
+      succes: true,
+      melding:
+        "De status was al ingesteld.",
+    };
+  }
+
+  herlaadDeskcontrolePaden(id);
 
   return {
     succes: true,
@@ -115,16 +221,24 @@ export async function wijzigDeskcontroleSelectievak(
   veld: string,
   waarde: boolean,
 ): Promise<ActieResultaat> {
-  await vereisMachtiging("DESKCONTROLES_BEHEREN");
+  const gebruiker =
+    await vereisMachtiging(
+      "DESKCONTROLES_BEHEREN",
+    );
 
   if (!isGeldigId(id)) {
     return {
       succes: false,
-      melding: "Ongeldig deskcontrole-ID.",
+      melding:
+        "Ongeldig deskcontrole-ID.",
     };
   }
 
-  if (!isToegestaanSelectievak(veld)) {
+  if (
+    !isToegestaanSelectievak(
+      veld,
+    )
+  ) {
     return {
       succes: false,
       melding:
@@ -132,73 +246,161 @@ export async function wijzigDeskcontroleSelectievak(
     };
   }
 
-  let resultaat: {
-    count: number;
-  };
+  const resultaat =
+    await prisma.$transaction(
+      async (tx) => {
+        const bestaande =
+          await tx.deskcontrole.findFirst({
+            where: {
+              id,
+              verwijderdOp: null,
+            },
+            select: {
+              mailSanctieVerzonden:
+                true,
+              mailCorrectieVerzonden:
+                true,
+              voorwaardelijkeOpheffing:
+                true,
+            },
+          });
 
-  if (veld === "mailSanctieVerzonden") {
-    resultaat =
-      await prisma.deskcontrole.updateMany({
-        where: {
-          id,
-          verwijderdOp: null,
-        },
-        data: {
-          mailSanctieVerzonden: waarde,
-        },
-      });
-  } else if (
-    veld === "mailCorrectieVerzonden"
-  ) {
-    resultaat =
-      await prisma.deskcontrole.updateMany({
-        where: {
-          id,
-          verwijderdOp: null,
-        },
-        data: {
-          mailCorrectieVerzonden: waarde,
-        },
-      });
-  } else {
-    resultaat =
-      await prisma.deskcontrole.updateMany({
-        where: {
-          id,
-          verwijderdOp: null,
-        },
-        data: {
-          voorwaardelijkeOpheffing: waarde,
-        },
-      });
-  }
+        if (!bestaande) {
+          return {
+            gevonden: false,
+            gewijzigd: false,
+          };
+        }
 
-  if (resultaat.count === 0) {
+        const oudeWaarde =
+          bestaande[veld] ?? false;
+
+        if (
+          oudeWaarde === waarde
+        ) {
+          return {
+            gevonden: true,
+            gewijzigd: false,
+          };
+        }
+
+        let wijziging: {
+          count: number;
+        };
+
+        if (
+          veld ===
+          "mailSanctieVerzonden"
+        ) {
+          wijziging =
+            await tx.deskcontrole.updateMany({
+              where: {
+                id,
+                verwijderdOp: null,
+                mailSanctieVerzonden:
+                  bestaande
+                    .mailSanctieVerzonden,
+              },
+              data: {
+                mailSanctieVerzonden:
+                  waarde,
+              },
+            });
+        } else if (
+          veld ===
+          "mailCorrectieVerzonden"
+        ) {
+          wijziging =
+            await tx.deskcontrole.updateMany({
+              where: {
+                id,
+                verwijderdOp: null,
+                mailCorrectieVerzonden:
+                  bestaande
+                    .mailCorrectieVerzonden,
+              },
+              data: {
+                mailCorrectieVerzonden:
+                  waarde,
+              },
+            });
+        } else {
+          wijziging =
+            await tx.deskcontrole.updateMany({
+              where: {
+                id,
+                verwijderdOp: null,
+                voorwaardelijkeOpheffing:
+                  bestaande
+                    .voorwaardelijkeOpheffing,
+              },
+              data: {
+                voorwaardelijkeOpheffing:
+                  waarde,
+              },
+            });
+        }
+
+        if (
+          wijziging.count === 0
+        ) {
+          return {
+            gevonden: false,
+            gewijzigd: false,
+          };
+        }
+
+        await schrijfAuditlog(
+          tx,
+          gebruiker,
+          {
+            actie:
+              "DESKCONTROLE_VELD_GEWIJZIGD",
+            entiteit:
+              "DESKCONTROLE",
+            entiteitId: id,
+            omschrijving:
+              `${selectievakLabel(veld)} gewijzigd.`,
+            oudeWaarde: {
+              veld,
+              waarde:
+                oudeWaarde,
+            },
+            nieuweWaarde: {
+              veld,
+              waarde,
+            },
+          },
+        );
+
+        return {
+          gevonden: true,
+          gewijzigd: true,
+        };
+      },
+    );
+
+  if (!resultaat.gevonden) {
     return {
       succes: false,
       melding:
-        "De deskcontrole bestaat niet of is verwijderd.",
+        "De deskcontrole bestaat niet, is verwijderd of werd ondertussen gewijzigd.",
     };
   }
 
-  revalidatePath("/");
-  revalidatePath("/deskcontroles");
-  revalidatePath(
-    `/deskcontroles/${id}`,
-  );
-  revalidatePath(
-    `/deskcontroles/${id}/bewerken`,
-  );
-  revalidatePath(
-    "/mijn-overzicht",
-  );
-  revalidatePath(
-    "/meldingen",
-  );
+  if (!resultaat.gewijzigd) {
+    return {
+      succes: true,
+      melding:
+        "De waarde was al ingesteld.",
+    };
+  }
+
+  herlaadDeskcontrolePaden(id);
 
   return {
     succes: true,
-    melding: "De wijziging is opgeslagen.",
+    melding:
+      "De wijziging is opgeslagen.",
   };
 }
-
