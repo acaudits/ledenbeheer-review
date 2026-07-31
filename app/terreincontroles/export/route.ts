@@ -37,6 +37,36 @@ function bestandsdatum() {
   return `${jaar}-${maand}-${dag}`;
 }
 
+function statusLabel(
+  status:
+    | "GEARCHIVEERD_ATTEST"
+    | "ACTUEEL_ATTEST"
+    | "IN_OPMAAK"
+    | null,
+) {
+  if (
+    status ===
+    "GEARCHIVEERD_ATTEST"
+  ) {
+    return "Gearchiveerd attest";
+  }
+
+  if (
+    status ===
+    "ACTUEEL_ATTEST"
+  ) {
+    return "Actueel attest";
+  }
+
+  if (
+    status === "IN_OPMAAK"
+  ) {
+    return "In opmaak";
+  }
+
+  return "Geen status";
+}
+
 export async function GET() {
   await vereisMachtiging("TERREINCONTROLES_EXPORTEREN");
 
@@ -88,6 +118,7 @@ export async function GET() {
 
           attestId: true,
           adres: true,
+          opmerkingen: true,
         },
       },
     );
@@ -222,7 +253,7 @@ export async function GET() {
       width: 23,
     },
     {
-      header: "Liggingsadres",
+      header: "Attest-ID",
       key: "attestId",
       width: 40,
     },
@@ -236,6 +267,11 @@ export async function GET() {
         "Factuur verzonden",
       key: "factuurVerzonden",
       width: 20,
+    },
+    {
+      header: "Opmerkingen",
+      key: "opmerkingen",
+      width: 60,
     },
   ];
 
@@ -359,8 +395,9 @@ export async function GET() {
           "",
 
         status:
-          terreincontrole.status ??
-          "NULL",
+          statusLabel(
+            terreincontrole.status,
+          ),
 
         postcode:
           terreincontrole
@@ -416,6 +453,11 @@ export async function GET() {
             .factuurVerzonden
             ? "Ja"
             : "Nee",
+
+        opmerkingen:
+          terreincontrole
+            .opmerkingen ??
+          "",
       });
 
     rij.alignment = {
@@ -480,7 +522,7 @@ export async function GET() {
 
   werkblad.autoFilter = {
     from: "A1",
-    to: "V1",
+    to: "W1",
   };
 
   const buffer =

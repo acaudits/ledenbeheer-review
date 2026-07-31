@@ -59,6 +59,30 @@ export function DeskcontroleOverzichtHeader({
           </Link>
           ) : null}
 
+          {magExporteren ? (
+            <a
+              href="/deskcontroles/export"
+              className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-emerald-300 bg-emerald-50 px-5 text-sm font-bold text-emerald-800 shadow-sm transition hover:bg-emerald-100"
+            >
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                className="size-5"
+                aria-hidden="true"
+              >
+                <path
+                  d="M12 3v12m0 0 4-4m-4 4-4-4M5 19h14"
+                  stroke="currentColor"
+                  strokeWidth="1.8"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+
+              Exporteren naar Excel
+            </a>
+          ) : null}
+
           <DeskcontroleMeerMenu
             magBeheren={magBeheren}
             magExporteren={magExporteren}
