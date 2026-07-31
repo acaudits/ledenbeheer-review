@@ -1,5 +1,5 @@
 import {
-  vereisIngelogdeGebruiker,
+  vereisMachtiging,
 } from "@/lib/auth";
 import {
   prisma,
@@ -11,7 +11,7 @@ export const dynamic =
   "force-dynamic";
 
 export default async function AtteststatistiekenPage() {
-  await vereisIngelogdeGebruiker();
+  await vereisMachtiging("ATTESTSTATISTIEKEN_BEHEREN");
 
   const [
     personen,

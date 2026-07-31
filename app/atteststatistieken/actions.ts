@@ -7,7 +7,7 @@ import {
 } from "next/cache";
 
 import {
-  vereisIngelogdeGebruiker,
+  vereisMachtiging,
 } from "@/lib/auth";
 import {
   prisma,
@@ -390,7 +390,7 @@ export async function importeerAtteststatistieken(
   _vorigeStatus: ImportStatus,
   formData: FormData,
 ): Promise<ImportStatus> {
-  await vereisIngelogdeGebruiker();
+  await vereisMachtiging("ATTESTSTATISTIEKEN_BEHEREN");
 
   const bestandWaarde =
     formData.get(
@@ -868,7 +868,7 @@ export async function voegAttestCorrectieToe(
   _vorigeStatus: CorrectieStatus,
   formData: FormData,
 ): Promise<CorrectieStatus> {
-  await vereisIngelogdeGebruiker();
+  await vereisMachtiging("ATTESTSTATISTIEKEN_BEHEREN");
 
   const persoonsId =
     normaliseerPersoonsId(
@@ -1005,7 +1005,7 @@ export async function voegAttestCorrectieToe(
 export async function verwijderAttestCorrectie(
   id: number,
 ): Promise<CorrectieStatus> {
-  await vereisIngelogdeGebruiker();
+  await vereisMachtiging("ATTESTSTATISTIEKEN_BEHEREN");
 
   if (
     !Number.isInteger(id) ||
@@ -1060,7 +1060,7 @@ export async function verwijderAttestCorrectie(
 }
 
 export async function pasAttestCorrectiesToe(): Promise<CorrectieStatus> {
-  await vereisIngelogdeGebruiker();
+  await vereisMachtiging("ATTESTSTATISTIEKEN_BEHEREN");
 
   const correcties =
     await prisma
