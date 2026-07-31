@@ -208,10 +208,14 @@ export default async function MijnOverzichtPage({
     );
   }
 
-  const deskFilter = {
+  const deskEigenaarFilter = {
     auditeurGebruikerId:
       gebruiker.id,
     verwijderdOp: null,
+  };
+
+  const deskFilter = {
+    ...deskEigenaarFilter,
     ...(datumVanaf
       ? {
           datumControle: {
@@ -234,11 +238,20 @@ export default async function MijnOverzichtPage({
       : {}),
   };
 
+  const deadlineGrens =
+    new Date(vandaag);
+
+  deadlineGrens.setUTCDate(
+    deadlineGrens.getUTCDate() +
+      30,
+  );
+
   const [
     deskTotaal,
     deskOpen,
     deskAfgerond,
     deskDeadlineVerlopen,
+    deadlineControles,
     terreinTotaal,
     terreinInOpmaak,
     terreinGepland,
@@ -269,7 +282,7 @@ export default async function MijnOverzichtPage({
 
     prisma.deskcontrole.count({
       where: {
-        ...deskFilter,
+        ...deskEigenaarFilter,
         status: {
           not: "AFGEROND",
         },
@@ -285,6 +298,41 @@ export default async function MijnOverzichtPage({
             },
           },
         ],
+      },
+    }),
+
+    prisma.deskcontrole.findMany({
+      where: {
+        ...deskEigenaarFilter,
+        status: {
+          not: "AFGEROND",
+        },
+        OR: [
+          {
+            deadlineSanctie: {
+              lte: deadlineGrens,
+            },
+          },
+          {
+            deadlineCorrectie: {
+              lte: deadlineGrens,
+            },
+          },
+        ],
+      },
+      select: {
+        id: true,
+        attestnummer: true,
+        status: true,
+        deadlineSanctie: true,
+        deadlineCorrectie: true,
+        mailSanctieVerzonden: true,
+        mailCorrectieVerzonden: true,
+        lid: {
+          select: {
+            naamPersoon: true,
+          },
+        },
       },
     }),
 
@@ -362,6 +410,69 @@ export default async function MijnOverzichtPage({
       take: 8,
     }),
   ]);
+
+  const deadlineItems =
+    deadlineControles
+      .flatMap((controle) => [
+        ...(controle.deadlineSanctie
+          ? [
+              {
+                sleutel:
+                  `${controle.id}-sanctie`,
+                controleId:
+                  controle.id,
+                attestnummer:
+                  controle.attestnummer,
+                naamAdi:
+                  controle.lid
+                    .naamPersoon,
+                status:
+                  controle.status,
+                type: "Sanctie",
+                datum:
+                  controle.deadlineSanctie,
+                mailVerzonden:
+                  controle
+                    .mailSanctieVerzonden,
+              },
+            ]
+          : []),
+
+        ...(controle.deadlineCorrectie
+          ? [
+              {
+                sleutel:
+                  `${controle.id}-correctie`,
+                controleId:
+                  controle.id,
+                attestnummer:
+                  controle.attestnummer,
+                naamAdi:
+                  controle.lid
+                    .naamPersoon,
+                status:
+                  controle.status,
+                type: "Correctie",
+                datum:
+                  controle.deadlineCorrectie,
+                mailVerzonden:
+                  controle
+                    .mailCorrectieVerzonden,
+              },
+            ]
+          : []),
+      ])
+      .filter(
+        (item) =>
+          item.datum <=
+          deadlineGrens,
+      )
+      .sort(
+        (eerste, tweede) =>
+          eerste.datum.getTime() -
+          tweede.datum.getTime(),
+      )
+      .slice(0, 20);
 
   return (
     <div>
@@ -538,6 +649,161 @@ export default async function MijnOverzichtPage({
           label="Geplande plaatsbezoeken"
           waarde={terreinGepland}
         />
+      </section>
+
+      <section className="mt-8 overflow-hidden rounded-2xl border border-amber-200 bg-white shadow-sm">
+        <header className="border-b border-amber-200 bg-amber-50 px-5 py-4">
+          <h2 className="text-lg font-bold text-slate-950">
+            Deadline-acties
+          </h2>
+
+          <p className="mt-1 text-sm text-slate-600">
+            Verlopen deadlines en deadlines binnen de komende 30 dagen. Deze lijst staat los van het periodefilter.
+          </p>
+        </header>
+
+        {deadlineItems.length === 0 ? (
+          <div className="px-5 py-10 text-center">
+            <p className="font-semibold text-emerald-800">
+              Geen dringende deadlines
+            </p>
+
+            <p className="mt-1 text-sm text-slate-500">
+              Er zijn geen verlopen deadlines of deadlines binnen de komende 30 dagen.
+            </p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-slate-200 text-sm">
+              <thead className="bg-slate-50">
+                <tr>
+                  <th className="px-5 py-3 text-left font-semibold text-slate-600">
+                    Urgentie
+                  </th>
+
+                  <th className="px-5 py-3 text-left font-semibold text-slate-600">
+                    Deadline
+                  </th>
+
+                  <th className="px-5 py-3 text-left font-semibold text-slate-600">
+                    Type
+                  </th>
+
+                  <th className="px-5 py-3 text-left font-semibold text-slate-600">
+                    Controle
+                  </th>
+
+                  <th className="px-5 py-3 text-left font-semibold text-slate-600">
+                    ADI
+                  </th>
+
+                  <th className="px-5 py-3 text-left font-semibold text-slate-600">
+                    E-mail
+                  </th>
+                </tr>
+              </thead>
+
+              <tbody className="divide-y divide-slate-100">
+                {deadlineItems.map(
+                  (item) => {
+                    const verschilDagen =
+                      Math.ceil(
+                        (
+                          item.datum.getTime() -
+                          vandaag.getTime()
+                        ) /
+                          86_400_000,
+                      );
+
+                    const verlopen =
+                      verschilDagen < 0;
+
+                    const vandaagDeadline =
+                      verschilDagen === 0;
+
+                    const urgentie =
+                      verlopen
+                        ? `${Math.abs(verschilDagen)} dag${Math.abs(verschilDagen) === 1 ? "" : "en"} verlopen`
+                        : vandaagDeadline
+                          ? "Vandaag"
+                          : `Binnen ${verschilDagen} dag${verschilDagen === 1 ? "" : "en"}`;
+
+                    return (
+                      <tr
+                        key={item.sleutel}
+                        className={
+                          verlopen
+                            ? "bg-rose-50/60"
+                            : vandaagDeadline
+                              ? "bg-amber-50/70"
+                              : "hover:bg-slate-50"
+                        }
+                      >
+                        <td className="whitespace-nowrap px-5 py-4">
+                          <span
+                            className={
+                              verlopen
+                                ? "inline-flex rounded-full bg-rose-100 px-2.5 py-1 text-xs font-bold text-rose-800"
+                                : vandaagDeadline
+                                  ? "inline-flex rounded-full bg-amber-100 px-2.5 py-1 text-xs font-bold text-amber-800"
+                                  : "inline-flex rounded-full bg-sky-100 px-2.5 py-1 text-xs font-bold text-sky-800"
+                            }
+                          >
+                            {urgentie}
+                          </span>
+                        </td>
+
+                        <td className="whitespace-nowrap px-5 py-4 font-semibold text-slate-900">
+                          {formatteerDatum(
+                            item.datum,
+                          )}
+                        </td>
+
+                        <td className="whitespace-nowrap px-5 py-4 text-slate-700">
+                          {item.type}
+                        </td>
+
+                        <td className="px-5 py-4">
+                          <Link
+                            href={`/deskcontroles/${item.controleId}`}
+                            className="font-semibold text-emerald-700 hover:underline"
+                          >
+                            {item.attestnummer ??
+                              `Deskcontrole #${item.controleId}`}
+                          </Link>
+
+                          <p className="mt-1 text-xs text-slate-500">
+                            {deskstatusLabel(
+                              item.status,
+                            )}
+                          </p>
+                        </td>
+
+                        <td className="px-5 py-4 text-slate-700">
+                          {item.naamAdi}
+                        </td>
+
+                        <td className="whitespace-nowrap px-5 py-4">
+                          <span
+                            className={
+                              item.mailVerzonden
+                                ? "font-semibold text-emerald-700"
+                                : "font-semibold text-amber-700"
+                            }
+                          >
+                            {item.mailVerzonden
+                              ? "Verzonden"
+                              : "Niet verzonden"}
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  },
+                )}
+              </tbody>
+            </table>
+          </div>
+        )}
       </section>
 
       <section className="mt-8 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
