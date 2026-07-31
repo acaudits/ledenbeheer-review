@@ -3,6 +3,7 @@ import type { ComponentProps } from "react";
 import { notFound } from "next/navigation";
 import { DeskcontroleVaststellingenTabel } from "@/components/DeskcontroleVaststellingenTabel";
 import { DeskcontroleDetailSnelleActies } from "@/components/DeskcontroleDetailSnelleActies";
+import { DeskcontroleContextActies } from "@/components/DeskcontroleContextActies";
 import { vereisMachtiging } from "@/lib/auth";
 import { heeftMachtiging } from "@/lib/autorisatie";
 import { formatteerOndernemingsnummer } from "@/lib/ondernemingsnummer";
@@ -267,30 +268,30 @@ export default async function DeskcontroleDetailPage({
             </Link>
           )}
 
-          <a
-            href={
-              deskcontrole.linkAttest ??
-              undefined
-            }
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center rounded-xl bg-sky-700 px-4 py-2 text-sm font-bold text-white hover:bg-sky-800"
-          >
-            Open attest ↗
-          </a>
-
-          {oneDrive ? (
-            <a
-              href={oneDrive}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center rounded-xl bg-emerald-700 px-4 py-2 text-sm font-bold text-white hover:bg-emerald-800"
-            >
-              Open OneDrive ↗
-            </a>
-          ) : null}
         </div>
       </div>
+
+      <DeskcontroleContextActies
+        id={deskcontrole.id}
+        linkAttest={
+          deskcontrole.linkAttest
+        }
+        oneDrive={oneDrive}
+        certificatiePlatform={
+          deskcontrole.lid
+            .certificatiePlatform
+        }
+        deadlineSanctie={formatteerDatum(
+          deskcontrole.deadlineSanctie,
+        )}
+        deadlineCorrectie={formatteerDatum(
+          deskcontrole.deadlineCorrectie,
+        )}
+        magBeheren={magBeheren}
+        verwijderd={Boolean(
+          deskcontrole.verwijderdOp,
+        )}
+      />
 
       {magBeheren &&
       !deskcontrole.verwijderdOp ? (
