@@ -1,7 +1,10 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { haalIngelogdeGebruikerOp } from "@/lib/auth";
+import {
+  haalIngelogdeGebruikerOp,
+  vereisMachtiging,
+} from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
 type CertificaatSoort = "persoon" | "proces";
@@ -23,6 +26,10 @@ export async function wijzigCertificaatOpmerking({
   soort,
   opmerking,
 }: WijzigOpmerkingInvoer): Promise<WijzigOpmerkingResultaat> {
+  await vereisMachtiging(
+    "CERTIFICATEN_BEHEREN",
+  );
+
   try {
     const gebruiker = await haalIngelogdeGebruikerOp();
 

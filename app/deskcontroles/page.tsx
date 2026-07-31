@@ -4,7 +4,7 @@ import {
   DeskcontrolesTabel,
   type DeskcontroleKolom,
 } from "@/components/DeskcontrolesTabel";
-import { vereisIngelogdeGebruiker } from "@/lib/auth";
+import { vereisMachtiging } from "@/lib/auth";
 import { heeftMachtiging } from "@/lib/autorisatie";
 import { formatteerOndernemingsnummer } from "@/lib/ondernemingsnummer";
 import { prisma } from "@/lib/prisma";
@@ -146,7 +146,7 @@ const kolommen: DeskcontroleKolom[] = [
 ];
 
 export default async function DeskcontrolesPage() {
-  const gebruiker = await vereisIngelogdeGebruiker();
+  const gebruiker = await vereisMachtiging("DESKCONTROLES_BEKIJKEN");
 
   const magBeheren = heeftMachtiging(
     gebruiker.rol,

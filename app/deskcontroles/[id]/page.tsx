@@ -2,7 +2,7 @@ import NextLink from "next/link";
 import type { ComponentProps } from "react";
 import { notFound } from "next/navigation";
 import { DeskcontroleVaststellingenTabel } from "@/components/DeskcontroleVaststellingenTabel";
-import { vereisIngelogdeGebruiker } from "@/lib/auth";
+import { vereisMachtiging } from "@/lib/auth";
 import { heeftMachtiging } from "@/lib/autorisatie";
 import { formatteerOndernemingsnummer } from "@/lib/ondernemingsnummer";
 import { prisma } from "@/lib/prisma";
@@ -129,7 +129,7 @@ function GegevensVeld({
 export default async function DeskcontroleDetailPage({
   params,
 }: DeskcontroleDetailPageProps) {
-  const gebruiker = await vereisIngelogdeGebruiker();
+  const gebruiker = await vereisMachtiging("DESKCONTROLES_BEKIJKEN");
 
   const magBeheren = heeftMachtiging(
     gebruiker.rol,

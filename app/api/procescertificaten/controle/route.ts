@@ -6,6 +6,8 @@ import {
     isGeldigOndernemingsnummer,
     normaliseerOndernemingsnummer,
   } from "@/lib/ondernemingsnummer";
+  import { heeftMachtiging } from "@/lib/autorisatie";
+  import { haalIngelogdeGebruikerOp } from "@/lib/auth";
   import { prisma } from "@/lib/prisma";
   
   export const dynamic = "force-dynamic";
@@ -13,6 +15,28 @@ import {
   export async function GET(
     request: NextRequest,
   ) {
+
+    const gebruiker =
+      await haalIngelogdeGebruikerOp();
+
+    if (
+      !gebruiker?.actief ||
+      !heeftMachtiging(
+        gebruiker.rol,
+        "CERTIFICATEN_BEHEREN",
+      )
+    ) {
+      return NextResponse.json(
+        {
+          fout:
+            "Je hebt geen toestemming om certificaten te beheren.",
+        },
+        {
+          status: 403,
+        },
+      );
+    }
+
     const veld =
       request.nextUrl.searchParams.get(
         "veld",

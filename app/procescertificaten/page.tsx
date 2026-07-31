@@ -5,7 +5,7 @@ import {
 } from "@/components/CertificatenTabel";
 import { formatteerOndernemingsnummer } from "@/lib/ondernemingsnummer";
 import { prisma } from "@/lib/prisma";
-import { vereisIngelogdeGebruiker } from "@/lib/auth";
+import { vereisMachtiging } from "@/lib/auth";
 import { heeftMachtiging } from "@/lib/autorisatie";
 
 export const dynamic = "force-dynamic";
@@ -64,7 +64,7 @@ const kolommen: CertificaatKolom[] = [
 ];
 
 export default async function ProcescertificatenPage() {
-  const gebruiker = await vereisIngelogdeGebruiker();
+  const gebruiker = await vereisMachtiging("CERTIFICATEN_BEKIJKEN");
 
   const magBeheren = heeftMachtiging(
     gebruiker.rol,

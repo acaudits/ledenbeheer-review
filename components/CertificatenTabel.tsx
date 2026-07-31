@@ -1033,11 +1033,27 @@ export function CertificatenTabel({
                               <div className="flex min-w-max items-center gap-2">
                                 {kolom.sleutel ===
                                 "opmerking" ? (
-                                  <OpmerkingDialog
-                                    id={rij.id}
-                                    soort={soort}
-                                    tekst={tekst}
-                                  />
+                                  magBeheren ? (
+                                    <OpmerkingDialog
+                                      id={rij.id}
+                                      soort={soort}
+                                      tekst={tekst}
+                                    />
+                                  ) : (
+                                    <span
+                                      title={
+                                        tekst ||
+                                        undefined
+                                      }
+                                      className={`max-w-72 truncate ${
+                                        !tekst
+                                          ? "text-slate-400"
+                                          : ""
+                                      }`}
+                                    >
+                                      {tekst || "—"}
+                                    </span>
+                                  )
                                 ) : kolom.type ===
                                     "url" &&
                                   tekst ? (
