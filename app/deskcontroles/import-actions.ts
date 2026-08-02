@@ -452,6 +452,15 @@ export async function importeerDeskcontroleUitExcel(
 ): Promise<ExcelImportState> {
   await vereisMachtiging("DESKCONTROLES_BEHEREN");
 
+  /*
+   * Alleen de bulkimport mag verwijderde
+   * persoonscertificaten gebruiken en C7
+   * negeren. De gewone import behoudt
+   * de bestaande controles.
+   */
+  const bulkimport =
+    formData.get("bulkimport") === "1";
+
   const errors: NonNullable<
     ExcelImportState["errors"]
   > = {};
@@ -695,6 +704,7 @@ export async function importeerDeskcontroleUitExcel(
   }
 
   if (
+    !bulkimport &&
     !isGeldigOndernemingsnummer(
       ondernemingsnummer,
     )
@@ -865,7 +875,16 @@ export async function importeerDeskcontroleUitExcel(
           equals: ovamId,
           mode: "insensitive",
         },
-        verwijderdOp: null,
+        /*
+         * Bij bulkimport mag het OVAM-ID
+         * ook bij de verwijderde
+         * persoonscertificaten staan.
+         */
+        ...(bulkimport
+          ? {}
+          : {
+              verwijderdOp: null,
+            }),
       },
       select: {
         id: true,
@@ -920,7 +939,9 @@ export async function importeerDeskcontroleUitExcel(
   if (!lid) {
     return {
       message:
-        `Er werd geen actief persoonscertificaat gevonden voor OVAM-ID ${ovamId}.`,
+        bulkimport
+          ? `Er werd geen actief of verwijderd persoonscertificaat gevonden voor OVAM-ID ${ovamId}.`
+          : `Er werd geen actief persoonscertificaat gevonden voor OVAM-ID ${ovamId}.`,
       errors: {
         excelBestand:
           "Controleer de waarde in cel B7.",
@@ -943,6 +964,7 @@ export async function importeerDeskcontroleUitExcel(
     );
 
   if (
+    !bulkimport &&
     overeenkomendeProcessen.length >
     1
   ) {
@@ -956,11 +978,20 @@ export async function importeerDeskcontroleUitExcel(
     };
   }
 
+  /*
+   * C7 wordt bij bulkimport bewust
+   * niet gecontroleerd of gekoppeld.
+   */
   const procescertificaat =
-    overeenkomendeProcessen[0] ??
-    null;
+    bulkimport
+      ? null
+      : overeenkomendeProcessen[0] ??
+        null;
 
-  if (!procescertificaat) {
+  if (
+    !bulkimport &&
+    !procescertificaat
+  ) {
     return {
       message:
         `Er werd geen actief procescertificaat gevonden voor ondernemingsnummer ${ondernemingsnummer}.`,
@@ -1022,7 +1053,8 @@ export async function importeerDeskcontroleUitExcel(
                 auditeur,
                 lidId: lid.id,
                 procescertificaatId:
-                  procescertificaat.id,
+                  procescertificaat?.id ??
+                  null,
                 linkAttest,
                 attestnummer,
                 status: "GEEN",
@@ -1040,7 +1072,8 @@ export async function importeerDeskcontroleUitExcel(
                  * procescertificaat.
                  */
                 oneDrive:
-                  procescertificaat.oneDrive,
+                  procescertificaat?.oneDrive ??
+                  null,
 
                 voorwaardelijkeOpheffing:
                   false,

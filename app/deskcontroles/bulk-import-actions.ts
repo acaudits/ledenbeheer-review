@@ -792,6 +792,17 @@ export async function importeerDeskcontroleBatch(
       bestand,
     );
 
+    /*
+     * Hiermee gebruikt de onderliggende
+     * import de speciale bulkregels:
+     * B7 mag verwijderd zijn en C7
+     * wordt niet gecontroleerd.
+     */
+    formulier.set(
+      "bulkimport",
+      "1",
+    );
+
     let status:
       ExcelImportState | null =
       null;

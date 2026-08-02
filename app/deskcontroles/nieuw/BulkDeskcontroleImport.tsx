@@ -519,6 +519,12 @@ export default function BulkDeskcontroleImport() {
             in batches van {BATCHGROOTTE} verwerkt. Je hoeft ze maar
             één keer te selecteren.
           </p>
+
+          <p className="mt-2 max-w-4xl text-xs leading-5 text-slate-500">
+            Cel B7 wordt gekoppeld aan een actief of verwijderd
+            persoonscertificaat. Cel C7 wordt bij deze bulkimport
+            niet gecontroleerd.
+          </p>
         </div>
 
         <div className="mt-6 grid gap-5 lg:grid-cols-2">
