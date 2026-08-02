@@ -3,6 +3,7 @@ import { vereisMachtiging } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import DeskcontroleFormulier from "./DeskcontroleFormulier";
 import ExcelDeskcontroleImport from "./ExcelDeskcontroleImport";
+import BulkDeskcontroleImport from "./BulkDeskcontroleImport";
 
 
 export const dynamic = "force-dynamic";
@@ -70,6 +71,20 @@ export default async function NieuweDeskcontrolePage() {
             berekend.
           </p>
         </header>
+
+        <BulkDeskcontroleImport />
+
+        <div className="border-b border-slate-200 bg-white px-6 py-4 sm:px-8">
+          <div className="flex items-center gap-4">
+            <div className="h-px flex-1 bg-slate-200" />
+
+            <span className="text-xs font-bold uppercase tracking-[0.14em] text-slate-400">
+              Of één bestand importeren
+            </span>
+
+            <div className="h-px flex-1 bg-slate-200" />
+          </div>
+        </div>
 
         <ExcelDeskcontroleImport />
         <div className="border-b border-slate-200 bg-white px-6 py-4 sm:px-8">
