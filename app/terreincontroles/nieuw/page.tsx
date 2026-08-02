@@ -3,6 +3,7 @@ import Link from "next/link";
 import { maakTerreincontroleAan } from "@/app/terreincontroles/actions";
 import { vereisMachtiging } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import TerreincontroleExcelImport from "./TerreincontroleExcelImport";
 
 export const dynamic = "force-dynamic";
 
@@ -111,6 +112,16 @@ export default async function NieuweTerreincontrolePage({
       >
         ← Terug naar terreincontroles
       </Link>
+
+      <TerreincontroleExcelImport />
+
+      <div className="flex items-center gap-4">
+        <div className="h-px flex-1 bg-slate-200" />
+        <span className="text-xs font-bold uppercase tracking-[0.14em] text-slate-400">
+          Of handmatig invoeren
+        </span>
+        <div className="h-px flex-1 bg-slate-200" />
+      </div>
 
       <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
         <p className="text-sm font-semibold text-emerald-700">
