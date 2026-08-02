@@ -4,6 +4,7 @@ import { VerwijderButton as BasisVerwijderButton } from "@/components/Certificaa
 import { CopyButton } from "@/components/CopyButton";
 import { OpmerkingDialog } from "@/components/OpmerkingDialog";
 import NextLink from "next/link";
+import { useRouter } from "next/navigation";
 import { useMemo, useState, type ComponentProps } from "react";
 
 export type CertificaatKolom = {
@@ -26,6 +27,7 @@ type CertificatenTabelProps = {
   nieuwHref: string;
   nieuwTekst: string;
   bewerkBasisHref: string;
+  detailBasisHref?: string;
   soort: "persoon" | "proces";
   magBeheren: boolean;
 };
@@ -141,9 +143,11 @@ export function CertificatenTabel({
   nieuwHref,
   nieuwTekst,
   bewerkBasisHref,
+  detailBasisHref,
   soort,
   magBeheren,
 }: CertificatenTabelProps) {
+  const router = useRouter();
   function Link(
     props: ComponentProps<typeof NextLink>,
   ) {
@@ -1007,7 +1011,73 @@ export function CertificatenTabel({
                   (rij) => (
                     <tr
                       key={rij.id}
-                      className="group bg-white hover:bg-emerald-50/35"
+                      tabIndex={
+                        detailBasisHref
+                          ? 0
+                          : undefined
+                      }
+                      role={
+                        detailBasisHref
+                          ? "link"
+                          : undefined
+                      }
+                      aria-label={
+                        detailBasisHref
+                          ? `Open detail van ${
+                              rij.naamPersoon ??
+                              rij.bedrijf ??
+                              `record ${rij.id}`
+                            }`
+                          : undefined
+                      }
+                      onClick={(event) => {
+                        if (
+                          !detailBasisHref ||
+                          (
+                            event.target instanceof
+                              Element &&
+                            event.target.closest(
+                              "a, button, input, select, textarea, [role='button']",
+                            )
+                          )
+                        ) {
+                          return;
+                        }
+
+                        router.push(
+                          `${detailBasisHref}/${rij.id}`,
+                        );
+                      }}
+                      onKeyDown={(event) => {
+                        if (
+                          !detailBasisHref ||
+                          (
+                            event.key !==
+                              "Enter" &&
+                            event.key !== " "
+                          )
+                        ) {
+                          return;
+                        }
+
+                        if (
+                          event.target !==
+                          event.currentTarget
+                        ) {
+                          return;
+                        }
+
+                        event.preventDefault();
+
+                        router.push(
+                          `${detailBasisHref}/${rij.id}`,
+                        );
+                      }}
+                      className={`group bg-white hover:bg-emerald-50/35 ${
+                        detailBasisHref
+                          ? "cursor-pointer focus:outline-none focus:ring-2 focus:ring-inset focus:ring-emerald-500"
+                          : ""
+                      }`}
                     >
                       {kolommen.map(
                         (kolom, index) => {

@@ -131,6 +131,7 @@ export default async function PersoonscertificatenPage() {
         nieuwHref="/persoonscertificaten/nieuw"
         nieuwTekst="Nieuw persoonscertificaat"
         bewerkBasisHref="/persoonscertificaten"
+        detailBasisHref="/persoonscertificaten"
         soort="persoon"
         magBeheren={magBeheren}
       />
