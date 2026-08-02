@@ -16,6 +16,8 @@ import {
   type TerreincontroleExcelState,
 } from "../planning-import-actions";
 
+import PlaatsbezoekenKaart from "./PlaatsbezoekenKaart";
+
 const TERREINCONTROLE_AUDITEURS = [
   "Ismail El Mourabet",
   "Koen De Boel",
@@ -665,6 +667,10 @@ export default function TerreincontroleExcelImport() {
             </p>
           </div>
 
+          <PlaatsbezoekenKaart
+            rijen={zichtbareRijen}
+          />
+
           <div className="max-h-[72vh] overflow-auto">
             <table className="min-w-[4800px] border-collapse text-left text-xs">
               <thead className="sticky top-0 z-20 bg-slate-100">
@@ -1148,7 +1154,7 @@ export default function TerreincontroleExcelImport() {
             </table>
           </div>
 
-          <footer className="border-t border-slate-200 bg-slate-50 p-4">
+<footer className="border-t border-slate-200 bg-slate-50 p-4">
             <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
               <div>
                 <p className="text-sm text-slate-600">

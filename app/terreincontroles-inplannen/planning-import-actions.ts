@@ -7,6 +7,8 @@ import {
   type TerreincontroleExcelState as BasisTerreincontroleExcelState,
 } from "./import-actions";
 
+import { unstable_cache } from "next/cache";
+
 import { vereisMachtiging } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
@@ -25,6 +27,12 @@ export type TerreincontroleExcelRij =
     laatsteTerreincontrole: string | null;
     planningStatus: PlanningStatus;
     planningStatusTekst: string;
+    latitude: number | null;
+    longitude: number | null;
+    geocodeStatus:
+      | "GEVONDEN"
+      | "NIET_GEVONDEN"
+      | "GEEN_ADRES";
   };
 
 export type TerreincontroleExcelState =
@@ -104,6 +112,228 @@ function bepaalAuditeur(gebruiker: {
     gebruiker.naam ??
     gebruiker.email
   );
+}
+
+type GeocodeResultaat = {
+  latitude: number;
+  longitude: number;
+} | null;
+
+const geocodeerAdresMetCache =
+  unstable_cache(
+    async (
+      adres: string,
+    ): Promise<GeocodeResultaat> => {
+      const url = new URL(
+        "https://geo.api.vlaanderen.be/geolocation/v4/Location",
+      );
+
+      url.searchParams.set(
+        "q",
+        adres,
+      );
+
+      url.searchParams.set(
+        "type",
+        "Housenumber",
+      );
+
+      const antwoord = await fetch(
+        url,
+        {
+          headers: {
+            Accept:
+              "application/json",
+          },
+          signal:
+            AbortSignal.timeout(
+              10000,
+            ),
+        },
+      );
+
+      if (!antwoord.ok) {
+        throw new Error(
+          `Geocodering gaf HTTP ${antwoord.status}.`,
+        );
+      }
+
+      const gegevens:
+        unknown =
+        await antwoord.json();
+
+      if (
+        typeof gegevens !== "object" ||
+        gegevens === null ||
+        !(
+          "LocationResult" in
+          gegevens
+        ) ||
+        !Array.isArray(
+          gegevens.LocationResult,
+        )
+      ) {
+        return null;
+      }
+
+      const eerste =
+        gegevens.LocationResult[0];
+
+      if (
+        typeof eerste !== "object" ||
+        eerste === null ||
+        !("Location" in eerste) ||
+        typeof eerste.Location !==
+          "object" ||
+        eerste.Location === null
+      ) {
+        return null;
+      }
+
+      const locatie =
+        eerste.Location as {
+          Lat_WGS84?: unknown;
+          Lon_WGS84?: unknown;
+        };
+
+      const latitude =
+        Number(
+          locatie.Lat_WGS84,
+        );
+
+      const longitude =
+        Number(
+          locatie.Lon_WGS84,
+        );
+
+      if (
+        !Number.isFinite(latitude) ||
+        !Number.isFinite(longitude) ||
+        latitude < -90 ||
+        latitude > 90 ||
+        longitude < -180 ||
+        longitude > 180
+      ) {
+        return null;
+      }
+
+      return {
+        latitude,
+        longitude,
+      };
+    },
+    [
+      "t11b-geocodering-digitaal-vlaanderen-v1",
+    ],
+    {
+      revalidate:
+        30 * 24 * 60 * 60,
+    },
+  );
+
+function maakGeocodeAdres(
+  rij: BasisTerreincontroleExcelRij,
+) {
+  const straatEnNummer = [
+    rij.straat.trim(),
+    rij.huisnummer.trim(),
+  ]
+    .filter(Boolean)
+    .join(" ");
+
+  const postcodeEnGemeente = [
+    rij.postcode.trim(),
+    rij.gemeente.trim(),
+  ]
+    .filter(Boolean)
+    .join(" ");
+
+  const samengesteld = [
+    straatEnNummer,
+    rij.extraAdresDetails.trim(),
+    postcodeEnGemeente,
+  ]
+    .filter(Boolean)
+    .join(", ");
+
+  return (
+    samengesteld ||
+    rij.inspectielocatie.trim()
+  );
+}
+
+async function geocodeerInBatches(
+  rijen: BasisTerreincontroleExcelRij[],
+) {
+  const resultaten = new Map<
+    string,
+    GeocodeResultaat
+  >();
+
+  const adressen = [
+    ...new Set(
+      rijen
+        .map(maakGeocodeAdres)
+        .filter(Boolean),
+    ),
+  ];
+
+  const GELIJKTIJDIG = 5;
+
+  for (
+    let index = 0;
+    index < adressen.length;
+    index += GELIJKTIJDIG
+  ) {
+    const batch =
+      adressen.slice(
+        index,
+        index + GELIJKTIJDIG,
+      );
+
+    const batchResultaten =
+      await Promise.all(
+        batch.map(
+          async (adres) => {
+            try {
+              const resultaat =
+                await geocodeerAdresMetCache(
+                  adres,
+                );
+
+              return [
+                adres,
+                resultaat,
+              ] as const;
+            } catch (fout) {
+              console.error(
+                `Geocodering mislukt voor "${adres}":`,
+                fout,
+              );
+
+              return [
+                adres,
+                null,
+              ] as const;
+            }
+          },
+        ),
+      );
+
+    for (
+      const [
+        adres,
+        resultaat,
+      ] of batchResultaten
+    ) {
+      resultaten.set(
+        adres,
+        resultaat,
+      );
+    }
+  }
+
+  return resultaten;
 }
 
 function bepaalPlanningStatus({
@@ -312,6 +542,11 @@ export async function leesTerreincontrolesUitExcel(
     ),
   );
 
+  const geocodeResultaten =
+    await geocodeerInBatches(
+      basisRijen,
+    );
+
   const rijen: TerreincontroleExcelRij[] =
     basisRijen.map((basisRij) => {
       const ovamSleutel =
@@ -358,10 +593,34 @@ export async function leesTerreincontrolesUitExcel(
           laatsteTerreincontrole,
         });
 
+      const geocodeAdres =
+        maakGeocodeAdres(
+          basisRij,
+        );
+
+      const geocodeResultaat =
+        geocodeAdres
+          ? geocodeResultaten.get(
+              geocodeAdres,
+            ) ?? null
+          : null;
+
       return {
         ...basisRij,
         auditeur:
           standaardAuditeur,
+        latitude:
+          geocodeResultaat?.latitude ??
+          null,
+        longitude:
+          geocodeResultaat?.longitude ??
+          null,
+        geocodeStatus:
+          !geocodeAdres
+            ? "GEEN_ADRES"
+            : geocodeResultaat
+              ? "GEVONDEN"
+              : "NIET_GEVONDEN",
         aantalAttesten,
         terreincontroleTarget,
         aantalTerreincontroles,
