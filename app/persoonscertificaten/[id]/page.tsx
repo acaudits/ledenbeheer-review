@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { PersoonsTerreincontroles } from "@/components/PersoonsTerreincontroles";
 import {
   notFound,
 } from "next/navigation";
@@ -85,42 +86,6 @@ function deskcontroleStatusStijl(
 
     case "IN_OPMAAK":
       return "border-amber-200 bg-amber-100 text-amber-900";
-
-    default:
-      return "border-slate-200 bg-slate-100 text-slate-700";
-  }
-}
-
-function terreincontroleStatusLabel(
-  status: string | null,
-) {
-  switch (status) {
-    case "ACTUEEL_ATTEST":
-      return "Actueel attest";
-
-    case "IN_OPMAAK":
-      return "In opmaak";
-
-    case "GEARCHIVEERD_ATTEST":
-      return "Gearchiveerd attest";
-
-    default:
-      return "Geen status";
-  }
-}
-
-function terreincontroleStatusStijl(
-  status: string | null,
-) {
-  switch (status) {
-    case "ACTUEEL_ATTEST":
-      return "border-emerald-200 bg-emerald-100 text-emerald-900";
-
-    case "IN_OPMAAK":
-      return "border-amber-200 bg-amber-100 text-amber-900";
-
-    case "GEARCHIVEERD_ATTEST":
-      return "border-rose-200 bg-rose-100 text-rose-900";
 
     default:
       return "border-slate-200 bg-slate-100 text-slate-700";
@@ -269,36 +234,22 @@ export default async function PersoonscertificaatDetailPage({
   }
 
   const terreincontroles =
-    await prisma.terreincontrole.findMany({
+    await prisma.terreincontroleDossier.findMany({
       where: {
         verwijderdOp: null,
-        ovamId: persoon.ovamId,
+        lidId: persoon.id,
       },
-      orderBy: [
-        {
-          datumPlaatsbezoek:
-            "desc",
-        },
-        {
-          id: "desc",
-        },
-      ],
       select: {
         id: true,
-        status: true,
-        factuurVerzonden: true,
-        datumPlaatsbezoek:
-          true,
-        uurPlaatsbezoek: true,
-        inspectielocatie: true,
-        adres: true,
-        bedrijfsnaam: true,
-        attestId: true,
-        opmerkingen: true,
+        vaststellingen: {
+          select: {
+            id: true,
+          },
+        },
       },
     });
 
-  const aantalVaststellingen =
+  const aantalDeskcontroleVaststellingen =
     persoon.deskcontroles.reduce(
       (
         totaal,
@@ -309,6 +260,22 @@ export default async function PersoonscertificaatDetailPage({
           .vaststellingen.length,
       0,
     );
+
+  const aantalTerreincontroleVaststellingen =
+    terreincontroles.reduce(
+      (
+        totaal,
+        terreincontrole,
+      ) =>
+        totaal +
+        terreincontrole
+          .vaststellingen.length,
+      0,
+    );
+
+  const aantalVaststellingen =
+    aantalDeskcontroleVaststellingen +
+    aantalTerreincontroleVaststellingen;
 
   return (
     <div className="mx-auto max-w-[1600px] space-y-6">
@@ -710,137 +677,9 @@ export default async function PersoonscertificaatDetailPage({
         )}
       </section>
 
-      <section className="space-y-4">
-        <div>
-          <h2 className="text-xl font-bold text-slate-950">
-            Terreincontroles
-          </h2>
-
-          <p className="mt-1 text-sm text-slate-600">
-            Actieve terreincontroles
-            gekoppeld via OVAM-ID{" "}
-            {persoon.ovamId}.
-          </p>
-        </div>
-
-        {terreincontroles.length ===
-        0 ? (
-          <div className="rounded-3xl border border-slate-200 bg-white px-6 py-12 text-center shadow-sm">
-            <p className="font-bold text-slate-900">
-              Geen terreincontroles
-            </p>
-
-            <p className="mt-2 text-sm text-slate-500">
-              Er zijn geen actieve
-              terreincontroles met
-              hetzelfde OVAM-ID.
-            </p>
-          </div>
-        ) : (
-          <div className="grid gap-4 lg:grid-cols-2">
-            {terreincontroles.map(
-              (terreincontrole) => (
-                <article
-                  key={
-                    terreincontrole.id
-                  }
-                  className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm"
-                >
-                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                    <div>
-                      <h3 className="font-bold text-slate-950">
-                        Terreincontrole #
-                        {
-                          terreincontrole.id
-                        }
-                      </h3>
-
-                      <span
-                        className={`mt-2 inline-flex rounded-full border px-3 py-1 text-xs font-bold ${terreincontroleStatusStijl(
-                          terreincontrole.status,
-                        )}`}
-                      >
-                        {terreincontroleStatusLabel(
-                          terreincontrole.status,
-                        )}
-                      </span>
-                    </div>
-
-                    <Link
-                      href={`/terreincontroles-inplannen/${terreincontrole.id}`}
-                      className="text-sm font-bold text-emerald-700 hover:underline"
-                    >
-                      Bekijken →
-                    </Link>
-                  </div>
-
-                  <dl className="mt-5 grid gap-4 sm:grid-cols-2">
-                    <GegevensVeld
-                      label="Datum plaatsbezoek"
-                      waarde={formatteerDatum(
-                        terreincontrole
-                          .datumPlaatsbezoek,
-                      )}
-                    />
-
-                    <GegevensVeld
-                      label="Uur"
-                      waarde={
-                        terreincontrole
-                          .uurPlaatsbezoek
-                      }
-                    />
-
-                    <GegevensVeld
-                      label="Inspectielocatie"
-                      waarde={
-                        terreincontrole
-                          .inspectielocatie ??
-                        terreincontrole
-                          .adres
-                      }
-                    />
-
-                    <GegevensVeld
-                      label="Bedrijf"
-                      waarde={
-                        terreincontrole
-                          .bedrijfsnaam
-                      }
-                    />
-
-                    <GegevensVeld
-                      label="Attest-ID"
-                      waarde={
-                        terreincontrole
-                          .attestId
-                      }
-                    />
-
-                    <GegevensVeld
-                      label="Factuur verzonden"
-                      waarde={
-                        terreincontrole
-                          .factuurVerzonden
-                          ? "Ja"
-                          : "Nee"
-                      }
-                    />
-
-                    <GegevensVeld
-                      label="Opmerkingen"
-                      waarde={
-                        terreincontrole
-                          .opmerkingen
-                      }
-                    />
-                  </dl>
-                </article>
-              ),
-            )}
-          </div>
-        )}
-      </section>
+      <PersoonsTerreincontroles
+        lidId={persoon.id}
+      />
     </div>
   );
 }

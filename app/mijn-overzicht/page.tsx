@@ -43,20 +43,20 @@ function deskstatusLabel(
 }
 
 function terreinstatusLabel(
-  status: string | null,
+  status: string,
 ) {
   switch (status) {
-    case "ACTUEEL_ATTEST":
-      return "Actueel attest";
-
     case "IN_OPMAAK":
       return "In opmaak";
 
-    case "GEARCHIVEERD_ATTEST":
-      return "Gearchiveerd attest";
+    case "GEACTUALISEERD":
+      return "Geactualiseerd";
+
+    case "AFGEROND":
+      return "Afgerond";
 
     default:
-      return "Geen status";
+      return "Geen";
   }
 }
 
@@ -231,7 +231,7 @@ export default async function MijnOverzichtPage({
     verwijderdOp: null,
     ...(datumVanaf
       ? {
-          datumPlaatsbezoek: {
+          datumControle: {
             gte: datumVanaf,
           },
         }
@@ -336,23 +336,23 @@ export default async function MijnOverzichtPage({
       },
     }),
 
-    prisma.terreincontrole.count({
+    prisma.terreincontroleDossier.count({
       where: {
         ...terreinFilter,
       },
     }),
 
-    prisma.terreincontrole.count({
+    prisma.terreincontroleDossier.count({
       where: {
         ...terreinFilter,
         status: "IN_OPMAAK",
       },
     }),
 
-    prisma.terreincontrole.count({
+    prisma.terreincontroleDossier.count({
       where: {
         ...terreinFilter,
-        datumPlaatsbezoek: {
+        datumControle: {
           gte: vandaag,
         },
       },
@@ -386,22 +386,26 @@ export default async function MijnOverzichtPage({
       take: 8,
     }),
 
-    prisma.terreincontrole.findMany({
+    prisma.terreincontroleDossier.findMany({
       where: {
         ...terreinFilter,
       },
       select: {
         id: true,
         status: true,
-        datumPlaatsbezoek: true,
-        uurPlaatsbezoek: true,
-        inspectielocatie: true,
-        gemeente: true,
+        datumControle: true,
+        adres: true,
+        bedrijfsnaam: true,
         naamAdi: true,
+        _count: {
+          select: {
+            vaststellingen: true,
+          },
+        },
       },
       orderBy: [
         {
-          datumPlaatsbezoek: "desc",
+          datumControle: "desc",
         },
         {
           id: "desc",
@@ -959,27 +963,31 @@ export default async function MijnOverzichtPage({
                     >
                       <td className="px-5 py-4">
                         <Link
-                          href={`/terreincontroles-inplannen/${controle.id}`}
+                          href={`/terreincontroles/${controle.id}`}
                           className="font-semibold text-emerald-700 hover:underline"
                         >
                           {controle.naamAdi ??
                             `Terreincontrole #${controle.id}`}
                         </Link>
+
+                        <p className="mt-1 text-xs text-slate-500">
+                          {controle._count.vaststellingen}{" "}
+                          {controle._count.vaststellingen === 1
+                            ? "vaststelling"
+                            : "vaststellingen"}
+                        </p>
                       </td>
 
                       <td className="px-5 py-4 text-slate-700">
-                        {controle.inspectielocatie ??
-                          controle.gemeente ??
+                        {controle.adres ??
+                          controle.bedrijfsnaam ??
                           "—"}
                       </td>
 
                       <td className="whitespace-nowrap px-5 py-4 text-slate-700">
                         {formatteerDatum(
-                          controle.datumPlaatsbezoek,
+                          controle.datumControle,
                         )}
-                        {controle.uurPlaatsbezoek
-                          ? ` · ${controle.uurPlaatsbezoek}`
-                          : ""}
                       </td>
 
                       <td className="whitespace-nowrap px-5 py-4 text-slate-700">
