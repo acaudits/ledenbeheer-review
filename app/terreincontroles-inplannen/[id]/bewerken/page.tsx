@@ -195,7 +195,7 @@ export default async function TerreincontroleBewerkenPage({
       <div className="mx-auto max-w-6xl">
         <div className="mb-6">
           <Link
-            href={`/terreincontroles/${id}`}
+            href={`/terreincontroles-inplannen/${id}`}
             className="text-sm font-semibold text-emerald-700 hover:text-emerald-900"
           >
             ← Terug naar terreincontrole

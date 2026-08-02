@@ -537,7 +537,7 @@ export async function GET() {
           "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
 
         "Content-Disposition":
-          `attachment; filename="terreincontroles-${bestandsdatum()}.xlsx"`,
+          `attachment; filename="terreincontrole-planning-${bestandsdatum()}.xlsx"`,
 
         "Cache-Control":
           "no-store",

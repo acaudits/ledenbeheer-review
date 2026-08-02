@@ -79,7 +79,7 @@ export default async function NieuweTerreincontrolePage() {
           </div>
 
           <Link
-            href="/terreincontroles"
+            href="/terreincontroles-inplannen"
             className="inline-flex h-10 items-center justify-center rounded-xl border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
           >
             Terug naar overzicht

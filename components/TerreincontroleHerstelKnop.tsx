@@ -11,7 +11,7 @@ import {
 
 import {
   herstelTerreincontrole,
-} from "@/app/terreincontroles/verwijder-acties";
+} from "@/app/terreincontroles-inplannen/verwijder-acties";
 
 type Props = {
   id: number;

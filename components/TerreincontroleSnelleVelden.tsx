@@ -8,7 +8,7 @@ import {
 import {
   wijzigTerreincontroleFactuur,
   wijzigTerreincontroleStatus,
-} from "@/app/terreincontroles/snelle-acties";
+} from "@/app/terreincontroles-inplannen/snelle-acties";
 
 type TerreincontroleStatus =
   | "GEARCHIVEERD_ATTEST"

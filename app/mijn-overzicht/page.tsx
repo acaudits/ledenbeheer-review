@@ -919,7 +919,7 @@ export default async function MijnOverzichtPage({
           </div>
 
           <Link
-            href="/terreincontroles"
+            href="/terreincontroles-inplannen"
             className="text-sm font-semibold text-emerald-700 hover:text-emerald-900"
           >
             Alle terreincontroles →
@@ -959,7 +959,7 @@ export default async function MijnOverzichtPage({
                     >
                       <td className="px-5 py-4">
                         <Link
-                          href={`/terreincontroles/${controle.id}`}
+                          href={`/terreincontroles-inplannen/${controle.id}`}
                           className="font-semibold text-emerald-700 hover:underline"
                         >
                           {controle.naamAdi ??

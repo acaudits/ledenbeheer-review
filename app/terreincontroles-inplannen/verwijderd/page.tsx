@@ -92,7 +92,7 @@ export default async function VerwijderdeTerreincontrolesPage() {
         <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <Link
-              href="/terreincontroles"
+              href="/terreincontroles-inplannen"
               className="text-sm font-semibold text-emerald-700 hover:text-emerald-900"
             >
               ← Terug naar terreincontroles

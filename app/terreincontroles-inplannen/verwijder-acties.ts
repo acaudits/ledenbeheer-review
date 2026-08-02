@@ -27,15 +27,15 @@ function vernieuwPaden(
   id: number,
 ) {
   revalidatePath(
-    "/terreincontroles",
+    "/terreincontroles-inplannen",
   );
 
   revalidatePath(
-    "/terreincontroles/verwijderd",
+    "/terreincontroles-inplannen/verwijderd",
   );
 
   revalidatePath(
-    `/terreincontroles/${id}`,
+    `/terreincontroles-inplannen/${id}`,
   );
 }
 

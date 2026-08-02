@@ -73,8 +73,8 @@ const navigatie = [
     ),
   },
   {
-    naam: "Terreincontroles",
-    href: "/terreincontroles",
+    naam: "Inplannen terreincontrole",
+    href: "/terreincontroles-inplannen",
     icoon: (
       <svg
         viewBox="0 0 24 24"

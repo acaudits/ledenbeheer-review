@@ -1952,7 +1952,7 @@ export async function bevestigTerreincontrolesUitExcel(
 
   revalidatePath("/");
   revalidatePath(
-    "/terreincontroles",
+    "/terreincontroles-inplannen",
   );
 
   return {

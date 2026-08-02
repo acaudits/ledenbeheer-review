@@ -767,7 +767,7 @@ export default async function PersoonscertificaatDetailPage({
                     </div>
 
                     <Link
-                      href={`/terreincontroles/${terreincontrole.id}`}
+                      href={`/terreincontroles-inplannen/${terreincontrole.id}`}
                       className="text-sm font-bold text-emerald-700 hover:underline"
                     >
                       Bekijken →

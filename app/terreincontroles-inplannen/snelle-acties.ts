@@ -43,10 +43,10 @@ function herlaadTerreincontrolePaden(
 ) {
   revalidatePath("/");
   revalidatePath(
-    "/terreincontroles",
+    "/terreincontroles-inplannen",
   );
   revalidatePath(
-    `/terreincontroles/${id}`,
+    `/terreincontroles-inplannen/${id}`,
   );
 }
 

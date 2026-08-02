@@ -11,7 +11,7 @@ import {
 
 import {
   verwijderTerreincontrole,
-} from "@/app/terreincontroles/verwijder-acties";
+} from "@/app/terreincontroles-inplannen/verwijder-acties";
 
 type Props = {
   id: number;
@@ -64,7 +64,7 @@ export default function TerreincontroleVerwijderKnop({
         }
 
         router.push(
-          "/terreincontroles",
+          "/terreincontroles-inplannen",
         );
 
         router.refresh();

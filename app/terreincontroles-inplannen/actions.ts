@@ -383,11 +383,11 @@ export async function maakTerreincontroleAan(
 
   revalidatePath("/");
   revalidatePath(
-    "/terreincontroles",
+    "/terreincontroles-inplannen",
   );
 
   redirect(
-    "/terreincontroles",
+    "/terreincontroles-inplannen",
   );
 }
 

@@ -10,11 +10,11 @@ import {
   isGeldigeTerreincontroleAuditeur,
 } from "@/lib/terreincontrole";
 
-type ActieStatus = {
+type FormulierStatus = {
   fout: string;
 };
 
-type TerreincontroleStatus =
+type Status =
   | "GEARCHIVEERD_ATTEST"
   | "ACTUEEL_ATTEST"
   | "IN_OPMAAK"
@@ -30,26 +30,31 @@ function leesTekst(
   const waarde =
     formData.get(naam);
 
-  return typeof waarde === "string"
-    ? waarde.trim()
-    : "";
+  if (
+    typeof waarde !== "string"
+  ) {
+    return "";
+  }
+
+  return waarde.trim();
 }
 
 function leesOptioneleTekst(
   formData: FormData,
   naam: string,
 ) {
-  return (
-    leesTekst(formData, naam) ||
-    null
-  );
+  const waarde =
+    leesTekst(
+      formData,
+      naam,
+    );
+
+  return waarde || null;
 }
 
 function leesStatus(
   waarde: string,
-):
-  | TerreincontroleStatus
-  | "ONGELDIG" {
+): Status | "ONGELDIG" {
   if (
     waarde === "" ||
     waarde === "NULL"
@@ -83,11 +88,15 @@ function leesDatum(
       `${waarde}T00:00:00.000Z`,
     );
 
-  return Number.isNaN(
-    datum.getTime(),
-  )
-    ? null
-    : datum;
+  if (
+    Number.isNaN(
+      datum.getTime(),
+    )
+  ) {
+    return null;
+  }
+
+  return datum;
 }
 
 function maakAdres({
@@ -119,55 +128,26 @@ function maakAdres({
     .filter(Boolean)
     .join(" ");
 
+  const samengesteldAdres = [
+    straatEnNummer,
+    postcodeEnGemeente,
+    extraAdresDetails,
+  ]
+    .filter(Boolean)
+    .join(", ");
+
   return (
-    [
-      straatEnNummer,
-      postcodeEnGemeente,
-      extraAdresDetails,
-    ]
-      .filter(Boolean)
-      .join(", ") ||
+    samengesteldAdres ||
     inspectielocatie ||
     null
   );
 }
 
-export async function wijzigTerreincontrole(
-  id: number,
-  _vorigeStatus: ActieStatus,
+export async function maakHandmatigeTerreincontrole(
+  _vorigeStatus: FormulierStatus,
   formData: FormData,
-): Promise<ActieStatus> {
+): Promise<FormulierStatus> {
   await vereisMachtiging("TERREINCONTROLES_BEHEREN");
-
-  if (
-    !Number.isInteger(id) ||
-    id <= 0
-  ) {
-    return {
-      fout:
-        "Ongeldige terreincontrole.",
-    };
-  }
-
-  const bestaandeTerreincontrole =
-    await prisma.terreincontrole.findFirst(
-      {
-        where: {
-          id,
-          verwijderdOp: null,
-        },
-        select: {
-          id: true,
-        },
-      },
-    );
-
-  if (!bestaandeTerreincontrole) {
-    return {
-      fout:
-        "De terreincontrole bestaat niet of werd verwijderd.",
-    };
-  }
 
   const auditeur =
     leesTekst(
@@ -387,21 +367,6 @@ export async function wijzigTerreincontrole(
       "extraAdresDetails",
     );
 
-  const opmerkingen =
-    leesTekst(
-      formData,
-      "opmerkingen",
-    );
-
-  if (
-    opmerkingen.length > 5000
-  ) {
-    return {
-      fout:
-        "Opmerkingen mogen maximaal 5000 tekens bevatten.",
-    };
-  }
-
   const adres = maakAdres({
     inspectielocatie,
     straat,
@@ -411,118 +376,122 @@ export async function wijzigTerreincontrole(
     extraAdresDetails,
   });
 
+  let nieuwId: number;
+
   try {
-    await prisma.terreincontrole.update(
-      {
-        where: {
-          id,
+    const terreincontrole =
+      await prisma.terreincontrole.create(
+        {
+          data: {
+            auditeur,
+            status,
+            factuurVerzonden:
+              leesTekst(
+                formData,
+                "factuurVerzonden",
+              ) === "JA",
+
+            inspectielocatie,
+            bouwjaar,
+            vloeroppervlakteM2,
+
+            datumPlaatsbezoek,
+            uurPlaatsbezoek:
+              uurPlaatsbezoek ||
+              null,
+
+            ovamId:
+              leesOptioneleTekst(
+                formData,
+                "ovamId",
+              ),
+
+            naamAdi:
+              leesOptioneleTekst(
+                formData,
+                "naamAdi",
+              ),
+
+            attestUrl:
+              attestUrl ||
+              null,
+
+            bedrijfsnaam:
+              leesOptioneleTekst(
+                formData,
+                "bedrijfsnaam",
+              ),
+
+            postcode:
+              postcode || null,
+
+            gemeente:
+              gemeente || null,
+
+            straat:
+              straat || null,
+
+            huisnummer:
+              huisnummer || null,
+
+            extraAdresDetails:
+              extraAdresDetails ||
+              null,
+
+            perceelGemeenteCode:
+              leesOptioneleTekst(
+                formData,
+                "perceelGemeenteCode",
+              ),
+
+            perceelAfdelingscode:
+              leesOptioneleTekst(
+                formData,
+                "perceelAfdelingscode",
+              ),
+
+            perceelSectieCode:
+              leesOptioneleTekst(
+                formData,
+                "perceelSectieCode",
+              ),
+
+            attestId,
+            adres,
+
+            opmerkingen:
+              leesOptioneleTekst(
+                formData,
+                "opmerkingen",
+              ),
+          },
+
+          select: {
+            id: true,
+          },
         },
-        data: {
-          auditeur,
-          status,
+      );
 
-          factuurVerzonden:
-            leesTekst(
-              formData,
-              "factuurVerzonden",
-            ) === "JA",
-
-          inspectielocatie,
-          bouwjaar,
-          vloeroppervlakteM2,
-
-          datumPlaatsbezoek,
-
-          uurPlaatsbezoek:
-            uurPlaatsbezoek ||
-            null,
-
-          ovamId:
-            leesOptioneleTekst(
-              formData,
-              "ovamId",
-            ),
-
-          naamAdi:
-            leesOptioneleTekst(
-              formData,
-              "naamAdi",
-            ),
-
-          attestUrl:
-            attestUrl || null,
-
-          bedrijfsnaam:
-            leesOptioneleTekst(
-              formData,
-              "bedrijfsnaam",
-            ),
-
-          postcode:
-            postcode || null,
-
-          gemeente:
-            gemeente || null,
-
-          straat:
-            straat || null,
-
-          huisnummer:
-            huisnummer ||
-            null,
-
-          extraAdresDetails:
-            extraAdresDetails ||
-            null,
-
-          perceelGemeenteCode:
-            leesOptioneleTekst(
-              formData,
-              "perceelGemeenteCode",
-            ),
-
-          perceelAfdelingscode:
-            leesOptioneleTekst(
-              formData,
-              "perceelAfdelingscode",
-            ),
-
-          perceelSectieCode:
-            leesOptioneleTekst(
-              formData,
-              "perceelSectieCode",
-            ),
-
-          adres,
-          attestId,
-
-          opmerkingen:
-            opmerkingen || null,
-        },
-      },
-    );
+    nieuwId =
+      terreincontrole.id;
   } catch (fout) {
     console.error(
-      "Terreincontrole wijzigen mislukt:",
+      "Handmatige terreincontrole opslaan mislukt:",
       fout,
     );
 
     return {
       fout:
-        "Opslaan is mislukt. Controleer of de Attest-ID al bij een andere terreincontrole wordt gebruikt.",
+        "Opslaan is mislukt. Controleer of deze Attest-ID al bestaat.",
     };
   }
 
   revalidatePath(
-    "/terreincontroles",
-  );
-
-  revalidatePath(
-    `/terreincontroles/${id}`,
+    "/terreincontroles-inplannen",
   );
 
   redirect(
-    `/terreincontroles/${id}`,
+    `/terreincontroles-inplannen/${nieuwId}`,
   );
 }
 

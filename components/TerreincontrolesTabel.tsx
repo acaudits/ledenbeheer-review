@@ -8,7 +8,6 @@ import {
 } from "react";
 import {
   TerreincontroleFactuurSelect as BasisTerreincontroleFactuurSelect,
-  TerreincontroleStatusSelect as BasisTerreincontroleStatusSelect,
 } from "@/components/TerreincontroleSnelleVelden";
 
 type TerreincontroleStatus =
@@ -193,27 +192,6 @@ export function TerreincontrolesTabel({
     }
 
     return <NextLink {...props} />;
-  }
-
-  function TerreincontroleStatusSelect(
-    props: ComponentProps<
-      typeof BasisTerreincontroleStatusSelect
-    >,
-  ) {
-    if (!magBeheren) {
-      return (
-        <span className="font-semibold text-slate-700">
-          {props.beginwaarde ??
-            "Geen status"}
-        </span>
-      );
-    }
-
-    return (
-      <BasisTerreincontroleStatusSelect
-        {...props}
-      />
-    );
   }
 
   function TerreincontroleFactuurSelect(
@@ -412,7 +390,7 @@ export function TerreincontrolesTabel({
         </div>
       ) : (
         <div className="overflow-x-auto">
-          <table className="min-w-[4700px] border-collapse text-left text-xs">
+          <table className="min-w-[4400px] border-collapse text-left text-xs">
             <thead className="bg-slate-50 font-semibold uppercase tracking-wide text-slate-600">
               <tr>
                 <th className="sticky left-0 z-20 border-b border-r border-slate-200 bg-slate-50 px-4 py-3">
@@ -425,10 +403,6 @@ export function TerreincontrolesTabel({
 
                 <th className="border-b border-slate-200 px-4 py-3">
                   Auditeur
-                </th>
-
-                <th className="border-b border-slate-200 px-4 py-3">
-                  Status
                 </th>
 
                 <th className="border-b border-slate-200 px-4 py-3">
@@ -546,7 +520,7 @@ export function TerreincontrolesTabel({
 
                       <td className="whitespace-nowrap px-4 py-3">
                         <Link
-                          href={`/terreincontroles/${rij.id}`}
+                          href={`/terreincontroles-inplannen/${rij.id}`}
                           className="font-semibold text-emerald-700 hover:underline"
                         >
                           Bekijken
@@ -557,15 +531,6 @@ export function TerreincontrolesTabel({
                         {toonWaarde(
                           rij.auditeur,
                         )}
-                      </td>
-
-                      <td className="whitespace-nowrap px-4 py-3">
-                        <TerreincontroleStatusSelect
-                          id={rij.id}
-                          beginwaarde={
-                            rij.status
-                          }
-                        />
                       </td>
 
                       <td className="whitespace-nowrap px-4 py-3">

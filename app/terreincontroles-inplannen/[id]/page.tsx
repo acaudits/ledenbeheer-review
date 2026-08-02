@@ -242,7 +242,7 @@ export default async function TerreincontroleDetailPage({
         <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <Link
-              href="/terreincontroles"
+              href="/terreincontroles-inplannen"
               className="text-sm font-semibold text-emerald-700 hover:text-emerald-900"
             >
               ← Terug naar terreincontroles
@@ -261,7 +261,7 @@ export default async function TerreincontroleDetailPage({
 
           <div className="flex flex-wrap gap-2">
             <Link
-              href={`/terreincontroles/${terreincontrole.id}/bewerken`}
+              href={`/terreincontroles-inplannen/${terreincontrole.id}/bewerken`}
               className="inline-flex h-10 items-center justify-center rounded-lg border border-emerald-300 bg-white px-4 text-sm font-semibold text-emerald-800 hover:bg-emerald-50"
             >
               Bewerken

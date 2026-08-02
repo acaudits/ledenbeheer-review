@@ -41,8 +41,8 @@ export default async function TerreincontrolesPage() {
     if (
       !magBeheren &&
       (
-        href === "/terreincontroles/nieuw" ||
-        href === "/terreincontroles/verwijderd"
+        href === "/terreincontroles-inplannen/nieuw" ||
+        href === "/terreincontroles-inplannen/verwijderd"
       )
     ) {
       return null;
@@ -204,7 +204,7 @@ export default async function TerreincontrolesPage() {
           </p>
 
           <h1 className="mt-1 text-2xl font-bold tracking-tight text-slate-950">
-            Terreincontroles
+            Inplannen terreincontrole
           </h1>
 
           <p className="mt-1 text-sm text-slate-600">
@@ -221,7 +221,7 @@ export default async function TerreincontrolesPage() {
 
         <div className="flex flex-wrap gap-3">
           <Link
-            href="/terreincontroles/verwijderd"
+            href="/terreincontroles-inplannen/verwijderd"
             className="inline-flex h-11 items-center justify-center rounded-xl border border-slate-300 bg-white px-5 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50"
           >
             Verwijderde terreincontroles
@@ -229,7 +229,7 @@ export default async function TerreincontrolesPage() {
 
           {magExporteren ? (
 <a
-            href="/terreincontroles/export"
+            href="/terreincontroles-inplannen/export"
             className="inline-flex h-11 items-center justify-center rounded-xl border border-emerald-300 bg-emerald-50 px-5 text-sm font-semibold text-emerald-800 shadow-sm transition hover:bg-emerald-100"
           >
             Exporteren naar Excel
@@ -237,7 +237,7 @@ export default async function TerreincontrolesPage() {
           ) : null}
 
           <Link
-            href="/terreincontroles/nieuw"
+            href="/terreincontroles-inplannen/nieuw"
             className="inline-flex h-11 items-center justify-center rounded-xl bg-emerald-700 px-5 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-800"
           >
             Nieuwe terreincontrole
