@@ -21,10 +21,62 @@ function formatteerDatum(datum: Date | null) {
   }).format(datum);
 }
 
+type TargetStatus =
+  | "GRIJS"
+  | "ROOD"
+  | "GEEL"
+  | "GROEN";
+
+function berekenTargetStatus({
+  aantalAttesten,
+  aantalDeskcontroles,
+  aantalTerreincontroles,
+}: {
+  aantalAttesten: number;
+  aantalDeskcontroles: number;
+  aantalTerreincontroles: number;
+}): TargetStatus {
+  if (aantalAttesten === 0) {
+    return "GRIJS";
+  }
+
+  if (
+    aantalDeskcontroles === 0 ||
+    aantalTerreincontroles === 0
+  ) {
+    return "ROOD";
+  }
+
+  const targetDeskcontroles = Math.ceil(
+    aantalAttesten * 0.05,
+  );
+
+  const targetTerreincontroles = Math.min(
+    4,
+    Math.ceil(aantalAttesten / 100),
+  );
+
+  if (
+    aantalDeskcontroles >=
+      targetDeskcontroles &&
+    aantalTerreincontroles >=
+      targetTerreincontroles
+  ) {
+    return "GROEN";
+  }
+
+  return "GEEL";
+}
+
 const kolommen: CertificaatKolom[] = [
   {
     sleutel: "naamPersoon",
     label: "Naam persoon",
+  },
+  {
+    sleutel: "controleTargetStatus",
+    label: "Target",
+    type: "statusbol",
   },
   {
     sleutel: "telefoonnummer",
@@ -47,7 +99,6 @@ const kolommen: CertificaatKolom[] = [
     label: "Uitgereikt op",
     type: "datum",
   },
-  
   {
     sleutel: "bedrijf",
     label: "Bedrijf",
@@ -68,7 +119,9 @@ const kolommen: CertificaatKolom[] = [
 ];
 
 export default async function PersoonscertificatenPage() {
-  const gebruiker = await vereisMachtiging("CERTIFICATEN_BEKIJKEN");
+  const gebruiker = await vereisMachtiging(
+    "CERTIFICATEN_BEKIJKEN",
+  );
 
   const magBeheren = heeftMachtiging(
     gebruiker.rol,
@@ -84,23 +137,135 @@ export default async function PersoonscertificatenPage() {
     },
   });
 
-  const rijen = leden.map((lid) => ({
-    id: lid.id,
-    naamPersoon: lid.naamPersoon,
-    telefoonnummer: lid.telefoonnummer,
-    mailadres: lid.mailadres,
-    ovamId: lid.ovamId,
-    certificaatnummer:
-      lid.certificaatnummer,
-    uitgereiktOp: formatteerDatum(
-      lid.uitgereiktOp,
+  const lidIds = leden.map((lid) => lid.id);
+  const ovamIds = leden.map((lid) => lid.ovamId);
+
+  const [
+    atteststatistieken,
+    deskcontroletellingen,
+    terreincontroletellingen,
+  ] = await Promise.all([
+    prisma.attestPersoonStatistiek.findMany({
+      where: {
+        persoonsId: {
+          in: ovamIds,
+        },
+      },
+      select: {
+        persoonsId: true,
+        aantalAttesten: true,
+      },
+    }),
+
+    prisma.deskcontrole.groupBy({
+      by: ["lidId"],
+      where: {
+        verwijderdOp: null,
+        lidId: {
+          in: lidIds,
+        },
+      },
+      _count: {
+        _all: true,
+      },
+    }),
+
+    prisma.terreincontroleDossier.groupBy({
+      by: ["lidId"],
+      where: {
+        verwijderdOp: null,
+        lidId: {
+          in: lidIds,
+        },
+      },
+      _count: {
+        _all: true,
+      },
+    }),
+  ]);
+
+  const attestenPerPersoon = new Map(
+    atteststatistieken.map((statistiek) => [
+      statistiek.persoonsId,
+      statistiek.aantalAttesten,
+    ]),
+  );
+
+  const deskcontrolesPerLid = new Map(
+    deskcontroletellingen.map((telling) => [
+      telling.lidId,
+      telling._count._all,
+    ]),
+  );
+
+  const terreincontrolesPerLid = new Map(
+    terreincontroletellingen.map(
+      (telling) => [
+        telling.lidId,
+        telling._count._all,
+      ],
     ),
-    bedrijf: lid.bedrijf,
-    aansluiting: lid.aansluiting,
-    opmerking: lid.opmerking,
-    certificatiePlatform:
-      lid.certificatiePlatform,
-  }));
+  );
+
+  const rijen = leden.map((lid) => {
+    const aantalAttesten =
+      attestenPerPersoon.get(lid.ovamId) ?? 0;
+
+    const aantalDeskcontroles =
+      deskcontrolesPerLid.get(lid.id) ?? 0;
+
+    const aantalTerreincontroles =
+      terreincontrolesPerLid.get(lid.id) ?? 0;
+
+    const targetDeskcontroles =
+      aantalAttesten === 0
+        ? 0
+        : Math.ceil(aantalAttesten * 0.05);
+
+    const targetTerreincontroles =
+      aantalAttesten === 0
+        ? 0
+        : Math.min(
+            4,
+            Math.ceil(aantalAttesten / 100),
+          );
+
+    const controleTargetStatus =
+      berekenTargetStatus({
+        aantalAttesten,
+        aantalDeskcontroles,
+        aantalTerreincontroles,
+      });
+
+    const controleTargetStatusToelichting =
+      aantalAttesten === 0
+        ? "Geen attesten — er zijn geen controletargets."
+        : [
+            `${aantalAttesten} attesten`,
+            `deskcontroles ${aantalDeskcontroles}/${targetDeskcontroles}`,
+            `terreincontroles ${aantalTerreincontroles}/${targetTerreincontroles}`,
+          ].join(" · ");
+
+    return {
+      id: lid.id,
+      naamPersoon: lid.naamPersoon,
+      controleTargetStatus,
+      controleTargetStatusToelichting,
+      telefoonnummer: lid.telefoonnummer,
+      mailadres: lid.mailadres,
+      ovamId: lid.ovamId,
+      certificaatnummer:
+        lid.certificaatnummer,
+      uitgereiktOp: formatteerDatum(
+        lid.uitgereiktOp,
+      ),
+      bedrijf: lid.bedrijf,
+      aansluiting: lid.aansluiting,
+      opmerking: lid.opmerking,
+      certificatiePlatform:
+        lid.certificatiePlatform,
+    };
+  });
 
   return (
     <>
@@ -109,16 +274,22 @@ export default async function PersoonscertificatenPage() {
         titel="Persoonscertificaten"
         beschrijving={`${leden.length} actieve persoonscertificaten`}
         actieTekst={
-          magBeheren ? "Nieuw persoonscertificaat" : undefined
+          magBeheren
+            ? "Nieuw persoonscertificaat"
+            : undefined
         }
         actieHref={
-          magBeheren ? "/persoonscertificaten/nieuw" : undefined
+          magBeheren
+            ? "/persoonscertificaten/nieuw"
+            : undefined
         }
         secundaireActieTekst={
           magBeheren ? "Verwijderde" : undefined
         }
         secundaireActieHref={
-          magBeheren ? "/persoonscertificaten/verwijderd" : undefined
+          magBeheren
+            ? "/persoonscertificaten/verwijderd"
+            : undefined
         }
       />
 

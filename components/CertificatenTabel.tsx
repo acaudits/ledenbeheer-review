@@ -10,7 +10,7 @@ import { useMemo, useState, type ComponentProps } from "react";
 export type CertificaatKolom = {
   sleutel: string;
   label: string;
-  type?: "tekst" | "url" | "badge" | "datum";
+  type?: "tekst" | "url" | "badge" | "datum" | "statusbol";
 };
 
 export type CertificaatRij = {
@@ -66,6 +66,57 @@ function isDatumKolom(kolom: CertificaatKolom) {
     kolom.type === "datum" ||
     kolom.sleutel === "uitgereiktOp"
   );
+}
+
+const targetStatusOpties = [
+  {
+    waarde: "GRIJS",
+    label: "Grijs — geen attesten",
+  },
+  {
+    waarde: "ROOD",
+    label: "Rood — geen controles",
+  },
+  {
+    waarde: "GEEL",
+    label: "Geel — target gedeeltelijk behaald",
+  },
+  {
+    waarde: "GROEN",
+    label: "Groen — targets behaald",
+  },
+];
+
+function statusbolPresentatie(waarde: string) {
+  switch (waarde.toUpperCase()) {
+    case "GROEN":
+      return {
+        label: "Targets behaald",
+        stijl:
+          "bg-emerald-500 ring-emerald-200",
+      };
+
+    case "GEEL":
+      return {
+        label: "Targets gedeeltelijk behaald",
+        stijl:
+          "bg-amber-400 ring-amber-200",
+      };
+
+    case "ROOD":
+      return {
+        label: "Geen deskcontrole of terreincontrole uitgevoerd",
+        stijl:
+          "bg-red-500 ring-red-200",
+      };
+
+    default:
+      return {
+        label: "Geen attesten",
+        stijl:
+          "bg-slate-400 ring-slate-200",
+      };
+  }
 }
 
 function ontleedDatum(
@@ -202,6 +253,18 @@ export function CertificatenTabel({
       (kolom) =>
         kolom.sleutel === actieveFilterSleutel,
     ) ?? null;
+
+  const targetStatusKolom =
+    kolommen.find(
+      (kolom) => kolom.type === "statusbol",
+    ) ?? null;
+
+  const actiefTargetStatus =
+    targetStatusKolom
+      ? kolomFilters[
+          targetStatusKolom.sleutel
+        ] ?? ""
+      : "";
 
   const aantalTekstFilters = Object.values(
     kolomFilters,
@@ -553,7 +616,45 @@ export function CertificatenTabel({
             </p>
           </div>
 
-          <div className="flex w-full flex-col gap-2 sm:flex-row lg:max-w-xl">
+          <div className="flex w-full flex-col gap-2 sm:flex-row lg:max-w-3xl">
+            {targetStatusKolom && (
+              <div className="relative sm:w-64">
+                <label
+                  htmlFor="target-status-filter"
+                  className="sr-only"
+                >
+                  Filter op targetstatus
+                </label>
+
+                <select
+                  id="target-status-filter"
+                  value={actiefTargetStatus}
+                  onChange={(event) =>
+                    wijzigKolomFilter(
+                      targetStatusKolom.sleutel,
+                      event.target.value,
+                    )
+                  }
+                  className="h-11 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm font-semibold text-slate-700 outline-none focus:border-emerald-600 focus:ring-4 focus:ring-emerald-600/10"
+                >
+                  <option value="">
+                    Alle targetstatussen
+                  </option>
+
+                  {targetStatusOpties.map(
+                    (optie) => (
+                      <option
+                        key={optie.waarde}
+                        value={optie.waarde}
+                      >
+                        {optie.label}
+                      </option>
+                    ),
+                  )}
+                </select>
+              </div>
+            )}
+
             <div className="relative flex-1">
               <svg
                 viewBox="0 0 24 24"
@@ -1125,6 +1226,36 @@ export function CertificatenTabel({
                                     </span>
                                   )
                                 ) : kolom.type ===
+                                    "statusbol" ? (
+                                  (() => {
+                                    const presentatie =
+                                      statusbolPresentatie(
+                                        tekst,
+                                      );
+
+                                    const toelichting =
+                                      String(
+                                        rij[
+                                          `${kolom.sleutel}Toelichting`
+                                        ] ??
+                                          presentatie.label,
+                                      );
+
+                                    return (
+                                      <span
+                                        title={toelichting}
+                                        aria-label={toelichting}
+                                        className={`inline-block size-3 shrink-0 rounded-full ring-4 ${presentatie.stijl}`}
+                                      >
+                                        <span className="sr-only">
+                                          {
+                                            presentatie.label
+                                          }
+                                        </span>
+                                      </span>
+                                    );
+                                  })()
+                                ) : kolom.type ===
                                     "url" &&
                                   tekst ? (
                                   <a
@@ -1170,13 +1301,15 @@ export function CertificatenTabel({
                                 )}
 
                                 {kolom.sleutel !==
-                                  "opmerking" && (
-                                  <CopyButton
-                                    waarde={
-                                      tekst || null
-                                    }
-                                  />
-                                )}
+                                  "opmerking" &&
+                                  kolom.type !==
+                                    "statusbol" && (
+                                    <CopyButton
+                                      waarde={
+                                        tekst || null
+                                      }
+                                    />
+                                  )}
                               </div>
                             </td>
                           );

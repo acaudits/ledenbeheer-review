@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { ControleTargetOverzicht } from "@/components/ControleTargetOverzicht";
 import { PersoonsTerreincontroles } from "@/components/PersoonsTerreincontroles";
 import {
   notFound,
@@ -233,6 +234,29 @@ export default async function PersoonscertificaatDetailPage({
     notFound();
   }
 
+  /*
+   * Lijst 1 van Atteststatistieken
+   * gebruikt PersoonsID. Dit komt
+   * overeen met het OVAM-ID van het
+   * persoonscertificaat.
+   */
+  const atteststatistiek =
+    await prisma.attestPersoonStatistiek.findFirst({
+      where: {
+        persoonsId: {
+          equals: persoon.ovamId,
+          mode: "insensitive",
+        },
+      },
+      select: {
+        aantalAttesten: true,
+      },
+    });
+
+  const aantalAttesten =
+    atteststatistiek?.aantalAttesten ??
+    0;
+
   const terreincontroles =
     await prisma.terreincontroleDossier.findMany({
       where: {
@@ -316,7 +340,17 @@ export default async function PersoonscertificaatDetailPage({
             {persoon.naamPersoon}
           </h2>
 
-          <div className="mt-5 grid gap-3 sm:grid-cols-3">
+          <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            <div className="rounded-2xl bg-white/10 p-4">
+              <p className="text-2xl font-bold">
+                {aantalAttesten}
+              </p>
+
+              <p className="text-sm text-emerald-100">
+                Opgemaakte attesten
+              </p>
+            </div>
+
             <div className="rounded-2xl bg-white/10 p-4">
               <p className="text-2xl font-bold">
                 {
@@ -424,6 +458,19 @@ export default async function PersoonscertificaatDetailPage({
           />
         </dl>
       </section>
+
+      <ControleTargetOverzicht
+        aantalAttesten={
+          aantalAttesten
+        }
+        aantalDeskcontroles={
+          persoon.deskcontroles
+            .length
+        }
+        aantalTerreincontroles={
+          terreincontroles.length
+        }
+      />
 
       <section className="space-y-4">
         <div>
