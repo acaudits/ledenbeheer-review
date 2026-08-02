@@ -8,21 +8,22 @@ datasource db {
 }
 
 model Lid {
-  id                   Int            @id @default(autoincrement())
-  naamPersoon          String         @map("naam_persoon")
-  telefoonnummer       String?
-  mailadres            String?
-  ovamId               String         @unique @map("ovam_id")
-  certificaatnummer    String         @unique
-  uitgereiktOp         DateTime?      @map("uitgereikt_op") @db.Date
-  bedrijf              String?
-  aansluiting          String?
-  opmerking            String?        @db.Text
-  certificatiePlatform String?        @map("certificatie_platform")
-  aangemaaktOp         DateTime       @default(now()) @map("aangemaakt_op")
-  bijgewerktOp         DateTime       @updatedAt @map("bijgewerkt_op")
-  verwijderdOp         DateTime?      @map("verwijderd_op")
-  deskcontroles        Deskcontrole[]
+  id                      Int                      @id @default(autoincrement())
+  naamPersoon             String                   @map("naam_persoon")
+  telefoonnummer          String?
+  mailadres               String?
+  ovamId                  String                   @unique @map("ovam_id")
+  certificaatnummer       String                   @unique
+  uitgereiktOp            DateTime?                @map("uitgereikt_op") @db.Date
+  bedrijf                 String?
+  aansluiting             String?
+  opmerking               String?                  @db.Text
+  certificatiePlatform    String?                  @map("certificatie_platform")
+  aangemaaktOp            DateTime                 @default(now()) @map("aangemaakt_op")
+  bijgewerktOp            DateTime                 @updatedAt @map("bijgewerkt_op")
+  verwijderdOp            DateTime?                @map("verwijderd_op")
+  deskcontroles           Deskcontrole[]
+  terreincontroleDossiers TerreincontroleDossier[]
 
   @@index([verwijderdOp])
   @@map("leden")
@@ -34,18 +35,19 @@ enum Ondernemingstype {
 }
 
 model Procescertificaat {
-  id                Int              @id @default(autoincrement())
-  naamBedrijf       String           @map("naam_bedrijf")
-  kboNummer         String           @unique @map("kbo_nummer")
-  certificaatnummer String           @unique
-  uitgereiktOp      DateTime?        @map("uitgereikt_op") @db.Date
-  oneDrive          String?          @map("onedrive_url")
-  opmerking         String?          @db.Text
-  ondernemingstype  Ondernemingstype @map("ondernemingstype")
-  aangemaaktOp      DateTime         @default(now()) @map("aangemaakt_op")
-  bijgewerktOp      DateTime         @updatedAt @map("bijgewerkt_op")
-  verwijderdOp      DateTime?        @map("verwijderd_op")
-  deskcontroles     Deskcontrole[]
+  id                      Int                      @id @default(autoincrement())
+  naamBedrijf             String                   @map("naam_bedrijf")
+  kboNummer               String                   @unique @map("kbo_nummer")
+  certificaatnummer       String                   @unique
+  uitgereiktOp            DateTime?                @map("uitgereikt_op") @db.Date
+  oneDrive                String?                  @map("onedrive_url")
+  opmerking               String?                  @db.Text
+  ondernemingstype        Ondernemingstype         @map("ondernemingstype")
+  aangemaaktOp            DateTime                 @default(now()) @map("aangemaakt_op")
+  bijgewerktOp            DateTime                 @updatedAt @map("bijgewerkt_op")
+  verwijderdOp            DateTime?                @map("verwijderd_op")
+  deskcontroles           Deskcontrole[]
+  terreincontroleDossiers TerreincontroleDossier[]
 
   @@index([verwijderdOp])
   @@map("procescertificaten")
@@ -119,6 +121,80 @@ model Terreincontrole {
   @@index([postcode])
   @@index([gemeente])
   @@map("terreincontroles")
+}
+
+model TerreincontroleDossier {
+  id Int @id @default(autoincrement())
+
+  auditeur            String               @db.VarChar(255)
+  auditeurGebruikerId Int?                 @map("auditeur_gebruiker_id")
+  auditeurGebruiker   ToegestaneGebruiker? @relation("TerreincontroledossierAuditeur", fields: [auditeurGebruikerId], references: [id], onDelete: SetNull)
+
+  naamAdi      String @map("naam_adi") @db.VarChar(255)
+  linkAttest   String @unique @map("link_attest") @db.VarChar(2000)
+  attestId     String @unique @map("attest_id") @db.Uuid
+  attestnummer String @unique @db.VarChar(255)
+
+  status               DeskcontroleStatus @default(GEEN)
+  certificatiePlatform String?            @map("certificatie_platform") @db.VarChar(255)
+  opmerkingen          String?            @db.Text
+  datumControle        DateTime           @map("datum_controle") @db.Date
+  adres                String?            @db.VarChar(1000)
+
+  persoonsId String @map("persoons_id") @db.VarChar(100)
+
+  lidId Int @map("lid_id")
+  lid   Lid @relation(fields: [lidId], references: [id], onDelete: Restrict)
+
+  bedrijfsnaam       String @db.VarChar(500)
+  ondernemingsnummer String @db.VarChar(100)
+
+  procescertificaatId Int               @map("procescertificaat_id")
+  procescertificaat   Procescertificaat @relation(fields: [procescertificaatId], references: [id], onDelete: Restrict)
+
+  persoonscertificaatNummer String @map("persoonscertificaat_nummer") @db.VarChar(255)
+  procescertificaatNummer   String @map("procescertificaat_nummer") @db.VarChar(255)
+
+  bronBestandsnaam String? @map("bron_bestandsnaam") @db.VarChar(255)
+  bronExcelRij     Int?    @map("bron_excel_rij")
+
+  aangemaaktOp DateTime  @default(now()) @map("aangemaakt_op")
+  bijgewerktOp DateTime  @updatedAt @map("bijgewerkt_op")
+  verwijderdOp DateTime? @map("verwijderd_op")
+
+  vaststellingen TerreincontroleVaststelling[]
+
+  @@index([auditeurGebruikerId])
+  @@index([lidId])
+  @@index([procescertificaatId])
+  @@index([persoonsId])
+  @@index([ondernemingsnummer])
+  @@index([status])
+  @@index([datumControle])
+  @@index([verwijderdOp])
+  @@map("terreincontrole_dossiers")
+}
+
+model TerreincontroleVaststelling {
+  id                       Int                    @id @default(autoincrement())
+  terreincontroleDossierId Int                    @map("terreincontrole_dossier_id")
+  terreincontroleDossier   TerreincontroleDossier @relation(fields: [terreincontroleDossierId], references: [id], onDelete: Cascade)
+
+  excelRij            Int      @map("excel_rij")
+  parameter           String?
+  ncId                String   @map("nc_id")
+  omschrijving        String?  @db.Text
+  vastgesteldDoorCi   String?  @map("vastgesteld_door_ci")
+  verduidelijking     String?  @db.Text
+  groteImpact         String?  @map("grote_impact")
+  categorie           String?
+  motivatieAanpassing String?  @map("motivatie_aanpassing") @db.Text
+  aangemaaktOp        DateTime @default(now()) @map("aangemaakt_op")
+
+  @@index([terreincontroleDossierId])
+  @@index([ncId])
+  @@index([categorie])
+  @@map("terreincontrole_vaststellingen")
 }
 
 model Deskcontrole {
@@ -217,10 +293,11 @@ model ToegestaneGebruiker {
   bijgewerktOp       DateTime      @updatedAt @map("bijgewerkt_op")
   wachtwoordWijzigen Boolean       @default(true)
 
-  deskcontroles    Deskcontrole[]    @relation("DeskcontroleAuditeur")
-  terreincontroles Terreincontrole[] @relation("TerreincontroleAuditeur")
-  meldingen        Melding[]
-  auditlogs        Auditlog[]
+  deskcontroles           Deskcontrole[]           @relation("DeskcontroleAuditeur")
+  terreincontroles        Terreincontrole[]        @relation("TerreincontroleAuditeur")
+  terreincontroleDossiers TerreincontroleDossier[] @relation("TerreincontroledossierAuditeur")
+  meldingen               Melding[]
+  auditlogs               Auditlog[]
 
   @@index([email])
   @@index([actief])
