@@ -119,6 +119,27 @@ function statusbolPresentatie(waarde: string) {
   }
 }
 
+function statusRijStijl(
+  waarde: string | number | null,
+) {
+  switch (String(waarde ?? "").toUpperCase()) {
+    case "GROEN":
+      return "bg-emerald-50/70 hover:bg-emerald-100/60";
+
+    case "GEEL":
+      return "bg-amber-50/80 hover:bg-amber-100/60";
+
+    case "ROOD":
+      return "bg-red-50/75 hover:bg-red-100/60";
+
+    case "GRIJS":
+      return "bg-slate-50/90 hover:bg-slate-100/80";
+
+    default:
+      return "bg-white hover:bg-emerald-50/35";
+  }
+}
+
 function ontleedDatum(
   waarde: string | number | null,
 ) {
@@ -265,6 +286,11 @@ export function CertificatenTabel({
           targetStatusKolom.sleutel
         ] ?? ""
       : "";
+
+  const zichtbareKolommen =
+    kolommen.filter(
+      (kolom) => kolom.type !== "statusbol",
+    );
 
   const aantalTekstFilters = Object.values(
     kolomFilters,
@@ -988,7 +1014,7 @@ export function CertificatenTabel({
             <table className="w-full min-w-max text-left">
               <thead className="bg-slate-50">
                 <tr>
-                  {kolommen.map(
+                  {zichtbareKolommen.map(
                     (kolom, index) => {
                       const heeftTekstFilter =
                         Boolean(
@@ -1131,6 +1157,15 @@ export function CertificatenTabel({
                             }`
                           : undefined
                       }
+                      title={
+                        targetStatusKolom
+                          ? String(
+                              rij[
+                                `${targetStatusKolom.sleutel}Toelichting`
+                              ] ?? "",
+                            )
+                          : undefined
+                      }
                       onClick={(event) => {
                         if (
                           !detailBasisHref ||
@@ -1174,13 +1209,21 @@ export function CertificatenTabel({
                           `${detailBasisHref}/${rij.id}`,
                         );
                       }}
-                      className={`group bg-white hover:bg-emerald-50/35 ${
+                      className={`group ${
+                        targetStatusKolom
+                          ? statusRijStijl(
+                              rij[
+                                targetStatusKolom.sleutel
+                              ],
+                            )
+                          : "bg-white hover:bg-emerald-50/35"
+                      } ${
                         detailBasisHref
                           ? "cursor-pointer focus:outline-none focus:ring-2 focus:ring-inset focus:ring-emerald-500"
                           : ""
                       }`}
                     >
-                      {kolommen.map(
+                      {zichtbareKolommen.map(
                         (kolom, index) => {
                           const origineleWaarde =
                             rij[kolom.sleutel];
@@ -1197,7 +1240,7 @@ export function CertificatenTabel({
                               key={kolom.sleutel}
                               className={`max-w-96 px-5 py-3 text-sm text-slate-700 ${
                                 index === 0
-                                  ? "sticky left-0 z-10 bg-white font-semibold text-slate-950 group-hover:bg-[#f7fcfa]"
+                                  ? "sticky left-0 z-10 bg-inherit font-semibold text-slate-950"
                                   : ""
                               }`}
                             >
@@ -1316,7 +1359,7 @@ export function CertificatenTabel({
                         },
                       )}
 
-                      <td className="sticky right-0 z-10 bg-white px-5 py-3 text-right group-hover:bg-[#f7fcfa]">
+                      <td className="sticky right-0 z-10 bg-inherit px-5 py-3 text-right">
                         <div className="flex min-w-max items-center justify-end gap-2">
                           <Link
                             href={`${bewerkBasisHref}/${rij.id}/bewerken`}
