@@ -3,6 +3,7 @@ import Link from "next/link";
 import { maakTerreincontroleAan } from "@/app/terreincontroles/actions";
 import { vereisMachtiging } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import BulkTerreincontroleImport from "./BulkTerreincontroleImport";
 import TerreincontroleExcelImport from "./TerreincontroleExcelImport";
 
 export const dynamic = "force-dynamic";
@@ -112,6 +113,8 @@ export default async function NieuweTerreincontrolePage({
       >
         ← Terug naar terreincontroles
       </Link>
+
+      <BulkTerreincontroleImport />
 
       <TerreincontroleExcelImport />
 

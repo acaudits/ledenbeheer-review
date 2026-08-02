@@ -149,8 +149,8 @@ model TerreincontroleDossier {
   bedrijfsnaam       String @db.VarChar(500)
   ondernemingsnummer String @db.VarChar(100)
 
-  procescertificaatId Int               @map("procescertificaat_id")
-  procescertificaat   Procescertificaat @relation(fields: [procescertificaatId], references: [id], onDelete: Restrict)
+  procescertificaatId Int?               @map("procescertificaat_id")
+  procescertificaat   Procescertificaat? @relation(fields: [procescertificaatId], references: [id], onDelete: Restrict)
 
   persoonscertificaatNummer String @map("persoonscertificaat_nummer") @db.VarChar(255)
   procescertificaatNummer   String @map("procescertificaat_nummer") @db.VarChar(255)

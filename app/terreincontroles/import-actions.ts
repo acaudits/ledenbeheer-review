@@ -457,6 +457,16 @@ export async function importeerTerreincontroleUitExcel(
       "TERREINCONTROLES_BEHEREN",
     );
 
+  /*
+   * Tijdens de bulkimport wordt C7
+   * volledig genegeerd. De gewone
+   * import behoudt de bestaande
+   * procescertificaatcontrole.
+   */
+  const bulkimport =
+    formData.get("bulkimport") ===
+    "1";
+
   const bestandWaarde =
     formData.get(
       "excelBestand",
@@ -631,6 +641,7 @@ export async function importeerTerreincontroleUitExcel(
   }
 
   if (
+    !bulkimport &&
     !isGeldigOndernemingsnummer(
       ondernemingsnummer,
     )
@@ -827,6 +838,7 @@ export async function importeerTerreincontroleUitExcel(
     );
 
   if (
+    !bulkimport &&
     overeenkomendeProcessen.length >
     1
   ) {
@@ -836,11 +848,21 @@ export async function importeerTerreincontroleUitExcel(
     );
   }
 
+  /*
+   * Bij bulkimport wordt C7 niet
+   * gebruikt voor validatie of
+   * koppeling.
+   */
   const procescertificaat =
-    overeenkomendeProcessen[0] ??
-    null;
+    bulkimport
+      ? null
+      : overeenkomendeProcessen[0] ??
+        null;
 
-  if (!procescertificaat) {
+  if (
+    !bulkimport &&
+    !procescertificaat
+  ) {
     return fout(
       `Geen actief procescertificaat gevonden voor ${ondernemingsnummer}.`,
       "Controleer cel C7.",
@@ -930,23 +952,36 @@ export async function importeerTerreincontroleUitExcel(
                 lidId:
                   lid.id,
 
+                /*
+                 * C7 wordt bij bulkimport
+                 * genegeerd. De verplichte
+                 * momentopnamevelden krijgen
+                 * dan een lege waarde en er
+                 * wordt geen procescertificaat
+                 * gekoppeld.
+                 */
                 bedrijfsnaam:
                   procescertificaat
-                    .naamBedrijf,
+                    ?.naamBedrijf ??
+                  "",
 
                 ondernemingsnummer:
                   procescertificaat
-                    .kboNummer,
+                    ?.kboNummer ??
+                  "",
 
                 procescertificaatId:
-                  procescertificaat.id,
+                  procescertificaat
+                    ?.id ??
+                  null,
 
                 persoonscertificaatNummer:
                   lid.certificaatnummer,
 
                 procescertificaatNummer:
                   procescertificaat
-                    .certificaatnummer,
+                    ?.certificaatnummer ??
+                  "",
 
                 bronBestandsnaam:
                   bestand.name,
@@ -1008,10 +1043,12 @@ export async function importeerTerreincontroleUitExcel(
                   lid.ovamId,
                 bedrijfsnaam:
                   procescertificaat
-                    .naamBedrijf,
+                    ?.naamBedrijf ??
+                  null,
                 ondernemingsnummer:
                   procescertificaat
-                    .kboNummer,
+                    ?.kboNummer ??
+                  null,
                 aantalVaststellingen:
                   vaststellingen.length,
               },

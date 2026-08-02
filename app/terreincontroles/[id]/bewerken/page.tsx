@@ -211,10 +211,15 @@ export default async function BewerkTerreincontrolePage({
               name="procescertificaatId"
               required
               defaultValue={
-                dossier.procescertificaatId
+                dossier.procescertificaatId ??
+                ""
               }
               className={invoer}
             >
+              <option value="" disabled>
+                Kies een procescertificaat
+              </option>
+
               {processen.map(
                 (proces) => (
                   <option
