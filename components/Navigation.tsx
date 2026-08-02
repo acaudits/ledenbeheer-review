@@ -73,6 +73,25 @@ const navigatie = [
     ),
   },
   {
+    naam: "Terreincontroles",
+    href: "/terreincontroles",
+    icoon: (
+      <svg
+        viewBox="0 0 24 24"
+        fill="none"
+        className="size-5"
+      >
+        <path
+          d="M5 5h14v14H5V5Zm3 4h8M8 12h8M8 15h5"
+          stroke="currentColor"
+          strokeWidth="1.8"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      </svg>
+    ),
+  },
+  {
     naam: "Inplannen terreincontrole",
     href: "/terreincontroles-inplannen",
     icoon: (
