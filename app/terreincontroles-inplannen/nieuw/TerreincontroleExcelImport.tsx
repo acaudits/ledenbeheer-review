@@ -14,7 +14,7 @@ import {
   type TerreincontroleBevestigState,
   type TerreincontroleExcelRij,
   type TerreincontroleExcelState,
-} from "../import-actions";
+} from "../planning-import-actions";
 
 const TERREINCONTROLE_AUDITEURS = [
   "Ismail El Mourabet",
@@ -108,6 +108,49 @@ function toonTekst(
   return waarde.trim() || "—";
 }
 
+function planningRijStijl(
+  status:
+    TerreincontroleExcelRij["planningStatus"],
+) {
+  switch (status) {
+    case "ROOD":
+      return "bg-red-50/80 hover:bg-red-100/70";
+
+    case "GEEL":
+      return "bg-amber-50/90 hover:bg-amber-100/70";
+
+    case "GROEN":
+      return "bg-emerald-50/80 hover:bg-emerald-100/70";
+
+    default:
+      return "bg-slate-50/90 hover:bg-slate-100/80";
+  }
+}
+
+function formatteerPlanningDatum(
+  waarde: string | null,
+) {
+  if (!waarde) {
+    return "Nooit";
+  }
+
+  const datum = new Date(waarde);
+
+  if (Number.isNaN(datum.getTime())) {
+    return "Onbekend";
+  }
+
+  return new Intl.DateTimeFormat(
+    "nl-BE",
+    {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      timeZone: "UTC",
+    },
+  ).format(datum);
+}
+
 export default function TerreincontroleExcelImport() {
   const [
     state,
@@ -142,6 +185,16 @@ export default function TerreincontroleExcelImport() {
     setStandaardAuditeur,
   ] = useState("");
 
+  const [
+    planningFilter,
+    setPlanningFilter,
+  ] = useState("ALLE");
+
+  const [
+    planningZoekterm,
+    setPlanningZoekterm,
+  ] = useState("");
+
   useEffect(() => {
     const nieuweRijen =
       state.rijen ?? [];
@@ -150,17 +203,18 @@ export default function TerreincontroleExcelImport() {
       nieuweRijen,
     );
 
+    // Na het laden is bewust geen enkele rij geselecteerd.
     setGeselecteerdeSleutels(
-      new Set(
-        nieuweRijen.map(
-          (rij) =>
-            rij.sleutel,
-        ),
-      ),
+      new Set(),
     );
 
-    setStandaardAuditeur("");
-  }, [state.rijen]);
+    setStandaardAuditeur(
+      state.standaardAuditeur ?? "",
+    );
+  }, [
+    state.rijen,
+    state.standaardAuditeur,
+  ]);
 
   useEffect(() => {
     if (
@@ -195,6 +249,59 @@ export default function TerreincontroleExcelImport() {
         geselecteerdeSleutels,
       ],
     );
+
+  const zichtbareRijen =
+    useMemo(() => {
+      const zoekterm =
+        planningZoekterm
+          .trim()
+          .toLocaleLowerCase(
+            "nl-BE",
+          );
+
+      return rijen.filter((rij) => {
+        const voldoetAanStatus =
+          planningFilter === "ALLE" ||
+          rij.planningStatus ===
+            planningFilter ||
+          (
+            planningFilter ===
+              "NOG_NODIG" &&
+            rij.aantalTerreincontrolesNodig >
+              0
+          );
+
+        if (!voldoetAanStatus) {
+          return false;
+        }
+
+        if (!zoekterm) {
+          return true;
+        }
+
+        const zoekbareTekst = [
+          rij.ovamId,
+          rij.naamAdi,
+          rij.inspectielocatie,
+          rij.gemeente,
+          rij.postcode,
+          rij.bedrijfsnaam,
+          rij.auditeur,
+        ]
+          .join(" ")
+          .toLocaleLowerCase(
+            "nl-BE",
+          );
+
+        return zoekbareTekst.includes(
+          zoekterm,
+        );
+      });
+    }, [
+      rijen,
+      planningFilter,
+      planningZoekterm,
+    ]);
 
   const allesGeselecteerd =
     rijen.length > 0 &&
@@ -482,6 +589,82 @@ export default function TerreincontroleExcelImport() {
             </div>
           </div>
 
+          <div className="border-b border-slate-200 bg-white p-4">
+            <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_280px]">
+              <div>
+                <label
+                  htmlFor="planningZoekterm"
+                  className="block text-xs font-bold uppercase tracking-wide text-slate-500"
+                >
+                  Zoeken
+                </label>
+
+                <input
+                  id="planningZoekterm"
+                  type="search"
+                  value={planningZoekterm}
+                  onChange={(event) =>
+                    setPlanningZoekterm(
+                      event.target.value,
+                    )
+                  }
+                  placeholder="Naam, OVAM-ID, adres, gemeente of bedrijf..."
+                  className="mt-1.5 h-11 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm outline-none focus:border-emerald-600 focus:ring-4 focus:ring-emerald-100"
+                />
+              </div>
+
+              <div>
+                <label
+                  htmlFor="planningFilter"
+                  className="block text-xs font-bold uppercase tracking-wide text-slate-500"
+                >
+                  Planningsstatus
+                </label>
+
+                <select
+                  id="planningFilter"
+                  value={planningFilter}
+                  onChange={(event) =>
+                    setPlanningFilter(
+                      event.target.value,
+                    )
+                  }
+                  className="mt-1.5 h-11 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm font-semibold outline-none focus:border-emerald-600 focus:ring-4 focus:ring-emerald-100"
+                >
+                  <option value="ALLE">
+                    Alle kleuren
+                  </option>
+
+                  <option value="NOG_NODIG">
+                    Nog terreincontroles nodig
+                  </option>
+
+                  <option value="ROOD">
+                    Rood — target niet behaald
+                  </option>
+
+                  <option value="GEEL">
+                    Geel — controle minder dan 14 dagen geleden
+                  </option>
+
+                  <option value="GROEN">
+                    Groen — target behaald
+                  </option>
+
+                  <option value="GRIJS">
+                    Grijs — geen attesten of koppeling
+                  </option>
+                </select>
+              </div>
+            </div>
+
+            <p className="mt-3 text-xs font-medium text-slate-500">
+              {zichtbareRijen.length} van{" "}
+              {rijen.length} plaatsbezoeken zichtbaar.
+              Na het laden is geen enkele rij automatisch geselecteerd.
+            </p>
+          </div>
+
           <div className="max-h-[72vh] overflow-auto">
             <table className="min-w-[4800px] border-collapse text-left text-xs">
               <thead className="sticky top-0 z-20 bg-slate-100">
@@ -598,7 +781,7 @@ export default function TerreincontroleExcelImport() {
               </thead>
 
               <tbody className="divide-y divide-slate-200">
-                {rijen.map((rij) => {
+                {zichtbareRijen.map((rij) => {
                   const geselecteerd =
                     geselecteerdeSleutels.has(
                       rij.sleutel,
@@ -609,11 +792,16 @@ export default function TerreincontroleExcelImport() {
                       key={
                         rij.sleutel
                       }
-                      className={
-                        geselecteerd
-                          ? "bg-emerald-50/50"
-                          : "bg-white opacity-60"
+                      title={
+                        rij.planningStatusTekst
                       }
+                      className={`${planningRijStijl(
+                        rij.planningStatus,
+                      )} align-top transition-colors ${
+                        geselecteerd
+                          ? "ring-2 ring-inset ring-emerald-500"
+                          : "opacity-85"
+                      }`}
                     >
                       <td className="sticky left-0 z-10 border-r border-slate-200 bg-inherit px-3 py-3 align-top">
                         <input
@@ -731,9 +919,53 @@ export default function TerreincontroleExcelImport() {
 
                       <td className="px-3 py-3 align-top">
                         <span className="whitespace-nowrap font-semibold">
-                          {toonTekst(
-                            rij.ovamId,
-                          )}
+                          <div className="min-w-56">
+                          <p className="font-bold text-slate-900">
+                            {toonTekst(
+                              rij.ovamId,
+                            )}
+                          </p>
+
+                          <div className="mt-2 space-y-1 text-[11px] font-semibold text-slate-600">
+                            <p>
+                              Attesten:{" "}
+                              <strong>
+                                {rij.aantalAttesten}
+                              </strong>
+                            </p>
+
+                            <p>
+                              Terreincontroles:{" "}
+                              <strong>
+                                {
+                                  rij.aantalTerreincontroles
+                                }
+                                /
+                                {
+                                  rij.terreincontroleTarget
+                                }
+                              </strong>
+                            </p>
+
+                            <p>
+                              Nog nodig:{" "}
+                              <strong>
+                                {
+                                  rij.aantalTerreincontrolesNodig
+                                }
+                              </strong>
+                            </p>
+
+                            <p>
+                              Laatste:{" "}
+                              <strong>
+                                {formatteerPlanningDatum(
+                                  rij.laatsteTerreincontrole,
+                                )}
+                              </strong>
+                            </p>
+                          </div>
+                        </div>
                         </span>
                       </td>
 
