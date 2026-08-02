@@ -1,5 +1,7 @@
 import Link from "next/link";
 
+import { TerreincontroleStatusExcelImport } from "@/components/TerreincontroleStatusExcelImport";
+
 import {
   TerreincontroleDossiersTabel,
   type TerreincontroleDossierRij,
@@ -53,6 +55,18 @@ export default async function TerreincontrolesPage() {
     heeftMachtiging(
       gebruiker.rol,
       "TERREINCONTROLES_BEHEREN",
+    );
+
+  const magExporteren =
+    heeftMachtiging(
+      gebruiker.rol,
+      "TERREINCONTROLES_EXPORTEREN",
+    );
+
+  const magStatussenImporteren =
+    heeftMachtiging(
+      gebruiker.rol,
+      "TERREINCONTROLES_STATUS_IMPORTEREN",
     );
 
   const dossiers =
@@ -129,24 +143,48 @@ export default async function TerreincontrolesPage() {
           </p>
         </div>
 
-        {magBeheren ? (
-          <div className="flex flex-wrap gap-3">
-            <Link
-              href="/terreincontroles/verwijderd"
-              className="inline-flex h-11 items-center justify-center rounded-xl border border-slate-300 bg-white px-5 text-sm font-bold text-slate-700"
-            >
-              Verwijderde
-            </Link>
-
+        <div className="flex flex-wrap gap-3">
+          {magBeheren ? (
             <Link
               href="/terreincontroles/nieuw"
               className="inline-flex h-11 items-center justify-center rounded-xl bg-emerald-700 px-5 text-sm font-bold text-white hover:bg-emerald-800"
             >
               Nieuwe terreincontrole
             </Link>
-          </div>
-        ) : null}
+          ) : null}
+
+          {magExporteren ? (
+            <>
+              <a
+                href="/terreincontroles/export"
+                className="inline-flex h-11 items-center justify-center rounded-xl border border-emerald-300 bg-emerald-50 px-5 text-sm font-bold text-emerald-800 hover:bg-emerald-100"
+              >
+                Exporteren naar Excel
+              </a>
+
+              <a
+                href="/terreincontroles/export-openstaand"
+                className="inline-flex h-11 items-center justify-center rounded-xl border border-amber-300 bg-amber-50 px-5 text-sm font-bold text-amber-900 hover:bg-amber-100"
+              >
+                Excel Geen / In opmaak
+              </a>
+            </>
+          ) : null}
+
+          {magBeheren ? (
+            <Link
+              href="/terreincontroles/verwijderd"
+              className="inline-flex h-11 items-center justify-center rounded-xl border border-slate-300 bg-white px-5 text-sm font-bold text-slate-700"
+            >
+              Verwijderde
+            </Link>
+          ) : null}
+        </div>
       </header>
+
+      {magStatussenImporteren ? (
+        <TerreincontroleStatusExcelImport />
+      ) : null}
 
       <TerreincontroleDossiersTabel
         rijen={rijen}
