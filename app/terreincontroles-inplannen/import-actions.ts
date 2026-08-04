@@ -50,6 +50,7 @@ export type TerreincontroleExcelRij = {
   perceelAfdelingscode: string;
   perceelSectieCode: string;
 
+  capakey: string;
   attestId: string;
   googleMapsUrl: string;
 
@@ -159,6 +160,35 @@ const MAXIMAAL_AANTAL_RIJEN =
 
 const UUID_PATROON =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+const CAPAKEY_PATROON =
+  /^\d{5}[A-Z]\d{4}\/\d{2}[A-Z]\d{3}$/i;
+
+function haalCapakeyUitTekst(
+  waarde: unknown,
+): string {
+  const tekst =
+    normaliseerTekst(
+      waarde,
+    )
+      .trim()
+      .toUpperCase();
+
+  const gevonden =
+    tekst.match(
+      /\b(\d{5}[A-Z]\d{4}\/\d{2}[A-Z]\d{3})\b/i,
+    );
+
+  const capakey =
+    gevonden?.[1]
+      ?.toUpperCase() ?? "";
+
+  return CAPAKEY_PATROON.test(
+    capakey,
+  )
+    ? capakey
+    : "";
+}
 
 const TERREINCONTROLE_AUDITEURS = [
   "Ismail El Mourabet",
@@ -1095,6 +1125,28 @@ export async function leesTerreincontrolesUitExcel(
         ),
       );
 
+    /*
+     * De kolom Liggingsadres kan naast een Attest-ID ook een
+     * CaPaKey bevatten. Daarnaast herkennen we een CaPaKey in
+     * de inspectielocatie of de perceelvelden.
+     */
+    const capakey =
+      haalCapakeyUitTekst(
+        liggingsadresAttestId,
+      ) ||
+      haalCapakeyUitTekst(
+        inspectielocatie,
+      ) ||
+      haalCapakeyUitTekst(
+        perceelGemeenteCode,
+      ) ||
+      haalCapakeyUitTekst(
+        perceelAfdelingscode,
+      ) ||
+      haalCapakeyUitTekst(
+        perceelSectieCode,
+      );
+
     const alleWaarden = [
       inspectielocatie,
       bouwjaar,
@@ -1225,6 +1277,7 @@ export async function leesTerreincontrolesUitExcel(
       perceelAfdelingscode,
       perceelSectieCode,
 
+      capakey,
       attestId,
 
       googleMapsUrl:

@@ -156,11 +156,27 @@ function maakPopup(
   const adres =
     volledigAdres(rij);
 
+  const isCapakey =
+    /^\d{5}[A-Z]\d{4}\/\d{2}[A-Z]\d{3}$/i.test(
+      adres.trim(),
+    );
+
+  const coordinaten =
+    rij.latitude !== null &&
+    rij.longitude !== null
+      ? `${rij.latitude},${rij.longitude}`
+      : "";
+
   mapsLink.href =
-    rij.googleMapsUrl.trim() ||
-    `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
-      adres,
-    )}`;
+    isCapakey &&
+    coordinaten
+      ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+          coordinaten,
+        )}`
+      : rij.googleMapsUrl.trim() ||
+        `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+          adres,
+        )}`;
 
   mapsLink.target = "_blank";
   mapsLink.rel =

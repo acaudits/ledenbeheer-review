@@ -133,6 +133,31 @@ type GeocodeResultaat = {
   longitude: number;
 } | null;
 
+const CAPAKEY_PATROON =
+  /^\d{5}[A-Z]\d{4}\/\d{2}[A-Z]\d{3}$/i;
+
+function haalCapakeyUitTekst(
+  waarde: string,
+): string | null {
+  const gevonden =
+    waarde
+      .trim()
+      .toUpperCase()
+      .match(
+        /\b(\d{5}[A-Z]\d{4}\/\d{2}[A-Z]\d{3})\b/i,
+      );
+
+  const capakey =
+    gevonden?.[1]
+      ?.toUpperCase() ?? "";
+
+  return CAPAKEY_PATROON.test(
+    capakey,
+  )
+    ? capakey
+    : null;
+}
+
 const geocodeerAdresMetCache =
   unstable_cache(
     async (
@@ -245,6 +270,145 @@ const geocodeerAdresMetCache =
     },
   );
 
+
+const geocodeerCapakeyMetCache =
+  unstable_cache(
+    async (
+      capakey: string,
+    ): Promise<GeocodeResultaat> => {
+      const genormaliseerd =
+        haalCapakeyUitTekst(
+          capakey,
+        );
+
+      if (!genormaliseerd) {
+        return null;
+      }
+
+      const [
+        eersteDeel,
+        tweedeDeel,
+      ] =
+        genormaliseerd.split(
+          "/",
+        );
+
+      if (
+        !eersteDeel ||
+        !tweedeDeel
+      ) {
+        return null;
+      }
+
+      /*
+       * Probeer eerst de actuele perceeltoestand. Wanneer daar
+       * geen geometrie beschikbaar is, proberen we de fiscale
+       * toestand als fallback.
+       */
+      for (
+        const status of [
+          "actual",
+          "fiscal",
+        ] as const
+      ) {
+        const url = new URL(
+          `https://geo.api.vlaanderen.be/capakey/v2/parcel/${encodeURIComponent(
+            eersteDeel,
+          )}/${encodeURIComponent(
+            tweedeDeel,
+          )}`,
+        );
+
+        url.searchParams.set(
+          "geometry",
+          "full",
+        );
+
+        url.searchParams.set(
+          "srs",
+          "4326",
+        );
+
+        url.searchParams.set(
+          "status",
+          status,
+        );
+
+        const antwoord =
+          await fetch(
+            url,
+            {
+              headers: {
+                Accept:
+                  "application/xml",
+              },
+              signal:
+                AbortSignal.timeout(
+                  10000,
+                ),
+            },
+          );
+
+        if (!antwoord.ok) {
+          continue;
+        }
+
+        const xml =
+          await antwoord.text();
+
+        /*
+         * De service levert het perceelcentrum als GML.
+         * Bij EPSG:4326 is de volgorde latitude longitude.
+         */
+        const gevonden =
+          xml.match(
+            /<centerGml\b[\s\S]*?&lt;pos&gt;\s*(-?\d+(?:\.\d+)?)\s+(-?\d+(?:\.\d+)?)/i,
+          );
+
+        if (!gevonden) {
+          continue;
+        }
+
+        const latitude =
+          Number(
+            gevonden[1],
+          );
+
+        const longitude =
+          Number(
+            gevonden[2],
+          );
+
+        if (
+          Number.isFinite(
+            latitude,
+          ) &&
+          Number.isFinite(
+            longitude,
+          ) &&
+          latitude >= -90 &&
+          latitude <= 90 &&
+          longitude >= -180 &&
+          longitude <= 180
+        ) {
+          return {
+            latitude,
+            longitude,
+          };
+        }
+      }
+
+      return null;
+    },
+    [
+      "capakey-geocodering-digitaal-vlaanderen-v1",
+    ],
+    {
+      revalidate:
+        30 * 24 * 60 * 60,
+    },
+  );
+
 function maakGeocodeAdres(
   rij: BasisTerreincontroleExcelRij,
 ) {
@@ -262,9 +426,14 @@ function maakGeocodeAdres(
     .filter(Boolean)
     .join(" ");
 
+  /*
+   * Extra adresdetails zoals garagebox, verdieping of pandnummer
+   * zijn nuttig voor de auditeur, maar maken een huisnummerzoekopdracht
+   * bij Digitaal Vlaanderen vaak ongeldig. Geocodeer daarom uitsluitend
+   * op straat, huisnummer, postcode en gemeente.
+   */
   const samengesteld = [
     straatEnNummer,
-    rij.extraAdresDetails.trim(),
     postcodeEnGemeente,
   ]
     .filter(Boolean)
@@ -272,6 +441,7 @@ function maakGeocodeAdres(
 
   return (
     samengesteld ||
+    rij.capakey.trim() ||
     rij.inspectielocatie.trim()
   );
 }
@@ -310,10 +480,19 @@ async function geocodeerInBatches(
         batch.map(
           async (adres) => {
             try {
-              const resultaat =
-                await geocodeerAdresMetCache(
+              const capakey =
+                haalCapakeyUitTekst(
                   adres,
                 );
+
+              const resultaat =
+                capakey
+                  ? await geocodeerCapakeyMetCache(
+                      capakey,
+                    )
+                  : await geocodeerAdresMetCache(
+                      adres,
+                    );
 
               return [
                 adres,
