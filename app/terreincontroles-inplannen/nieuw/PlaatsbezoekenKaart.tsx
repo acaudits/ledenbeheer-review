@@ -14,6 +14,10 @@ import type {
 
 type Props = {
   rijen: TerreincontroleExcelRij[];
+  actieveRijSleutel: string | null;
+  focusVolgnummer: number;
+  geselecteerdeRijSleutels:
+    ReadonlySet<string>;
 };
 
 function pinKleur(
@@ -256,6 +260,9 @@ function maakPopup(
 
 export default function PlaatsbezoekenKaart({
   rijen,
+  actieveRijSleutel,
+  focusVolgnummer,
+  geselecteerdeRijSleutels,
 }: Props) {
   const kaartElement =
     useRef<HTMLDivElement | null>(null);
@@ -264,6 +271,21 @@ export default function PlaatsbezoekenKaart({
     useRef<
       import("leaflet").Map | null
     >(null);
+
+  const markerInstanties =
+    useRef<
+      Map<
+        string,
+        import("leaflet").CircleMarker
+      >
+    >(new Map());
+
+  const bewaardeKaartWeergave =
+    useRef<{
+      latitude: number;
+      longitude: number;
+      zoom: number;
+    } | null>(null);
 
   const invalidateTimer =
     useRef<number | null>(null);
@@ -307,6 +329,18 @@ export default function PlaatsbezoekenKaart({
       if (kaartInstantie.current) {
         kaartInstantie.current.stop();
         kaartInstantie.current.off();
+        const huidigeCentrum =
+          kaartInstantie.current.getCenter();
+
+        bewaardeKaartWeergave.current = {
+          latitude:
+            huidigeCentrum.lat,
+          longitude:
+            huidigeCentrum.lng,
+          zoom:
+            kaartInstantie.current.getZoom(),
+        };
+
         kaartInstantie.current.remove();
         kaartInstantie.current = null;
       }
@@ -316,7 +350,7 @@ export default function PlaatsbezoekenKaart({
       const kaart = L.map(element, {
         center: [50.8503, 4.3517],
         zoom: 8,
-        preferCanvas: true,
+        preferCanvas: false,
         scrollWheelZoom: false,
         zoomAnimation: false,
         fadeAnimation: false,
@@ -360,6 +394,7 @@ export default function PlaatsbezoekenKaart({
             rij.planningStatus,
           );
 
+        const marker =
         L.circleMarker(positie, {
           radius: 9,
           color: kleuren.lijn,
@@ -375,6 +410,40 @@ export default function PlaatsbezoekenKaart({
             },
           )
           .addTo(kaart);
+
+        markerInstanties.current.set(
+          rij.sleutel,
+          marker,
+        );
+
+        const moetRuitZijn =
+          rij.sleutel ===
+            actieveRijSleutel ||
+          geselecteerdeRijSleutels.has(
+            rij.sleutel,
+          );
+
+        if (moetRuitZijn) {
+          marker.setRadius(16);
+          marker.setStyle({
+            weight: 3,
+            fillOpacity: 1,
+          });
+
+          const markerElement =
+            marker.getElement();
+
+          if (
+            markerElement instanceof
+              SVGElement
+          ) {
+            markerElement.style.clipPath =
+              "polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%)";
+
+            markerElement.style.filter =
+              "drop-shadow(0 2px 3px rgba(15, 23, 42, 0.45))";
+          }
+        }
       }
 
       if (grenzen.length === 1) {
@@ -385,13 +454,29 @@ export default function PlaatsbezoekenKaart({
       } else if (
         grenzen.length > 1
       ) {
-        kaart.fitBounds(
-          L.latLngBounds(grenzen),
+      const bewaardeWeergave =
+        bewaardeKaartWeergave.current;
+
+      if (bewaardeWeergave) {
+        kaart.setView(
+          [
+            bewaardeWeergave.latitude,
+            bewaardeWeergave.longitude,
+          ],
+          bewaardeWeergave.zoom,
           {
-            padding: [30, 30],
-            maxZoom: 16,
+            animate: false,
           },
         );
+      } else {
+          kaart.fitBounds(
+            L.latLngBounds(grenzen),
+            {
+              padding: [30, 30],
+              maxZoom: 16,
+            },
+          );
+      }
       }
 
       if (invalidateTimer.current !== null) {
@@ -434,11 +519,148 @@ export default function PlaatsbezoekenKaart({
       if (kaartInstantie.current) {
         kaartInstantie.current.stop();
         kaartInstantie.current.off();
+        const huidigeCentrum =
+          kaartInstantie.current.getCenter();
+
+        bewaardeKaartWeergave.current = {
+          latitude:
+            huidigeCentrum.lat,
+          longitude:
+            huidigeCentrum.lng,
+          zoom:
+            kaartInstantie.current.getZoom(),
+        };
+
         kaartInstantie.current.remove();
         kaartInstantie.current = null;
       }
     };
   }, [geldigeRijen]);
+
+  useEffect(() => {
+    const ruitSleutels =
+      new Set<string>(
+        geselecteerdeRijSleutels,
+      );
+
+    if (actieveRijSleutel) {
+      ruitSleutels.add(
+        actieveRijSleutel,
+      );
+    }
+
+    if (
+      actieveRijSleutel &&
+      focusVolgnummer > 0
+    ) {
+      kaartElement.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "center",
+      });
+    }
+
+    let geannuleerd = false;
+    let poging = 0;
+
+    let focusTimer:
+      number | null = null;
+
+    const pasRuitenToe = () => {
+      if (geannuleerd) {
+        return;
+      }
+
+      const kaartInstantieNu =
+        kaartInstantie.current;
+
+      const ontbrekenMarkers =
+        [...ruitSleutels].some(
+          (sleutel) =>
+            !markerInstanties.current.has(
+              sleutel,
+            ),
+        );
+
+      if (
+        kaartInstantieNu &&
+        !ontbrekenMarkers
+      ) {
+        for (
+          const [
+            sleutel,
+            marker,
+          ] of markerInstanties.current
+        ) {
+          const isRuit =
+            ruitSleutels.has(
+              sleutel,
+            );
+
+          marker.setRadius(
+            isRuit
+              ? 16
+              : 9,
+          );
+
+          marker.setStyle({
+            weight: isRuit
+              ? 3
+              : 2,
+            fillOpacity: isRuit
+              ? 1
+              : 0.9,
+          });
+
+          const markerElement =
+            marker.getElement();
+
+          if (
+            markerElement instanceof
+              SVGElement
+          ) {
+            markerElement.style.clipPath =
+              isRuit
+                ? "polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%)"
+                : "";
+
+            markerElement.style.filter =
+              isRuit
+                ? "drop-shadow(0 2px 3px rgba(15, 23, 42, 0.45))"
+                : "";
+          }
+        }
+
+        kaartInstantieNu.closePopup();
+        return;
+      }
+
+      poging += 1;
+
+      if (poging < 30) {
+        focusTimer =
+          window.setTimeout(
+            pasRuitenToe,
+            100,
+          );
+      }
+    };
+
+    pasRuitenToe();
+
+    return () => {
+      geannuleerd = true;
+
+      if (focusTimer !== null) {
+        window.clearTimeout(
+          focusTimer,
+        );
+      }
+    };
+  }, [
+    actieveRijSleutel,
+    focusVolgnummer,
+    geselecteerdeRijSleutels,
+  ]);
 
   const nietGevonden =
     rijen.length -

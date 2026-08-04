@@ -206,6 +206,18 @@ export default function TerreincontroleExcelImport() {
   ] = useState("");
 
   const [
+    actieveKaartRijSleutel,
+    setActieveKaartRijSleutel,
+  ] = useState<string | null>(
+    null,
+  );
+
+  const [
+    kaartFocusVolgnummer,
+    setKaartFocusVolgnummer,
+  ] = useState(0);
+
+  const [
     reserveringMelding,
     setReserveringMelding,
   ] = useState("");
@@ -1138,6 +1150,16 @@ export default function TerreincontroleExcelImport() {
 
           <PlaatsbezoekenKaart
             rijen={zichtbareRijen}
+
+            actieveRijSleutel={
+              actieveKaartRijSleutel
+            }
+            focusVolgnummer={
+              kaartFocusVolgnummer
+            }
+            geselecteerdeRijSleutels={
+              geselecteerdeSleutels
+            }
           />
 
           <div className="max-h-[72vh] overflow-auto">
@@ -1281,6 +1303,45 @@ export default function TerreincontroleExcelImport() {
                           ? "ring-2 ring-inset ring-emerald-500"
                           : "opacity-85"
                       }`}
+                      onClickCapture={(event) => {
+                        const doel =
+                          event.target;
+
+                        if (
+                          doel instanceof
+                            Element &&
+                          doel.closest(
+                            "a, button, input, select, textarea, label",
+                          )
+                        ) {
+                          return;
+                        }
+
+                        const heeftPositie =
+                          typeof rij.latitude ===
+                            "number" &&
+                          typeof rij.longitude ===
+                            "number" &&
+                          Number.isFinite(
+                            rij.latitude,
+                          ) &&
+                          Number.isFinite(
+                            rij.longitude,
+                          );
+
+                        if (!heeftPositie) {
+                          return;
+                        }
+
+                        setActieveKaartRijSleutel(
+                          rij.sleutel,
+                        );
+
+                        setKaartFocusVolgnummer(
+                          (huidig) =>
+                            huidig + 1,
+                        );
+                      }}
                     >
                       <td className="sticky left-0 z-10 border-r border-slate-200 bg-inherit px-3 py-3 align-top">
                         <input
