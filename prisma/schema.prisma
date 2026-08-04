@@ -72,46 +72,37 @@ enum TerreincontroleStatus {
 }
 
 model Terreincontrole {
-  id                  Int                    @id @default(autoincrement())
-  auditeur            String?                @db.VarChar(255)
-  auditeurGebruikerId Int?                   @map("auditeur_gebruiker_id")
-  auditeurGebruiker   ToegestaneGebruiker?   @relation("TerreincontroleAuditeur", fields: [auditeurGebruikerId], references: [id], onDelete: SetNull)
-  factuurVerzonden    Boolean                @default(false) @map("factuur_verzonden")
-  status              TerreincontroleStatus?
-
-  inspectielocatie   String?  @db.VarChar(1000)
-  bouwjaar           Int?
-  vloeroppervlakteM2 Decimal? @map("vloeroppervlakte_m2") @db.Decimal(12, 2)
-
-  datumPlaatsbezoek DateTime? @map("datum_plaatsbezoek") @db.Date
-  uurPlaatsbezoek   String?   @map("uur_plaatsbezoek") @db.VarChar(5)
-
-  ovamId       String? @map("ovam_id") @db.VarChar(100)
-  naamAdi      String? @map("naam_adi") @db.VarChar(255)
-  attestUrl    String? @map("attest_url") @db.VarChar(2000)
-  bedrijfsnaam String? @db.VarChar(255)
-
-  postcode          String? @db.VarChar(20)
-  gemeente          String? @db.VarChar(255)
-  straat            String? @db.VarChar(255)
-  huisnummer        String? @db.VarChar(50)
-  extraAdresDetails String? @map("extra_adres_details") @db.VarChar(500)
-
-  perceelGemeenteCode  String? @map("perceel_gemeente_code") @db.VarChar(100)
-  perceelAfdelingscode String? @map("perceel_afdelingscode") @db.VarChar(100)
-  perceelSectieCode    String? @map("perceel_sectie_code") @db.VarChar(100)
-
-  adres       String? @db.VarChar(1000)
-  opmerkingen String? @db.Text
-
-  attestId String @unique @map("attest_id") @db.Uuid
-
-  bronBestandsnaam String? @map("bron_bestandsnaam") @db.VarChar(255)
-  bronExcelRij     Int?    @map("bron_excel_rij")
-
-  aangemaaktOp DateTime  @default(now()) @map("aangemaakt_op")
-  bijgewerktOp DateTime  @updatedAt @map("bijgewerkt_op")
-  verwijderdOp DateTime? @map("verwijderd_op")
+  id                   Int                    @id @default(autoincrement())
+  auditeur             String?
+  factuurVerzonden     Boolean?               @default(false) @map("factuur_verzonden")
+  status               TerreincontroleStatus?
+  attestUrl            String?                @map("attest_url")
+  opmerkingen          String?
+  adres                String?
+  datumPlaatsbezoek    DateTime?              @map("datum_plaatsbezoek") @db.Date
+  uurPlaatsbezoek      DateTime?              @map("uur_plaatsbezoek") @db.Time(6)
+  ovamId               String?                @map("ovam_id")
+  naamAdi              String?                @map("naam_adi")
+  bedrijfsnaam         String?
+  attestId             String                 @unique @map("attest_id") @db.Uuid
+  bronBestandsnaam     String?                @map("bron_bestandsnaam")
+  bronExcelRij         Int?                   @map("bron_excel_rij")
+  aangemaaktOp         DateTime               @default(now()) @map("aangemaakt_op")
+  bijgewerktOp         DateTime               @updatedAt @map("bijgewerkt_op")
+  verwijderdOp         DateTime?              @map("verwijderd_op")
+  bouwjaar             Int?
+  extraAdresDetails    String?                @map("extra_adres_details")
+  gemeente             String?
+  huisnummer           String?
+  inspectielocatie     String?
+  perceelAfdelingscode String?                @map("perceel_afdelingscode")
+  perceelGemeenteCode  String?                @map("perceel_gemeente_code")
+  perceelSectieCode    String?                @map("perceel_sectie_code")
+  postcode             String?
+  straat               String?
+  vloeroppervlakteM2   String?                @map("vloeroppervlakte_m2")
+  auditeurGebruikerId  Int?                   @map("auditeur_gebruiker_id")
+  auditeurGebruiker    ToegestaneGebruiker?   @relation("TerreincontroleAuditeur", fields: [auditeurGebruikerId], references: [id])
 
   @@index([ovamId])
   @@index([status])
@@ -293,11 +284,12 @@ model ToegestaneGebruiker {
   bijgewerktOp       DateTime      @updatedAt @map("bijgewerkt_op")
   wachtwoordWijzigen Boolean       @default(true)
 
-  deskcontroles           Deskcontrole[]           @relation("DeskcontroleAuditeur")
-  terreincontroles        Terreincontrole[]        @relation("TerreincontroleAuditeur")
-  terreincontroleDossiers TerreincontroleDossier[] @relation("TerreincontroledossierAuditeur")
-  meldingen               Melding[]
-  auditlogs               Auditlog[]
+  deskcontroles                Deskcontrole[]               @relation("DeskcontroleAuditeur")
+  terreincontroles             Terreincontrole[]            @relation("TerreincontroleAuditeur")
+  terreincontroleDossiers      TerreincontroleDossier[]     @relation("TerreincontroledossierAuditeur")
+  meldingen                    Melding[]
+  auditlogs                    Auditlog[]
+  terreincontroleReserveringen TerreincontroleReservering[]
 
   @@index([email])
   @@index([actief])
@@ -416,4 +408,21 @@ model AttestStatistiekImport {
   correctiesToegepastOp DateTime? @map("correcties_toegepast_op")
 
   @@map("attest_statistiek_imports")
+}
+
+model TerreincontroleReservering {
+  id Int @id @default(autoincrement())
+
+  attestId String @unique @map("attest_id") @db.Uuid
+
+  gebruikerId Int                 @map("gebruiker_id")
+  gebruiker   ToegestaneGebruiker @relation(fields: [gebruikerId], references: [id], onDelete: Cascade)
+
+  gereserveerdOp DateTime @default(now()) @map("gereserveerd_op")
+  verlooptOp     DateTime @map("verloopt_op")
+  bijgewerktOp   DateTime @updatedAt @map("bijgewerkt_op")
+
+  @@index([gebruikerId])
+  @@index([verlooptOp])
+  @@map("terreincontrole_reserveringen")
 }

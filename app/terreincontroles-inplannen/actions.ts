@@ -8,6 +8,7 @@ import { prisma } from "@/lib/prisma";
 import {
   haalAttestIdUitUrl,
   isGeldigUur,
+  uurNaarDatabaseTijd,
   leesIsoDatum,
   normaliseerOvamId,
   normaliseerTekst,
@@ -345,7 +346,10 @@ export async function maakTerreincontroleAan(
           opmerkingen || null,
         adres,
         datumPlaatsbezoek,
-        uurPlaatsbezoek,
+        uurPlaatsbezoek:
+          uurNaarDatabaseTijd(
+            uurPlaatsbezoek,
+          ),
         ovamId: lid.ovamId,
         naamAdi:
           lid.naamPersoon,

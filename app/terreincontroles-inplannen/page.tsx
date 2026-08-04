@@ -8,6 +8,7 @@ import {
 import { vereisMachtiging } from "@/lib/auth";
 import { heeftMachtiging } from "@/lib/autorisatie";
 import { prisma } from "@/lib/prisma";
+import { formatteerDatabaseTijd } from "@/lib/terreincontrole";
 
 export const dynamic =
   "force-dynamic";
@@ -119,7 +120,8 @@ export default async function TerreincontrolesPage() {
 
         factuurVerzonden:
           terreincontrole
-            .factuurVerzonden,
+            .factuurVerzonden ??
+          false,
 
         status:
           terreincontrole.status,
@@ -143,8 +145,10 @@ export default async function TerreincontrolesPage() {
           null,
 
         uurPlaatsbezoek:
-          terreincontrole
-            .uurPlaatsbezoek,
+          formatteerDatabaseTijd(
+            terreincontrole
+              .uurPlaatsbezoek,
+          ),
 
         ovamId:
           terreincontrole.ovamId,

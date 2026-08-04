@@ -255,3 +255,71 @@ export function statusLabel(
   return "Geen status";
 }
 
+export function uurNaarDatabaseTijd(
+  waarde: string,
+): Date | null {
+  const tekst =
+    waarde.trim();
+
+  if (!isGeldigUur(tekst)) {
+    return null;
+  }
+
+  const [uren, minuten] =
+    tekst
+      .split(":")
+      .map(Number);
+
+  return new Date(
+    Date.UTC(
+      1970,
+      0,
+      1,
+      uren,
+      minuten,
+      0,
+      0,
+    ),
+  );
+}
+
+export function formatteerDatabaseTijd(
+  waarde:
+    | Date
+    | string
+    | null
+    | undefined,
+): string | null {
+  if (!waarde) {
+    return null;
+  }
+
+  if (typeof waarde === "string") {
+    const gevonden =
+      waarde.match(
+        /^([01]\d|2[0-3]):([0-5]\d)/,
+      );
+
+    return gevonden
+      ? `${gevonden[1]}:${gevonden[2]}`
+      : null;
+  }
+
+  if (
+    Number.isNaN(
+      waarde.getTime(),
+    )
+  ) {
+    return null;
+  }
+
+  return [
+    String(
+      waarde.getUTCHours(),
+    ).padStart(2, "0"),
+    String(
+      waarde.getUTCMinutes(),
+    ).padStart(2, "0"),
+  ].join(":");
+}
+

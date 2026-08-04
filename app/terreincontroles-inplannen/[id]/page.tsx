@@ -5,7 +5,10 @@ import { notFound } from "next/navigation";
 import { vereisMachtiging } from "@/lib/auth";
 import { heeftMachtiging } from "@/lib/autorisatie";
 import { prisma } from "@/lib/prisma";
-import { maakGoogleMapsUrl } from "@/lib/terreincontrole";
+import {
+  formatteerDatabaseTijd,
+  maakGoogleMapsUrl,
+} from "@/lib/terreincontrole";
 import BasisTerreincontroleVerwijderKnop from "@/components/TerreincontroleVerwijderKnop";
 
 export const dynamic =
@@ -349,8 +352,10 @@ export default async function TerreincontroleDetailPage({
             <GegevensVeld
               label="Uur plaatsbezoek"
               waarde={
-                terreincontrole
-                  .uurPlaatsbezoek
+                formatteerDatabaseTijd(
+                  terreincontrole
+                    .uurPlaatsbezoek,
+                )
               }
             />
           </dl>

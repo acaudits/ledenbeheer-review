@@ -7,6 +7,7 @@ import {
   prisma,
 } from "@/lib/prisma";
 import {
+  formatteerDatabaseTijd,
   maakGoogleMapsUrl,
 } from "@/lib/terreincontrole";
 
@@ -363,9 +364,10 @@ export async function GET() {
           "",
 
         uurPlaatsbezoek:
-          terreincontrole
-            .uurPlaatsbezoek ??
-          "",
+          formatteerDatabaseTijd(
+            terreincontrole
+              .uurPlaatsbezoek,
+          ) ?? "",
 
         ovamId:
           terreincontrole.ovamId ??

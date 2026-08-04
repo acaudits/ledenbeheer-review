@@ -8,6 +8,7 @@ import { prisma } from "@/lib/prisma";
 import {
   haalAttestIdUitUrl,
   isGeldigeTerreincontroleAuditeur,
+  uurNaarDatabaseTijd,
 } from "@/lib/terreincontrole";
 
 type ActieStatus = {
@@ -296,28 +297,31 @@ export async function wijzigTerreincontrole(
     ).replace(",", ".");
 
   let vloeroppervlakteM2:
-    | number
+    | string
     | null = null;
 
   if (
     vloeroppervlakteTekst
   ) {
-    vloeroppervlakteM2 =
+    const numeriekeOppervlakte =
       Number(
         vloeroppervlakteTekst,
       );
 
     if (
       !Number.isFinite(
-        vloeroppervlakteM2,
+        numeriekeOppervlakte,
       ) ||
-      vloeroppervlakteM2 < 0
+      numeriekeOppervlakte < 0
     ) {
       return {
         fout:
           "Vloeroppervlakte moet een geldig positief getal zijn.",
       };
     }
+
+    vloeroppervlakteM2 =
+      vloeroppervlakteTekst;
   }
 
   const datumTekst =
@@ -434,8 +438,11 @@ export async function wijzigTerreincontrole(
           datumPlaatsbezoek,
 
           uurPlaatsbezoek:
-            uurPlaatsbezoek ||
-            null,
+            uurPlaatsbezoek
+              ? uurNaarDatabaseTijd(
+                  uurPlaatsbezoek,
+                )
+              : null,
 
           ovamId:
             leesOptioneleTekst(

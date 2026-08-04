@@ -16,6 +16,14 @@ import {
   type TerreincontroleExcelState,
 } from "../planning-import-actions";
 
+import {
+  geefPlaatsbezoekVrij,
+  haalPlaatsbezoekBeschikbaarheidOp,
+  reserveerPlaatsbezoek,
+  reserveerPlaatsbezoeken,
+  vernieuwPlaatsbezoekReserveringen,
+} from "../reservering-actions";
+
 import PlaatsbezoekenKaart from "./PlaatsbezoekenKaart";
 
 const TERREINCONTROLE_AUDITEURS = [
@@ -197,6 +205,18 @@ export default function TerreincontroleExcelImport() {
     setPlanningZoekterm,
   ] = useState("");
 
+  const [
+    reserveringMelding,
+    setReserveringMelding,
+  ] = useState("");
+
+  const [
+    reserveringBezig,
+    setReserveringBezig,
+  ] = useState<Set<string>>(
+    new Set(),
+  );
+
   useEffect(() => {
     const nieuweRijen =
       state.rijen ?? [];
@@ -235,6 +255,166 @@ export default function TerreincontroleExcelImport() {
   }, [
     bevestigState.succes,
     bevestigState.message,
+  ]);
+
+  useEffect(() => {
+    if (
+      rijen.length === 0
+    ) {
+      return;
+    }
+
+    const ververs =
+      async () => {
+        try {
+          const beschikbaarheden =
+            await haalPlaatsbezoekBeschikbaarheidOp(
+              rijen.map(
+                (rij) =>
+                  rij.attestId,
+              ),
+            );
+
+          const perAttestId =
+            new Map(
+              beschikbaarheden.map(
+                (status) => [
+                  status.attestId,
+                  status,
+                ],
+              ),
+            );
+
+          setRijen(
+            (huidigeRijen) =>
+              huidigeRijen.map(
+                (rij) => {
+                  const status =
+                    perAttestId.get(
+                      rij.attestId
+                        .trim()
+                        .toLowerCase(),
+                    );
+
+                  return status
+                    ? {
+                        ...rij,
+                        ...status,
+                      }
+                    : rij;
+                },
+              ),
+          );
+
+          setGeselecteerdeSleutels(
+            (huidige) => {
+              const volgende =
+                new Set(huidige);
+
+              for (
+                const rij of rijen
+              ) {
+                const status =
+                  perAttestId.get(
+                    rij.attestId
+                      .trim()
+                      .toLowerCase(),
+                  );
+
+                if (
+                  status &&
+                  status.beschikbaarheid !==
+                    "DOOR_MIJ"
+                ) {
+                  volgende.delete(
+                    rij.sleutel,
+                  );
+                }
+              }
+
+              return volgende;
+            },
+          );
+        } catch (fout) {
+          console.error(
+            "Beschikbaarheid verversen mislukt:",
+            fout,
+          );
+        }
+      };
+
+    const interval =
+      window.setInterval(
+        () => {
+          void ververs();
+        },
+        15_000,
+      );
+
+    return () =>
+      window.clearInterval(
+        interval,
+      );
+  }, [rijen]);
+
+  useEffect(() => {
+    const eigenRijen =
+      rijen.filter(
+        (rij) =>
+          geselecteerdeSleutels.has(
+            rij.sleutel,
+          ) &&
+          rij.beschikbaarheid ===
+            "DOOR_MIJ",
+      );
+
+    if (
+      eigenRijen.length === 0
+    ) {
+      return;
+    }
+
+    const vernieuw =
+      async () => {
+        try {
+          const resultaat =
+            await vernieuwPlaatsbezoekReserveringen(
+              eigenRijen.map(
+                (rij) =>
+                  rij.attestId,
+              ),
+            );
+
+          if (
+            resultaat.aantalVernieuwd !==
+            eigenRijen.length
+          ) {
+            setReserveringMelding(
+              "Minstens één reservering is verlopen. Controleer de selectie opnieuw.",
+            );
+          }
+        } catch (fout) {
+          console.error(
+            "Reserveringen vernieuwen mislukt:",
+            fout,
+          );
+        }
+      };
+
+    const interval =
+      window.setInterval(
+        () => {
+          void vernieuw();
+        },
+        60_000,
+      );
+
+    return () =>
+      window.clearInterval(
+        interval,
+      );
+  }, [
+    geselecteerdeSleutels,
   ]);
 
   const geselecteerdeRijen =
@@ -305,10 +485,24 @@ export default function TerreincontroleExcelImport() {
       planningZoekterm,
     ]);
 
+  const reserveerbareRijen =
+    zichtbareRijen.filter(
+      (rij) =>
+        rij.beschikbaarheid ===
+          "BESCHIKBAAR" ||
+        rij.beschikbaarheid ===
+          "DOOR_MIJ",
+    );
+
   const allesGeselecteerd =
-    rijen.length > 0 &&
-    geselecteerdeRijen.length ===
-      rijen.length;
+    reserveerbareRijen.length >
+      0 &&
+    reserveerbareRijen.every(
+      (rij) =>
+        geselecteerdeSleutels.has(
+          rij.sleutel,
+        ),
+    );
 
   const importGegevens =
     JSON.stringify({
@@ -390,52 +584,318 @@ export default function TerreincontroleExcelImport() {
         ),
     });
 
-  function selecteerAlles() {
-    if (
-      allesGeselecteerd
-    ) {
+  async function selecteerAlles() {
+    if (allesGeselecteerd) {
+      const eigenRijen =
+        reserveerbareRijen.filter(
+          (rij) =>
+            geselecteerdeSleutels.has(
+              rij.sleutel,
+            ),
+        );
+
+      await Promise.all(
+        eigenRijen.map(
+          (rij) =>
+            geefPlaatsbezoekVrij(
+              rij.attestId,
+            ),
+        ),
+      );
+
       setGeselecteerdeSleutels(
-        new Set(),
+        (huidige) => {
+          const volgende =
+            new Set(huidige);
+
+          for (
+            const rij of eigenRijen
+          ) {
+            volgende.delete(
+              rij.sleutel,
+            );
+          }
+
+          return volgende;
+        },
+      );
+
+      setRijen(
+        (huidigeRijen) =>
+          huidigeRijen.map(
+            (rij) =>
+              eigenRijen.some(
+                (eigenRij) =>
+                  eigenRij.sleutel ===
+                  rij.sleutel,
+              )
+                ? {
+                    ...rij,
+                    beschikbaarheid:
+                      "BESCHIKBAAR",
+                    gereserveerdDoor:
+                      null,
+                    reserveringVerlooptOp:
+                      null,
+                  }
+                : rij,
+          ),
+      );
+
+      setReserveringMelding(
+        "De zichtbare reserveringen werden vrijgegeven.",
       );
 
       return;
     }
 
-    setGeselecteerdeSleutels(
-      new Set(
-        rijen.map(
-          (rij) =>
-            rij.sleutel,
-        ),
-      ),
-    );
-  }
+    const teReserveren =
+      reserveerbareRijen.filter(
+        (rij) =>
+          rij.beschikbaarheid ===
+            "BESCHIKBAAR",
+      );
 
-  function wijzigSelectie(
-    sleutel: string,
-  ) {
+    if (
+      teReserveren.length === 0
+    ) {
+      return;
+    }
+
+    const resultaten =
+      await reserveerPlaatsbezoeken(
+        teReserveren.map(
+          (rij) =>
+            rij.attestId,
+        ),
+      );
+
+    const resultaatPerId =
+      new Map(
+        resultaten.map(
+          (resultaat) => [
+            resultaat.attestId,
+            resultaat,
+          ],
+        ),
+      );
+
+    setRijen(
+      (huidigeRijen) =>
+        huidigeRijen.map(
+          (rij) => {
+            const resultaat =
+              resultaatPerId.get(
+                rij.attestId
+                  .trim()
+                  .toLowerCase(),
+              );
+
+            return resultaat
+              ? {
+                  ...rij,
+                  beschikbaarheid:
+                    resultaat.beschikbaarheid,
+                  gereserveerdDoor:
+                    resultaat.gereserveerdDoor,
+                  reserveringVerlooptOp:
+                    resultaat.reserveringVerlooptOp,
+                  ingeplandDoor:
+                    resultaat.ingeplandDoor,
+                }
+              : rij;
+          },
+        ),
+    );
+
     setGeselecteerdeSleutels(
       (huidige) => {
         const volgende =
           new Set(huidige);
 
-        if (
-          volgende.has(
-            sleutel,
-          )
+        for (
+          const rij of teReserveren
         ) {
-          volgende.delete(
-            sleutel,
-          );
-        } else {
-          volgende.add(
-            sleutel,
-          );
+          const resultaat =
+            resultaatPerId.get(
+              rij.attestId
+                .trim()
+                .toLowerCase(),
+            );
+
+          if (
+            resultaat?.succes
+          ) {
+            volgende.add(
+              rij.sleutel,
+            );
+          }
         }
 
         return volgende;
       },
     );
+
+    const gelukt =
+      resultaten.filter(
+        (resultaat) =>
+          resultaat.succes,
+      ).length;
+
+    const mislukt =
+      resultaten.length -
+      gelukt;
+
+    setReserveringMelding(
+      `${gelukt} plaatsbezoek(en) gereserveerd.${
+        mislukt > 0
+          ? ` ${mislukt} plaatsbezoek(en) waren niet meer beschikbaar.`
+          : ""
+      }`,
+    );
+  }
+
+  async function wijzigSelectie(
+    rij: TerreincontroleExcelRij,
+  ) {
+    if (
+      reserveringBezig.has(
+        rij.sleutel,
+      )
+    ) {
+      return;
+    }
+
+    setReserveringBezig(
+      (huidige) => {
+        const volgende =
+          new Set(huidige);
+
+        volgende.add(
+          rij.sleutel,
+        );
+
+        return volgende;
+      },
+    );
+
+    try {
+      const geselecteerd =
+        geselecteerdeSleutels.has(
+          rij.sleutel,
+        );
+
+      if (geselecteerd) {
+        await geefPlaatsbezoekVrij(
+          rij.attestId,
+        );
+
+        setGeselecteerdeSleutels(
+          (huidige) => {
+            const volgende =
+              new Set(huidige);
+
+            volgende.delete(
+              rij.sleutel,
+            );
+
+            return volgende;
+          },
+        );
+
+        setRijen(
+          (huidigeRijen) =>
+            huidigeRijen.map(
+              (huidigeRij) =>
+                huidigeRij.sleutel ===
+                rij.sleutel
+                  ? {
+                      ...huidigeRij,
+                      beschikbaarheid:
+                        "BESCHIKBAAR",
+                      gereserveerdDoor:
+                        null,
+                      reserveringVerlooptOp:
+                        null,
+                    }
+                  : huidigeRij,
+            ),
+        );
+
+        setReserveringMelding(
+          "Reservering vrijgegeven.",
+        );
+
+        return;
+      }
+
+      const resultaat =
+        await reserveerPlaatsbezoek(
+          rij.attestId,
+        );
+
+      setRijen(
+        (huidigeRijen) =>
+          huidigeRijen.map(
+            (huidigeRij) =>
+              huidigeRij.sleutel ===
+              rij.sleutel
+                ? {
+                    ...huidigeRij,
+                    beschikbaarheid:
+                      resultaat.beschikbaarheid,
+                    gereserveerdDoor:
+                      resultaat.gereserveerdDoor,
+                    reserveringVerlooptOp:
+                      resultaat.reserveringVerlooptOp,
+                    ingeplandDoor:
+                      resultaat.ingeplandDoor,
+                  }
+                : huidigeRij,
+          ),
+      );
+
+      if (resultaat.succes) {
+        setGeselecteerdeSleutels(
+          (huidige) => {
+            const volgende =
+              new Set(huidige);
+
+            volgende.add(
+              rij.sleutel,
+            );
+
+            return volgende;
+          },
+        );
+      }
+
+      setReserveringMelding(
+        resultaat.message,
+      );
+    } catch (fout) {
+      console.error(
+        "Selectie wijzigen mislukt:",
+        fout,
+      );
+
+      setReserveringMelding(
+        "De reservering kon niet worden gewijzigd.",
+      );
+    } finally {
+      setReserveringBezig(
+        (huidige) => {
+          const volgende =
+            new Set(huidige);
+
+          volgende.delete(
+            rij.sleutel,
+          );
+
+          return volgende;
+        },
+      );
+    }
   }
 
   function wijzigRij(
@@ -667,6 +1127,15 @@ export default function TerreincontroleExcelImport() {
             </p>
           </div>
 
+          {reserveringMelding ? (
+            <div
+              role="status"
+              className="border-b border-slate-200 bg-blue-50 px-4 py-3 text-sm font-semibold text-blue-900"
+            >
+              {reserveringMelding}
+            </div>
+          ) : null}
+
           <PlaatsbezoekenKaart
             rijen={zichtbareRijen}
           />
@@ -682,10 +1151,14 @@ export default function TerreincontroleExcelImport() {
                         checked={
                           allesGeselecteerd
                         }
-                        onChange={
-                          selecteerAlles
+                        onChange={() => {
+                          void selecteerAlles();
+                        }}
+                        disabled={
+                          reserveerbareRijen.length ===
+                          0
                         }
-                        className="size-4 accent-emerald-700"
+                        className="size-4 accent-emerald-700 disabled:cursor-not-allowed disabled:opacity-40"
                       />
 
                       Selecteer
@@ -815,14 +1288,57 @@ export default function TerreincontroleExcelImport() {
                           checked={
                             geselecteerd
                           }
-                          onChange={() =>
-                            wijzigSelectie(
+                          onChange={() => {
+                            void wijzigSelectie(
+                              rij,
+                            );
+                          }}
+                          disabled={
+                            rij.beschikbaarheid ===
+                              "DOOR_ANDER" ||
+                            rij.beschikbaarheid ===
+                              "INGEPLAND" ||
+                            reserveringBezig.has(
                               rij.sleutel,
                             )
                           }
-                          className="size-4 accent-emerald-700"
+                          className="size-4 accent-emerald-700 disabled:cursor-not-allowed disabled:opacity-40"
                           aria-label={`Excelrij ${rij.excelRij} selecteren`}
                         />
+
+                        <div className="mt-2 w-52">
+                          {reserveringBezig.has(
+                            rij.sleutel,
+                          ) ? (
+                            <span className="text-[10px] font-bold text-blue-700">
+                              Reserveren…
+                            </span>
+                          ) : rij.beschikbaarheid ===
+                            "DOOR_MIJ" ? (
+                            <span className="inline-flex rounded-full bg-emerald-100 px-2 py-1 text-[10px] font-bold text-emerald-800">
+                              Door jou gekozen
+                            </span>
+                          ) : rij.beschikbaarheid ===
+                            "DOOR_ANDER" ? (
+                            <span className="inline-flex rounded-full bg-amber-100 px-2 py-1 text-[10px] font-bold text-amber-900">
+                              Tijdelijk gereserveerd door{" "}
+                              {rij.gereserveerdDoor ??
+                                "een andere auditeur"}
+                            </span>
+                          ) : rij.beschikbaarheid ===
+                            "INGEPLAND" ? (
+                            <span className="inline-flex rounded-full bg-slate-200 px-2 py-1 text-[10px] font-bold text-slate-800">
+                              Reeds ingepland
+                              {rij.ingeplandDoor
+                                ? ` door ${rij.ingeplandDoor}`
+                                : ""}
+                            </span>
+                          ) : (
+                            <span className="text-[10px] font-semibold text-slate-500">
+                              Beschikbaar
+                            </span>
+                          )}
+                        </div>
                       </td>
 
                       <td className="px-3 py-3 align-top">
@@ -1180,6 +1696,17 @@ export default function TerreincontroleExcelImport() {
                   bevestigFormAction
                 }
               >
+
+                <input
+                  type="hidden"
+                  name="reserveringAttestIds"
+                  value={JSON.stringify(
+                    geselecteerdeRijen.map(
+                      (rij) =>
+                        rij.attestId,
+                    ),
+                  )}
+                />
                 <input
                   type="hidden"
                   name="importGegevens"

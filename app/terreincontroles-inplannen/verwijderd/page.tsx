@@ -6,6 +6,7 @@ import {
   prisma,
 } from "@/lib/prisma";
 import {
+  formatteerDatabaseTijd,
   maakGoogleMapsUrl,
 } from "@/lib/terreincontrole";
 
@@ -248,9 +249,10 @@ export default async function VerwijderdeTerreincontrolesPage() {
                           </td>
 
                           <td className="px-4 py-3">
-                            {terreincontrole
-                              .uurPlaatsbezoek ??
-                              "—"}
+                            {formatteerDatabaseTijd(
+                              terreincontrole
+                                .uurPlaatsbezoek,
+                            ) ?? "—"}
                           </td>
 
                           <td className="px-4 py-3 font-mono text-xs">

@@ -12,6 +12,12 @@ import { unstable_cache } from "next/cache";
 import { vereisMachtiging } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
+import {
+  controleerReserveringenVoorOpslaan,
+  haalPlaatsbezoekBeschikbaarheidOp,
+  voltooiPlaatsbezoekReserveringen,
+} from "./reservering-actions";
+
 export type PlanningStatus =
   | "GRIJS"
   | "ROOD"
@@ -33,6 +39,14 @@ export type TerreincontroleExcelRij =
       | "GEVONDEN"
       | "NIET_GEVONDEN"
       | "GEEN_ADRES";
+    beschikbaarheid:
+      | "BESCHIKBAAR"
+      | "DOOR_MIJ"
+      | "DOOR_ANDER"
+      | "INGEPLAND";
+    gereserveerdDoor: string | null;
+    reserveringVerlooptOp: string | null;
+    ingeplandDoor: string | null;
   };
 
 export type TerreincontroleExcelState =
@@ -547,6 +561,21 @@ export async function leesTerreincontrolesUitExcel(
       basisRijen,
     );
 
+  const beschikbaarheden =
+    await haalPlaatsbezoekBeschikbaarheidOp(
+      basisRijen.map((rij) => rij.attestId),
+    );
+
+  const beschikbaarheidPerAttestId =
+    new Map(
+      beschikbaarheden.map(
+        (beschikbaarheid) => [
+          beschikbaarheid.attestId,
+          beschikbaarheid,
+        ],
+      ),
+    );
+
   const rijen: TerreincontroleExcelRij[] =
     basisRijen.map((basisRij) => {
       const ovamSleutel =
@@ -609,6 +638,26 @@ export async function leesTerreincontrolesUitExcel(
         ...basisRij,
         auditeur:
           standaardAuditeur,
+        beschikbaarheid:
+          beschikbaarheidPerAttestId.get(
+            basisRij.attestId.trim().toLowerCase(),
+          )?.beschikbaarheid ??
+          "BESCHIKBAAR",
+        gereserveerdDoor:
+          beschikbaarheidPerAttestId.get(
+            basisRij.attestId.trim().toLowerCase(),
+          )?.gereserveerdDoor ??
+          null,
+        reserveringVerlooptOp:
+          beschikbaarheidPerAttestId.get(
+            basisRij.attestId.trim().toLowerCase(),
+          )?.reserveringVerlooptOp ??
+          null,
+        ingeplandDoor:
+          beschikbaarheidPerAttestId.get(
+            basisRij.attestId.trim().toLowerCase(),
+          )?.ingeplandDoor ??
+          null,
         latitude:
           geocodeResultaat?.latitude ??
           null,
@@ -657,13 +706,104 @@ export async function leesTerreincontrolesUitExcel(
 export async function bevestigTerreincontrolesUitExcel(
   vorigeStatus: TerreincontroleBevestigState,
   formData: FormData,
-) {
+): Promise<TerreincontroleBevestigState> {
   await vereisMachtiging(
     "TERREINCONTROLES_BEHEREN",
   );
 
-  return basisBevestigTerreincontrolesUitExcel(
-    vorigeStatus,
-    formData,
-  );
+  const ruweAttestIds =
+    formData.get(
+      "reserveringAttestIds",
+    );
+
+  if (
+    typeof ruweAttestIds !==
+    "string"
+  ) {
+    return {
+      succes: false,
+      message:
+        "De reserveringsgegevens van de geselecteerde plaatsbezoeken ontbreken.",
+    };
+  }
+
+  let attestIds: string[];
+
+  try {
+    const gelezen:
+      unknown =
+      JSON.parse(
+        ruweAttestIds,
+      );
+
+    if (
+      !Array.isArray(gelezen) ||
+      !gelezen.every(
+        (waarde) =>
+          typeof waarde ===
+          "string",
+      )
+    ) {
+      throw new Error(
+        "Ongeldige lijst met Attest-ID's.",
+      );
+    }
+
+    attestIds =
+      gelezen;
+  } catch {
+    return {
+      succes: false,
+      message:
+        "De reserveringsgegevens konden niet worden gelezen.",
+    };
+  }
+
+  if (
+    attestIds.length === 0
+  ) {
+    return {
+      succes: false,
+      message:
+        "Selecteer minstens één plaatsbezoek.",
+    };
+  }
+
+  const reserveringscontrole =
+    await controleerReserveringenVoorOpslaan(
+      attestIds,
+    );
+
+  if (
+    !reserveringscontrole.succes
+  ) {
+    return {
+      succes: false,
+      message:
+        reserveringscontrole.message,
+    };
+  }
+
+  /*
+   * Alle bestaande formuliervelden blijven behouden.
+   * De oorspronkelijke importactie blijft daardoor haar eigen
+   * JSON-structuur en validaties gebruiken.
+   */
+  const resultaat =
+    await basisBevestigTerreincontrolesUitExcel(
+      vorigeStatus,
+      formData,
+    );
+
+  if (resultaat.succes) {
+    /*
+     * Koppel de opgeslagen terreincontroles aan de ingelogde
+     * gebruiker en verwijder daarna de tijdelijke reserveringen.
+     */
+    await voltooiPlaatsbezoekReserveringen(
+      attestIds,
+    );
+  }
+
+  return resultaat;
 }

@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 
 import { vereisMachtiging } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { formatteerDatabaseTijd } from "@/lib/terreincontrole";
 
 import TerreincontroleBewerkFormulier, {
   type BewerkbareTerreincontrole,
@@ -105,7 +106,8 @@ export default async function TerreincontroleBewerkenPage({
 
     factuurVerzonden:
       terreincontrole
-        .factuurVerzonden,
+        .factuurVerzonden ??
+      false,
 
     inspectielocatie:
       terreincontrole
@@ -127,8 +129,10 @@ export default async function TerreincontroleBewerkenPage({
       ),
 
     uurPlaatsbezoek:
-      terreincontrole
-        .uurPlaatsbezoek ?? "",
+      formatteerDatabaseTijd(
+        terreincontrole
+          .uurPlaatsbezoek,
+      ) ?? "",
 
     ovamId:
       terreincontrole.ovamId ??

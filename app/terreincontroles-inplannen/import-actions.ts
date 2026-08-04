@@ -8,6 +8,7 @@ import { prisma } from "@/lib/prisma";
 import {
   haalAttestIdUitUrl,
   isGeldigUur,
+  uurNaarDatabaseTijd,
   leesIsoDatum,
   normaliseerOvamId,
   normaliseerTekst,
@@ -119,10 +120,10 @@ type GeldigeTerreincontroleImport = {
 
   inspectielocatie: string | null;
   bouwjaar: number | null;
-  vloeroppervlakteM2: number | null;
+  vloeroppervlakteM2: string | null;
 
   datumPlaatsbezoek: Date | null;
-  uurPlaatsbezoek: string | null;
+  uurPlaatsbezoek: Date | null;
 
   ovamId: string | null;
   naamAdi: string | null;
@@ -1728,10 +1729,19 @@ export async function bevestigTerreincontrolesUitExcel(
         inspectielocatie ||
         null,
       bouwjaar,
-      vloeroppervlakteM2,
+      vloeroppervlakteM2:
+        vloeroppervlakteTekst
+          ? vloeroppervlakteTekst
+              .replace(",", ".")
+          : null,
 
       datumPlaatsbezoek,
-      uurPlaatsbezoek,
+      uurPlaatsbezoek:
+        uurTekst
+          ? uurNaarDatabaseTijd(
+              uurTekst,
+            )
+          : null,
 
       ovamId:
         ovamId || null,
