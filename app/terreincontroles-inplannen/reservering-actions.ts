@@ -4,7 +4,7 @@ import { vereisMachtiging } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
 const RESERVERING_DUUR_MS =
-  5 * 60 * 1000;
+  10 * 60 * 1000;
 
 const UUID_PATROON =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -243,7 +243,7 @@ async function reserveerEen(
             reservering.verlooptOp.toISOString(),
           ingeplandDoor: null,
           message:
-            "Plaatsbezoek is gedurende 5 minuten voor jou gereserveerd.",
+            "Plaatsbezoek is gedurende 10 minuten voor jou gereserveerd.",
         };
       },
     );

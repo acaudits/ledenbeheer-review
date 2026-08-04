@@ -161,6 +161,62 @@ function formatteerPlanningDatum(
   ).format(datum);
 }
 
+function formatteerReserveringAfteltijd(
+  verlooptOp: string | null,
+  huidigeTijd: number,
+) {
+  if (
+    !verlooptOp ||
+    huidigeTijd <= 0
+  ) {
+    return null;
+  }
+
+  const vervaltijd =
+    new Date(
+      verlooptOp,
+    ).getTime();
+
+  if (
+    !Number.isFinite(
+      vervaltijd,
+    )
+  ) {
+    return null;
+  }
+
+  const resterendeSeconden =
+    Math.max(
+      0,
+      Math.ceil(
+        (
+          vervaltijd -
+          huidigeTijd
+        ) / 1000,
+      ),
+    );
+
+  const minuten =
+    Math.floor(
+      resterendeSeconden / 60,
+    );
+
+  const seconden =
+    resterendeSeconden % 60;
+
+  return `${String(
+    minuten,
+  ).padStart(
+    2,
+    "0",
+  )}:${String(
+    seconden,
+  ).padStart(
+    2,
+    "0",
+  )}`;
+}
+
 export default function TerreincontroleExcelImport() {
   const [
     state,
@@ -228,6 +284,33 @@ export default function TerreincontroleExcelImport() {
   ] = useState<Set<string>>(
     new Set(),
   );
+
+  const [
+    reserveringTimerNu,
+    setReserveringTimerNu,
+  ] = useState(0);
+
+  useEffect(() => {
+    setReserveringTimerNu(
+      Date.now(),
+    );
+
+    const interval =
+      window.setInterval(
+        () => {
+          setReserveringTimerNu(
+            Date.now(),
+          );
+        },
+        1_000,
+      );
+
+    return () => {
+      window.clearInterval(
+        interval,
+      );
+    };
+  }, []);
 
   useEffect(() => {
     const nieuweRijen =
@@ -403,6 +486,28 @@ export default function TerreincontroleExcelImport() {
           ) {
             setReserveringMelding(
               "Minstens één reservering is verlopen. Controleer de selectie opnieuw.",
+            );
+          } else if (
+            "verlooptOp" in
+              resultaat &&
+            resultaat.verlooptOp
+          ) {
+            setRijen(
+              (huidigeRijen) =>
+                huidigeRijen.map(
+                  (rij) =>
+                    geselecteerdeSleutels.has(
+                      rij.sleutel,
+                    ) &&
+                    rij.beschikbaarheid ===
+                      "DOOR_MIJ"
+                      ? {
+                          ...rij,
+                          reserveringVerlooptOp:
+                            resultaat.verlooptOp,
+                        }
+                      : rij,
+                ),
             );
           }
         } catch (fout) {
@@ -1376,8 +1481,31 @@ export default function TerreincontroleExcelImport() {
                             </span>
                           ) : rij.beschikbaarheid ===
                             "DOOR_MIJ" ? (
-                            <span className="inline-flex rounded-full bg-emerald-100 px-2 py-1 text-[10px] font-bold text-emerald-800">
-                              Door jou gekozen
+                            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-1 text-[10px] font-bold text-emerald-800">
+                              <span>
+                                Door jou gekozen
+                              </span>
+
+                              {formatteerReserveringAfteltijd(
+                                rij.reserveringVerlooptOp,
+                                reserveringTimerNu,
+                              ) ? (
+                                <>
+                                  <span
+                                    aria-hidden="true"
+                                  >
+                                    ·
+                                  </span>
+
+                                  <span className="font-mono tabular-nums">
+                                    nog{" "}
+                                    {formatteerReserveringAfteltijd(
+                                      rij.reserveringVerlooptOp,
+                                      reserveringTimerNu,
+                                    )}
+                                  </span>
+                                </>
+                              ) : null}
                             </span>
                           ) : rij.beschikbaarheid ===
                             "DOOR_ANDER" ? (
