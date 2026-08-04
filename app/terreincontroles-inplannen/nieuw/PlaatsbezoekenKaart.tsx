@@ -249,6 +249,9 @@ export default function PlaatsbezoekenKaart({
       import("leaflet").Map | null
     >(null);
 
+  const invalidateTimer =
+    useRef<number | null>(null);
+
   const geldigeRijen =
     useMemo(
       () =>
@@ -286,6 +289,8 @@ export default function PlaatsbezoekenKaart({
       }
 
       if (kaartInstantie.current) {
+        kaartInstantie.current.stop();
+        kaartInstantie.current.off();
         kaartInstantie.current.remove();
         kaartInstantie.current = null;
       }
@@ -296,6 +301,10 @@ export default function PlaatsbezoekenKaart({
         center: [50.8503, 4.3517],
         zoom: 8,
         preferCanvas: true,
+        scrollWheelZoom: false,
+        zoomAnimation: false,
+        fadeAnimation: false,
+        markerZoomAnimation: false,
       });
 
       kaartInstantie.current = kaart;
@@ -369,9 +378,27 @@ export default function PlaatsbezoekenKaart({
         );
       }
 
-      window.setTimeout(() => {
-        kaart.invalidateSize();
-      }, 0);
+      if (invalidateTimer.current !== null) {
+        window.clearTimeout(
+          invalidateTimer.current,
+        );
+      }
+
+      invalidateTimer.current =
+        window.setTimeout(() => {
+          if (
+            !geannuleerd &&
+            kaartInstantie.current ===
+              kaart
+          ) {
+            kaart.invalidateSize({
+              animate: false,
+            });
+          }
+
+          invalidateTimer.current =
+            null;
+        }, 0);
     }
 
     void tekenKaart();
@@ -379,7 +406,18 @@ export default function PlaatsbezoekenKaart({
     return () => {
       geannuleerd = true;
 
+      if (invalidateTimer.current !== null) {
+        window.clearTimeout(
+          invalidateTimer.current,
+        );
+
+        invalidateTimer.current =
+          null;
+      }
+
       if (kaartInstantie.current) {
+        kaartInstantie.current.stop();
+        kaartInstantie.current.off();
         kaartInstantie.current.remove();
         kaartInstantie.current = null;
       }
