@@ -439,7 +439,7 @@ export default function BulkDeskcontroleImport() {
       "Finalisatie Datum",
       "Status",
       "Deskcontrole-ID",
-      "Aantal vaststellingen",
+      "Aantal non-conformiteiten",
       "Melding",
     ];
 
@@ -654,7 +654,7 @@ export default function BulkDeskcontroleImport() {
               />
 
               <ResultaatVak
-                label="Vaststellingen"
+                label="Non-conformiteiten"
                 waarde={
                   totalen.vaststellingen
                 }
@@ -738,7 +738,8 @@ export default function BulkDeskcontroleImport() {
                       Status
                     </th>
                     <th className="px-4 py-3">
-                      Vaststellingen
+
+                      Non-conformiteiten
                     </th>
                     <th className="px-4 py-3">
                       Melding

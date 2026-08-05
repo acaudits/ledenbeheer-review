@@ -648,25 +648,6 @@ export async function leesTerreincontrolesUitExcel(
     ),
   ];
 
-  const leden =
-    ovamIds.length === 0
-      ? []
-      : await prisma.lid.findMany({
-          where: {
-            ovamId: {
-              in: ovamIds,
-            },
-            verwijderdOp: null,
-          },
-          select: {
-            id: true,
-            ovamId: true,
-          },
-        });
-
-  const lidIds =
-    leden.map((lid) => lid.id);
-
   const [
     atteststatistieken,
     terreincontroletellingen,
@@ -685,31 +666,26 @@ export async function leesTerreincontrolesUitExcel(
           },
         }),
 
-    lidIds.length === 0
+    ovamIds.length === 0
       ? Promise.resolve([])
-      : prisma.terreincontroleDossier.groupBy({
-          by: ["lidId"],
+      : prisma.terreincontrole.groupBy({
+          by: ["ovamId"],
           where: {
             verwijderdOp: null,
-            lidId: {
-              in: lidIds,
+            ovamId: {
+              in: ovamIds,
+              mode: "insensitive",
             },
           },
           _count: {
             _all: true,
           },
           _max: {
-            datumControle: true,
+            datumPlaatsbezoek:
+              true,
           },
         }),
   ]);
-
-  const lidPerOvamId = new Map(
-    leden.map((lid) => [
-      normaliseerNaam(lid.ovamId),
-      lid,
-    ]),
-  );
 
   const attestenPerOvamId = new Map(
     atteststatistieken.map(
@@ -722,18 +698,30 @@ export async function leesTerreincontrolesUitExcel(
     ),
   );
 
-  const controlesPerLid = new Map(
-    terreincontroletellingen.map(
-      (telling) => [
-        telling.lidId,
-        {
-          aantal: telling._count._all,
-          laatste:
-            telling._max.datumControle,
-        },
-      ],
-    ),
-  );
+  const controlesPerOvamId =
+    new Map(
+      terreincontroletellingen
+        .filter(
+          (telling) =>
+            Boolean(
+              telling.ovamId,
+            ),
+        )
+        .map(
+          (telling) => [
+            normaliseerNaam(
+              telling.ovamId ?? "",
+            ),
+            {
+              aantal:
+                telling._count._all,
+              laatste:
+                telling._max
+                  .datumPlaatsbezoek,
+            },
+          ],
+        ),
+    );
 
   const geocodeResultaten =
     await geocodeerInBatches(
@@ -762,9 +750,6 @@ export async function leesTerreincontrolesUitExcel(
           basisRij.ovamId,
         );
 
-      const lid =
-        lidPerOvamId.get(ovamSleutel);
-
       const aantalAttesten =
         attestenPerOvamId.get(
           ovamSleutel,
@@ -780,9 +765,10 @@ export async function leesTerreincontrolesUitExcel(
             )
           : 0;
 
-      const controlegegevens = lid
-        ? controlesPerLid.get(lid.id)
-        : undefined;
+      const controlegegevens =
+        controlesPerOvamId.get(
+          ovamSleutel,
+        );
 
       const aantalTerreincontroles =
         controlegegevens?.aantal ?? 0;

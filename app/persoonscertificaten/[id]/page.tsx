@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { ControleTargetOverzicht } from "@/components/ControleTargetOverzicht";
+import { TopTienNonConformiteiten } from "@/components/TopTienNonConformiteiten";
 import { PersoonsTerreincontroles } from "@/components/PersoonsTerreincontroles";
+import { PersoonsIngeplandeTerreincontroles } from "@/components/PersoonsIngeplandeTerreincontroles";
 import {
   notFound,
 } from "next/navigation";
@@ -257,7 +259,43 @@ export default async function PersoonscertificaatDetailPage({
     atteststatistiek?.aantalAttesten ??
     0;
 
-  const terreincontroles =
+  const ingeplandeTerreincontroles =
+    await prisma.terreincontrole.findMany({
+      where: {
+        verwijderdOp: null,
+        ovamId: {
+          equals: persoon.ovamId,
+          mode: "insensitive",
+        },
+      },
+      orderBy: [
+        {
+          datumPlaatsbezoek:
+            "desc",
+        },
+        {
+          id: "desc",
+        },
+      ],
+      select: {
+        id: true,
+        auditeur: true,
+        factuurVerzonden: true,
+        status: true,
+        attestUrl: true,
+        opmerkingen: true,
+        adres: true,
+        inspectielocatie: true,
+        datumPlaatsbezoek:
+          true,
+        uurPlaatsbezoek: true,
+        naamAdi: true,
+        bedrijfsnaam: true,
+        attestId: true,
+      },
+    });
+
+  const terreincontroleDossiers =
     await prisma.terreincontroleDossier.findMany({
       where: {
         verwijderdOp: null,
@@ -265,9 +303,16 @@ export default async function PersoonscertificaatDetailPage({
       },
       select: {
         id: true,
+        attestnummer: true,
+        datumControle: true,
         vaststellingen: {
           select: {
             id: true,
+            parameter: true,
+            ncId: true,
+            omschrijving: true,
+            groteImpact: true,
+            categorie: true,
           },
         },
       },
@@ -286,7 +331,7 @@ export default async function PersoonscertificaatDetailPage({
     );
 
   const aantalTerreincontroleVaststellingen =
-    terreincontroles.reduce(
+    terreincontroleDossiers.reduce(
       (
         totaal,
         terreincontrole,
@@ -300,6 +345,200 @@ export default async function PersoonscertificaatDetailPage({
   const aantalVaststellingen =
     aantalDeskcontroleVaststellingen +
     aantalTerreincontroleVaststellingen;
+
+  type NonConformiteitVoorkomen = {
+    sleutel: string;
+    typeControle:
+      | "Deskcontrole"
+      | "Terreincontrole";
+    attestnummer: string;
+    datumControle: string;
+    datumSorteerwaarde: number;
+    href: string;
+  };
+
+  type NonConformiteitTopRij = {
+    ncId: string;
+    parameter: string | null;
+    omschrijving: string | null;
+    groteImpact: string | null;
+    categorie: string | null;
+    aantal: number;
+    voorkomens:
+      NonConformiteitVoorkomen[];
+  };
+
+  const nonConformiteitenPerNcId =
+    new Map<
+      string,
+      NonConformiteitTopRij
+    >();
+
+  function voegNonConformiteitToe({
+    nonConformiteit,
+    voorkomen,
+  }: {
+    nonConformiteit: {
+      ncId: string;
+      parameter: string | null;
+      omschrijving: string | null;
+      groteImpact: string | null;
+      categorie: string | null;
+    };
+    voorkomen:
+      NonConformiteitVoorkomen;
+  }) {
+    const ncId =
+      nonConformiteit.ncId.trim();
+
+    if (!ncId) {
+      return;
+    }
+
+    const sleutel =
+      ncId.toLocaleUpperCase(
+        "nl-BE",
+      );
+
+    const bestaande =
+      nonConformiteitenPerNcId.get(
+        sleutel,
+      );
+
+    if (bestaande) {
+      bestaande.aantal += 1;
+      bestaande.parameter ??=
+        nonConformiteit.parameter;
+      bestaande.omschrijving ??=
+        nonConformiteit.omschrijving;
+      bestaande.groteImpact ??=
+        nonConformiteit.groteImpact;
+      bestaande.categorie ??=
+        nonConformiteit.categorie;
+      bestaande.voorkomens.push(
+        voorkomen,
+      );
+
+      return;
+    }
+
+    nonConformiteitenPerNcId.set(
+      sleutel,
+      {
+        ncId,
+        parameter:
+          nonConformiteit.parameter,
+        omschrijving:
+          nonConformiteit.omschrijving,
+        groteImpact:
+          nonConformiteit.groteImpact,
+        categorie:
+          nonConformiteit.categorie,
+        aantal: 1,
+        voorkomens: [
+          voorkomen,
+        ],
+      },
+    );
+  }
+
+  for (
+    const deskcontrole of
+    persoon.deskcontroles
+  ) {
+    for (
+      const nonConformiteit of
+      deskcontrole.vaststellingen
+    ) {
+      voegNonConformiteitToe({
+        nonConformiteit,
+        voorkomen: {
+          sleutel:
+            `desk-${deskcontrole.id}-${nonConformiteit.id}`,
+          typeControle:
+            "Deskcontrole",
+          attestnummer:
+            deskcontrole.attestnummer ??
+            `Deskcontrole #${deskcontrole.id}`,
+          datumControle:
+            formatteerDatum(
+              deskcontrole.datumControle,
+            ),
+          datumSorteerwaarde:
+            deskcontrole.datumControle
+              .getTime(),
+          href:
+            `/deskcontroles/${deskcontrole.id}`,
+        },
+      });
+    }
+  }
+
+  for (
+    const terreincontrole of
+    terreincontroleDossiers
+  ) {
+    for (
+      const nonConformiteit of
+      terreincontrole.vaststellingen
+    ) {
+      voegNonConformiteitToe({
+        nonConformiteit,
+        voorkomen: {
+          sleutel:
+            `terrein-${terreincontrole.id}-${nonConformiteit.id}`,
+          typeControle:
+            "Terreincontrole",
+          attestnummer:
+            terreincontrole.attestnummer,
+          datumControle:
+            formatteerDatum(
+              terreincontrole.datumControle,
+            ),
+          datumSorteerwaarde:
+            terreincontrole.datumControle
+              .getTime(),
+          href:
+            `/terreincontroles/${terreincontrole.id}`,
+        },
+      });
+    }
+  }
+
+  const topTienNonConformiteiten = [
+    ...nonConformiteitenPerNcId.values(),
+  ]
+    .map((rij) => ({
+      ...rij,
+      voorkomens: [
+        ...rij.voorkomens,
+      ]
+        .sort(
+          (eerste, tweede) =>
+            tweede.datumSorteerwaarde -
+            eerste.datumSorteerwaarde,
+        )
+        .map(
+          ({
+            datumSorteerwaarde: _,
+            ...voorkomen
+          }) => voorkomen,
+        ),
+    }))
+    .sort(
+      (eerste, tweede) =>
+        tweede.aantal -
+          eerste.aantal ||
+        eerste.ncId.localeCompare(
+          tweede.ncId,
+          "nl-BE",
+          {
+            numeric: true,
+            sensitivity: "base",
+          },
+        ),
+    )
+    .slice(0, 10);
 
   return (
     <div className="mx-auto max-w-[1600px] space-y-6">
@@ -340,7 +579,7 @@ export default async function PersoonscertificaatDetailPage({
             {persoon.naamPersoon}
           </h2>
 
-          <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
             <div className="rounded-2xl bg-white/10 p-4">
               <p className="text-2xl font-bold">
                 {aantalAttesten}
@@ -368,12 +607,24 @@ export default async function PersoonscertificaatDetailPage({
             <div className="rounded-2xl bg-white/10 p-4">
               <p className="text-2xl font-bold">
                 {
-                  terreincontroles.length
+                  ingeplandeTerreincontroles.length
                 }
               </p>
 
               <p className="text-sm text-emerald-100">
-                Terreincontroles
+                Ingeplande terreincontroles
+              </p>
+            </div>
+
+            <div className="rounded-2xl bg-white/10 p-4">
+              <p className="text-2xl font-bold">
+                {
+                  terreincontroleDossiers.length
+                }
+              </p>
+
+              <p className="text-sm text-emerald-100">
+                Gefinaliseerde terreincontroles
               </p>
             </div>
 
@@ -385,7 +636,8 @@ export default async function PersoonscertificaatDetailPage({
               </p>
 
               <p className="text-sm text-emerald-100">
-                Vaststellingen
+
+                Non-conformiteiten
               </p>
             </div>
           </div>
@@ -468,19 +720,27 @@ export default async function PersoonscertificaatDetailPage({
             .length
         }
         aantalTerreincontroles={
-          terreincontroles.length
+          ingeplandeTerreincontroles.length
+        }
+      />
+
+      <TopTienNonConformiteiten
+        rijen={
+          topTienNonConformiteiten
         }
       />
 
       <section className="space-y-4">
         <div>
           <h2 className="text-xl font-bold text-slate-950">
-            Deskcontroles en vaststellingen
+
+            Deskcontroles en non-conformiteiten
           </h2>
 
           <p className="mt-1 text-sm text-slate-600">
+
             Alle actieve deskcontroles,
-            met de vaststellingen per
+            met de non-conformiteiten per
             controle.
           </p>
         </div>
@@ -547,7 +807,7 @@ export default async function PersoonscertificaatDetailPage({
                         .vaststellingen
                         .length === 1
                         ? "vaststelling"
-                        : "vaststellingen"}
+                        : "non-conformiteiten"}
                     </p>
                   </div>
 
@@ -616,7 +876,8 @@ export default async function PersoonscertificaatDetailPage({
                   .vaststellingen
                   .length === 0 ? (
                   <div className="px-5 py-8 text-center text-sm text-slate-500">
-                    Geen vaststellingen
+
+                    Geen non-conformiteiten
                     voor deze deskcontrole.
                   </div>
                 ) : (
@@ -726,6 +987,12 @@ export default async function PersoonscertificaatDetailPage({
 
       <PersoonsTerreincontroles
         lidId={persoon.id}
+      />
+
+      <PersoonsIngeplandeTerreincontroles
+        terreincontroles={
+          ingeplandeTerreincontroles
+        }
       />
     </div>
   );

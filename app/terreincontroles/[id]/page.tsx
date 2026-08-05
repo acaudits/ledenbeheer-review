@@ -283,7 +283,8 @@ export default async function TerreincontroleDetailPage({
       <section className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
         <header className="border-b border-slate-200 px-6 py-5">
           <h2 className="text-xl font-bold text-slate-950">
-            Vaststellingen
+
+            Non-conformiteiten
           </h2>
 
           <p className="mt-1 text-sm text-slate-500">
@@ -294,14 +295,15 @@ export default async function TerreincontroleDetailPage({
             {dossier.vaststellingen
               .length === 1
               ? "vaststelling"
-              : "vaststellingen"}
+              : "non-conformiteiten"}
           </p>
         </header>
 
         {dossier.vaststellingen
           .length === 0 ? (
           <div className="px-6 py-12 text-center text-sm text-slate-500">
-            Aan deze terreincontrole zijn nog geen vaststellingen gekoppeld.
+
+            Aan deze terreincontrole zijn nog geen non-conformiteiten gekoppeld.
           </div>
         ) : (
           <div className="overflow-x-auto">

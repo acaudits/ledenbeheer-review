@@ -974,7 +974,7 @@ export default async function MijnOverzichtPage({
                           {controle._count.vaststellingen}{" "}
                           {controle._count.vaststellingen === 1
                             ? "vaststelling"
-                            : "vaststellingen"}
+                            : "non-conformiteiten"}
                         </p>
                       </td>
 

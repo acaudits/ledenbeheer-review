@@ -590,7 +590,7 @@ export function DeskcontrolesTabel({
     if (!(doel instanceof Element)) {
       return false;
     }
-  
+
     return Boolean(
       doel.closest(
         [
@@ -606,7 +606,7 @@ export function DeskcontrolesTabel({
       ),
     );
   }
-  
+
   function openDeskcontrole(
     id: number,
   ) {
@@ -614,7 +614,7 @@ export function DeskcontrolesTabel({
       `/deskcontroles/${id}`,
     );
   }
-  
+
 
   return (
     <section className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
@@ -931,7 +931,7 @@ export function DeskcontrolesTabel({
                   <tr
                     key={rij.id}
                     tabIndex={0}
-                    title="Klik om de deskcontrole en vaststellingen te bekijken"
+                    title="Klik om de deskcontrole en non-conformiteiten te bekijken"
                     onClick={(event) => {
                       if (
                         isInteractiefElement(
@@ -996,7 +996,7 @@ export function DeskcontrolesTabel({
                             "deadlineSanctie" ||
                           kolom.sleutel ===
                             "deadlineCorrectie";
-                          
+
                         const deadlineInformatie =
                           isDeadline && tekst
                             ? bepaalDeadlineInformatie(
@@ -1009,7 +1009,7 @@ export function DeskcontrolesTabel({
                         const isAfgerond =
                           kolom.sleutel ===
                           "afgerond";
-                          
+
                         const isSnelSelectievak =
                           kolom.sleutel ===
                             "mailSanctieVerzonden" ||
@@ -1017,7 +1017,7 @@ export function DeskcontrolesTabel({
                             "mailCorrectieVerzonden" ||
                           kolom.sleutel ===
                             "voorwaardelijkeOpheffing";
-                           
+
 
                         return (
                           <td
@@ -1142,8 +1142,9 @@ export function DeskcontrolesTabel({
           </div>
 
           <footer className="border-t border-slate-200 bg-slate-50 px-4 py-2.5 text-xs text-slate-500">
+
             Klik op een rij om de deskcontrole
-            en vaststellingen te bekijken. Klik
+            en non-conformiteiten te bekijken. Klik
             op een kolomnaam om te sorteren en
             op het filtericoon om te filteren.
           </footer>

@@ -58,8 +58,9 @@ export default function TerreincontroleExcelImport() {
         <strong>
           Terreincontrole samenvatting
         </strong>{" "}
+
         wordt verwerkt. De terreincontrole en alle
-        vaststellingen worden samen opgeslagen.
+        non-conformiteiten worden samen opgeslagen.
       </p>
 
       <div className="mt-4 rounded-xl border border-emerald-200 bg-white p-4 text-sm text-slate-600">

@@ -119,9 +119,10 @@ export default function ExcelDeskcontroleImport() {
             </h2>
 
             <p className="mt-1 max-w-3xl text-sm leading-6 text-slate-600">
+
               Importeer automatisch de
               deskcontrolegegevens en alle
-              vaststellingen uit het tabblad{" "}
+              non-conformiteiten uit het tabblad{" "}
               <strong>
                 Deskcontrole samenvatting
               </strong>
@@ -324,8 +325,9 @@ export default function ExcelDeskcontroleImport() {
 
           <div className="flex flex-col gap-3 border-t border-slate-200 pt-5 sm:flex-row sm:items-center sm:justify-between">
             <p className="text-xs leading-5 text-slate-500">
+
               De deskcontrole en de
-              vaststellingen worden samen
+              non-conformiteiten worden samen
               opgeslagen. Bij een fout
               wordt niets gedeeltelijk
               geïmporteerd.

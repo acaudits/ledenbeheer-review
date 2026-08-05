@@ -111,12 +111,14 @@ export async function PersoonsTerreincontroles({
     <section className="space-y-4">
       <div>
         <h2 className="text-xl font-bold text-slate-950">
-          Terreincontroles en vaststellingen
+
+          Terreincontroles en non-conformiteiten
         </h2>
 
         <p className="mt-1 text-sm text-slate-600">
+
           Alle actieve terreincontroles uit de nieuwe lijst,
-          met de vaststellingen per controle.
+          met de non-conformiteiten per controle.
         </p>
       </div>
 
@@ -169,7 +171,7 @@ export async function PersoonsTerreincontroles({
                     {terreincontrole.vaststellingen.length}{" "}
                     {terreincontrole.vaststellingen.length === 1
                       ? "vaststelling"
-                      : "vaststellingen"}
+                      : "non-conformiteiten"}
                   </p>
                 </div>
 
@@ -275,13 +277,15 @@ export async function PersoonsTerreincontroles({
 
               <div className="px-5 py-5">
                 <h4 className="text-sm font-bold text-slate-950">
-                  Vaststellingen
+
+                  Non-conformiteiten
                 </h4>
 
                 {terreincontrole.vaststellingen.length === 0 ? (
                   <p className="mt-3 rounded-xl bg-slate-50 px-4 py-4 text-sm text-slate-500">
+
                     Aan deze terreincontrole zijn nog geen
-                    vaststellingen gekoppeld.
+                    non-conformiteiten gekoppeld.
                   </p>
                 ) : (
                   <div className="mt-3 overflow-x-auto rounded-2xl border border-slate-200">

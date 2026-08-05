@@ -293,12 +293,13 @@ export function DeskcontroleVaststellingenTabel({
             </p>
 
             <h2 className="mt-1 text-xl font-bold text-slate-950">
-              Vaststellingen
+
+              Non-conformiteiten
             </h2>
 
             <p className="mt-1 text-sm text-slate-500">
               {zichtbareRijen.length} van{" "}
-              {rijen.length} vaststellingen
+              {rijen.length}  non-conformiteiten
             </p>
           </div>
 
@@ -325,7 +326,8 @@ export function DeskcontroleVaststellingenTabel({
               className="h-10 rounded-xl border border-slate-300 bg-white px-3 text-sm outline-none focus:border-emerald-600"
             >
               <option value="">
-                Alle CI-vaststellingen
+
+                Alle CI-non-conformiteiten
               </option>
 
               {vastgesteldOpties.map(
@@ -408,7 +410,8 @@ export function DeskcontroleVaststellingenTabel({
       {zichtbareRijen.length === 0 ? (
         <div className="px-6 py-16 text-center">
           <h3 className="font-bold text-slate-950">
-            Geen vaststellingen gevonden
+
+            Geen non-conformiteiten gevonden
           </h3>
 
           <p className="mt-2 text-sm text-slate-500">

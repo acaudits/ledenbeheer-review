@@ -377,7 +377,7 @@ export default function BulkTerreincontroleImport() {
         "Attestnummer",
         "Status",
         "Terreincontrole-ID",
-        "Aantal vaststellingen",
+        "Aantal non-conformiteiten",
         "Melding",
       ]
         .map(csvCel)
@@ -443,7 +443,7 @@ export default function BulkTerreincontroleImport() {
       <p className="mt-2 max-w-4xl text-sm leading-6 text-slate-600">
         Selecteer alle terreincontrolebestanden tegelijk.
         Ze worden automatisch in batches van{" "}
-        {BATCHGROOTTE} verwerkt. Vaststellingen worden
+        {BATCHGROOTTE}  verwerkt. Non-conformiteiten worden
         per terreincontrole mee geïmporteerd.
       </p>
 
@@ -540,7 +540,7 @@ export default function BulkTerreincontroleImport() {
             />
 
             <ResultaatVak
-              label="Vaststellingen"
+              label="Non-conformiteiten"
               waarde={
                 totalen.vaststellingen
               }
@@ -621,7 +621,8 @@ export default function BulkTerreincontroleImport() {
                     Status
                   </th>
                   <th className="px-4 py-3">
-                    Vaststellingen
+
+                    Non-conformiteiten
                   </th>
                   <th className="px-4 py-3">
                     Melding

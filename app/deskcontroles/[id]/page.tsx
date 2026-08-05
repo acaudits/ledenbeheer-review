@@ -242,7 +242,7 @@ export default async function DeskcontroleDetailPage({
     deskcontrole.procescertificaat
       ?.oneDrive ??
     "";
-  
+
 
   return (
     <div className="mx-auto max-w-[1600px] space-y-5">
@@ -532,12 +532,14 @@ export default async function DeskcontroleDetailPage({
       ) : (
         <section className="rounded-3xl border border-slate-200 bg-white px-6 py-12 text-center shadow-sm">
           <h2 className="font-bold text-slate-950">
-            Geen vaststellingen
+
+            Geen non-conformiteiten
           </h2>
 
           <p className="mt-2 text-sm text-slate-500">
+
             Aan deze deskcontrole zijn
-            geen vaststellingen
+            geen non-conformiteiten
             gekoppeld.
           </p>
         </section>
