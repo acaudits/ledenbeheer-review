@@ -43,20 +43,20 @@ function deskstatusLabel(
 }
 
 function terreinstatusLabel(
-  status: string,
+  status: string | null,
 ) {
   switch (status) {
     case "IN_OPMAAK":
       return "In opmaak";
 
-    case "GEACTUALISEERD":
-      return "Geactualiseerd";
+    case "ACTUEEL_ATTEST":
+      return "Actueel attest";
 
-    case "AFGEROND":
-      return "Afgerond";
+    case "GEARCHIVEERD_ATTEST":
+      return "Gearchiveerd attest";
 
     default:
-      return "Geen";
+      return "Geen status";
   }
 }
 
@@ -208,9 +208,68 @@ export default async function MijnOverzichtPage({
     );
   }
 
+  const volledigeGebruikersnaam = [
+    gebruiker.voornaam,
+    gebruiker.achternaam,
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .trim();
+
+  const emailGebruikersnaam =
+    gebruiker.email
+      .split("@")[0]
+      ?.replace(/[._-]+/g, " ")
+      .trim() ?? "";
+
+  const auditeurNamen = [
+    gebruiker.naam,
+    volledigeGebruikersnaam,
+    emailGebruikersnaam,
+  ]
+    .filter(
+      (
+        waarde,
+      ): waarde is string =>
+        Boolean(
+          waarde?.trim(),
+        ),
+    )
+    .filter(
+      (waarde, index, waarden) =>
+        waarden.findIndex(
+          (andereWaarde) =>
+            andereWaarde.localeCompare(
+              waarde,
+              "nl-BE",
+              {
+                sensitivity:
+                  "base",
+              },
+            ) === 0,
+        ) === index,
+    );
+
+  const eigenaarFilter = {
+    OR: [
+      {
+        auditeurGebruikerId:
+          gebruiker.id,
+      },
+      ...auditeurNamen.map(
+        (auditeur) => ({
+          auditeur: {
+            equals: auditeur,
+            mode:
+              "insensitive" as const,
+          },
+        }),
+      ),
+    ],
+  };
+
   const deskEigenaarFilter = {
-    auditeurGebruikerId:
-      gebruiker.id,
+    ...eigenaarFilter,
     verwijderdOp: null,
   };
 
@@ -225,13 +284,16 @@ export default async function MijnOverzichtPage({
       : {}),
   };
 
-  const terreinFilter = {
-    auditeurGebruikerId:
-      gebruiker.id,
+  const terreinEigenaarFilter = {
+    ...eigenaarFilter,
     verwijderdOp: null,
+  };
+
+  const terreinFilter = {
+    ...terreinEigenaarFilter,
     ...(datumVanaf
       ? {
-          datumControle: {
+          datumPlaatsbezoek: {
             gte: datumVanaf,
           },
         }
@@ -336,23 +398,23 @@ export default async function MijnOverzichtPage({
       },
     }),
 
-    prisma.terreincontroleDossier.count({
+    prisma.terreincontrole.count({
       where: {
         ...terreinFilter,
       },
     }),
 
-    prisma.terreincontroleDossier.count({
+    prisma.terreincontrole.count({
       where: {
         ...terreinFilter,
         status: "IN_OPMAAK",
       },
     }),
 
-    prisma.terreincontroleDossier.count({
+    prisma.terreincontrole.count({
       where: {
         ...terreinFilter,
-        datumControle: {
+        datumPlaatsbezoek: {
           gte: vandaag,
         },
       },
@@ -386,26 +448,23 @@ export default async function MijnOverzichtPage({
       take: 8,
     }),
 
-    prisma.terreincontroleDossier.findMany({
+    prisma.terreincontrole.findMany({
       where: {
         ...terreinFilter,
       },
       select: {
         id: true,
+        attestId: true,
         status: true,
-        datumControle: true,
+        datumPlaatsbezoek: true,
         adres: true,
+        inspectielocatie: true,
         bedrijfsnaam: true,
         naamAdi: true,
-        _count: {
-          select: {
-            vaststellingen: true,
-          },
-        },
       },
       orderBy: [
         {
-          datumControle: "desc",
+          datumPlaatsbezoek: "desc",
         },
         {
           id: "desc",
@@ -639,12 +698,12 @@ export default async function MijnOverzichtPage({
         />
 
         <StatistiekKaart
-          label="Mijn terreincontroles"
+          label="Mijn ingeplande terreincontroles"
           waarde={terreinTotaal}
         />
 
         <StatistiekKaart
-          label="Terrein in opmaak"
+          label="Ingepland in opmaak"
           waarde={terreinInOpmaak}
           accent
         />
@@ -914,11 +973,11 @@ export default async function MijnOverzichtPage({
         <header className="flex flex-col gap-3 border-b border-slate-200 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h2 className="text-lg font-bold text-slate-950">
-              Mijn terreincontroles
+              Mijn ingeplande terreincontroles
             </h2>
 
             <p className="mt-1 text-sm text-slate-500">
-              De acht meest recente plaatsbezoeken.
+              De acht meest recente ingeplande plaatsbezoeken.
             </p>
           </div>
 
@@ -926,13 +985,13 @@ export default async function MijnOverzichtPage({
             href="/terreincontroles-inplannen"
             className="text-sm font-semibold text-emerald-700 hover:text-emerald-900"
           >
-            Alle terreincontroles →
+            Alle ingeplande terreincontroles →
           </Link>
         </header>
 
         {terreincontroles.length === 0 ? (
           <p className="px-5 py-10 text-center text-sm text-slate-500">
-            Er zijn nog geen terreincontroles aan je profiel gekoppeld.
+            Er zijn nog geen ingeplande terreincontroles aan je profiel gekoppeld.
           </p>
         ) : (
           <div className="overflow-x-auto">
@@ -963,30 +1022,30 @@ export default async function MijnOverzichtPage({
                     >
                       <td className="px-5 py-4">
                         <Link
-                          href={`/terreincontroles/${controle.id}`}
+                          href={`/terreincontroles-inplannen/${controle.id}`}
                           className="font-semibold text-emerald-700 hover:underline"
                         >
                           {controle.naamAdi ??
                             `Terreincontrole #${controle.id}`}
                         </Link>
 
-                        <p className="mt-1 text-xs text-slate-500">
-                          {controle._count.vaststellingen}{" "}
-                          {controle._count.vaststellingen === 1
-                            ? "vaststelling"
-                            : "non-conformiteiten"}
+                        <p className="mt-1 break-all text-xs text-slate-500">
+                          Attest-ID: {
+                            controle.attestId
+                          }
                         </p>
                       </td>
 
                       <td className="px-5 py-4 text-slate-700">
-                        {controle.adres ??
+                        {controle.inspectielocatie ??
+                          controle.adres ??
                           controle.bedrijfsnaam ??
                           "—"}
                       </td>
 
                       <td className="whitespace-nowrap px-5 py-4 text-slate-700">
                         {formatteerDatum(
-                          controle.datumControle,
+                          controle.datumPlaatsbezoek,
                         )}
                       </td>
 

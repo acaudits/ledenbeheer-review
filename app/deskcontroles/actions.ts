@@ -188,7 +188,10 @@ export async function maakDeskcontroleAan(
   _vorigeStatus: DeskcontroleFormState,
   formData: FormData,
 ): Promise<DeskcontroleFormState> {
-  await vereisMachtiging("DESKCONTROLES_BEHEREN");
+  const gebruiker =
+    await vereisMachtiging(
+      "DESKCONTROLES_BEHEREN",
+    );
 
   const auditeur = tekst(
     formData,
@@ -527,6 +530,8 @@ export async function maakDeskcontroleAan(
       data: {
         attestId,
         auditeur,
+        auditeurGebruikerId:
+          gebruiker.id,
         lidId,
         procescertificaatId,
         linkAttest,

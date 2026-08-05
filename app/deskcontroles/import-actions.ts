@@ -450,7 +450,10 @@ export async function importeerDeskcontroleUitExcel(
   _vorigeStatus: ExcelImportState,
   formData: FormData,
 ): Promise<ExcelImportState> {
-  await vereisMachtiging("DESKCONTROLES_BEHEREN");
+  const gebruiker =
+    await vereisMachtiging(
+      "DESKCONTROLES_BEHEREN",
+    );
 
   /*
    * Alleen de bulkimport mag verwijderde
@@ -1051,6 +1054,8 @@ export async function importeerDeskcontroleUitExcel(
               data: {
                 attestId,
                 auditeur,
+                auditeurGebruikerId:
+                  gebruiker.id,
                 lidId: lid.id,
                 procescertificaatId:
                   procescertificaat?.id ??
