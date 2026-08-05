@@ -284,8 +284,28 @@ export default async function MijnOverzichtPage({
       : {}),
   };
 
+  /*
+   * Voor ingeplande terreincontroles
+   * gebruiken we dezelfde zichtbare
+   * auditeurnaam als in de planningtabel.
+   *
+   * auditeurGebruikerId wordt hier bewust
+   * niet gebruikt, omdat daardoor records
+   * met een andere zichtbare auditeur
+   * werden meegeteld.
+   */
+  const planningAuditeurNaam =
+    gebruiker.naam?.trim() ||
+    volledigeGebruikersnaam ||
+    emailGebruikersnaam;
+
   const terreinEigenaarFilter = {
-    ...eigenaarFilter,
+    auditeur: {
+      equals:
+        planningAuditeurNaam,
+      mode:
+        "insensitive" as const,
+    },
     verwijderdOp: null,
   };
 
@@ -300,6 +320,14 @@ export default async function MijnOverzichtPage({
       : {}),
   };
 
+  const binnenZevenDagenGrens =
+    new Date(vandaag);
+
+  binnenZevenDagenGrens.setUTCDate(
+    binnenZevenDagenGrens.getUTCDate() +
+      7,
+  );
+
   const deadlineGrens =
     new Date(vandaag);
 
@@ -308,31 +336,45 @@ export default async function MijnOverzichtPage({
       30,
   );
 
+  const terreinDossierEigenaarFilter = {
+    ...eigenaarFilter,
+    verwijderdOp: null,
+  };
+
+  const terreinDossierFilter = {
+    ...terreinDossierEigenaarFilter,
+    ...(datumVanaf
+      ? {
+          datumControle: {
+            gte: datumVanaf,
+          },
+        }
+      : {}),
+  };
+
   const [
     deskTotaal,
-    deskOpen,
     deskAfgerond,
-    deskDeadlineVerlopen,
+    deskInOpmaak,
+    deskGeactualiseerd,
+    deskOpenstaand,
+    deskBinnenZevenDagen,
+    deskVerstreken,
+    deskNonConformiteiten,
+    deskMaandBron,
+    terreincontroleTotaal,
+    terreincontroleNonConformiteiten,
+    plaatsbezoekenTotaal,
+    facturenNietVerzonden,
+    plaatsbezoekenGearchiveerdAttest,
+    plaatsbezoekenInOpmaak,
+    terreinMaandBron,
     deadlineControles,
-    terreinTotaal,
-    terreinInOpmaak,
-    terreinGepland,
     deskcontroles,
     terreincontroles,
   ] = await Promise.all([
     prisma.deskcontrole.count({
-      where: {
-        ...deskFilter,
-      },
-    }),
-
-    prisma.deskcontrole.count({
-      where: {
-        ...deskFilter,
-        status: {
-          not: "AFGEROND",
-        },
-      },
+      where: deskFilter,
     }),
 
     prisma.deskcontrole.count({
@@ -344,41 +386,206 @@ export default async function MijnOverzichtPage({
 
     prisma.deskcontrole.count({
       where: {
-        ...deskEigenaarFilter,
-        status: {
-          not: "AFGEROND",
-        },
-        OR: [
+        ...deskFilter,
+        status: "IN_OPMAAK",
+      },
+    }),
+
+    prisma.deskcontrole.count({
+      where: {
+        ...deskFilter,
+        status: "GEACTUALISEERD",
+      },
+    }),
+
+    prisma.deskcontrole.count({
+      where: {
+        ...deskFilter,
+        status: "GEEN",
+      },
+    }),
+
+    prisma.deskcontrole.count({
+      where: {
+        AND: [
+          deskFilter,
           {
-            deadlineSanctie: {
-              lt: vandaag,
+            status: {
+              notIn: [
+                "AFGEROND",
+                "GEACTUALISEERD",
+              ],
             },
           },
           {
-            deadlineCorrectie: {
-              lt: vandaag,
+            OR: [
+              {
+                deadlineSanctie: {
+                  gte: vandaag,
+                  lte:
+                    binnenZevenDagenGrens,
+                },
+              },
+              {
+                deadlineCorrectie: {
+                  gte: vandaag,
+                  lte:
+                    binnenZevenDagenGrens,
+                },
+              },
+            ],
+          },
+          {
+            NOT: {
+              OR: [
+                {
+                  deadlineSanctie: {
+                    lt: vandaag,
+                  },
+                },
+                {
+                  deadlineCorrectie: {
+                    lt: vandaag,
+                  },
+                },
+              ],
             },
           },
         ],
       },
     }),
 
-    prisma.deskcontrole.findMany({
+    prisma.deskcontrole.count({
       where: {
-        ...deskEigenaarFilter,
-        status: {
-          not: "AFGEROND",
-        },
-        OR: [
+        AND: [
+          deskFilter,
           {
-            deadlineSanctie: {
-              lte: deadlineGrens,
+            status: {
+              notIn: [
+                "AFGEROND",
+                "GEACTUALISEERD",
+              ],
             },
           },
           {
-            deadlineCorrectie: {
-              lte: deadlineGrens,
+            OR: [
+              {
+                deadlineSanctie: {
+                  lt: vandaag,
+                },
+              },
+              {
+                deadlineCorrectie: {
+                  lt: vandaag,
+                },
+              },
+            ],
+          },
+        ],
+      },
+    }),
+
+    prisma.deskcontroleVaststelling.count({
+      where: {
+        deskcontrole: {
+          is: deskFilter,
+        },
+      },
+    }),
+
+    prisma.deskcontrole.findMany({
+      where: deskFilter,
+      select: {
+        datumControle: true,
+      },
+      orderBy: {
+        datumControle: "asc",
+      },
+    }),
+
+    prisma.terreincontroleDossier.count({
+      where: terreinDossierFilter,
+    }),
+
+    prisma.terreincontroleVaststelling.count({
+      where: {
+        terreincontroleDossier: {
+          is: terreinDossierFilter,
+        },
+      },
+    }),
+
+    prisma.terreincontrole.count({
+      where: terreinFilter,
+    }),
+
+    prisma.terreincontrole.count({
+      where: {
+        AND: [
+          terreinFilter,
+          {
+            OR: [
+              {
+                factuurVerzonden:
+                  false,
+              },
+              {
+                factuurVerzonden:
+                  null,
+              },
+            ],
+          },
+        ],
+      },
+    }),
+
+    prisma.terreincontrole.count({
+      where: {
+        ...terreinFilter,
+        status:
+          "GEARCHIVEERD_ATTEST",
+      },
+    }),
+
+    prisma.terreincontrole.count({
+      where: {
+        ...terreinFilter,
+        status: "IN_OPMAAK",
+      },
+    }),
+
+    prisma.terreincontrole.findMany({
+      where: terreinFilter,
+      select: {
+        datumPlaatsbezoek: true,
+      },
+      orderBy: {
+        datumPlaatsbezoek: "asc",
+      },
+    }),
+
+    prisma.deskcontrole.findMany({
+      where: {
+        AND: [
+          deskEigenaarFilter,
+          {
+            status: {
+              not: "AFGEROND",
             },
+          },
+          {
+            OR: [
+              {
+                deadlineSanctie: {
+                  lte: deadlineGrens,
+                },
+              },
+              {
+                deadlineCorrectie: {
+                  lte: deadlineGrens,
+                },
+              },
+            ],
           },
         ],
       },
@@ -398,32 +605,8 @@ export default async function MijnOverzichtPage({
       },
     }),
 
-    prisma.terreincontrole.count({
-      where: {
-        ...terreinFilter,
-      },
-    }),
-
-    prisma.terreincontrole.count({
-      where: {
-        ...terreinFilter,
-        status: "IN_OPMAAK",
-      },
-    }),
-
-    prisma.terreincontrole.count({
-      where: {
-        ...terreinFilter,
-        datumPlaatsbezoek: {
-          gte: vandaag,
-        },
-      },
-    }),
-
     prisma.deskcontrole.findMany({
-      where: {
-        ...deskFilter,
-      },
+      where: deskFilter,
       select: {
         id: true,
         attestnummer: true,
@@ -449,9 +632,7 @@ export default async function MijnOverzichtPage({
     }),
 
     prisma.terreincontrole.findMany({
-      where: {
-        ...terreinFilter,
-      },
+      where: terreinFilter,
       select: {
         id: true,
         attestId: true,
@@ -473,6 +654,140 @@ export default async function MijnOverzichtPage({
       take: 8,
     }),
   ]);
+
+  const deskcontrolesPerMaand =
+    Array.from(
+      deskMaandBron.reduce(
+        (maanden, controle) => {
+          const jaar =
+            controle.datumControle
+              .getUTCFullYear();
+
+          const maand =
+            controle.datumControle
+              .getUTCMonth();
+
+          const sleutel =
+            `${jaar}-${String(
+              maand + 1,
+            ).padStart(2, "0")}`;
+
+          const bestaand =
+            maanden.get(sleutel);
+
+          if (bestaand) {
+            bestaand.aantal += 1;
+          } else {
+            maanden.set(
+              sleutel,
+              {
+                sleutel,
+                datum: new Date(
+                  Date.UTC(
+                    jaar,
+                    maand,
+                    1,
+                  ),
+                ),
+                aantal: 1,
+              },
+            );
+          }
+
+          return maanden;
+        },
+        new Map<
+          string,
+          {
+            sleutel: string;
+            datum: Date;
+            aantal: number;
+          }
+        >(),
+      ).values(),
+    ).sort(
+      (eerste, tweede) =>
+        eerste.datum.getTime() -
+        tweede.datum.getTime(),
+    );
+
+  const hoogsteMaandaantal =
+    Math.max(
+      1,
+      ...deskcontrolesPerMaand.map(
+        (maand) => maand.aantal,
+      ),
+    );
+
+  const terreincontrolesPerMaand =
+    Array.from(
+      terreinMaandBron.reduce(
+        (maanden, controle) => {
+          if (
+            !controle.datumPlaatsbezoek
+          ) {
+            return maanden;
+          }
+
+          const jaar =
+            controle.datumPlaatsbezoek
+              .getUTCFullYear();
+
+          const maand =
+            controle.datumPlaatsbezoek
+              .getUTCMonth();
+
+          const sleutel =
+            `${jaar}-${String(
+              maand + 1,
+            ).padStart(2, "0")}`;
+
+          const bestaand =
+            maanden.get(sleutel);
+
+          if (bestaand) {
+            bestaand.aantal += 1;
+          } else {
+            maanden.set(
+              sleutel,
+              {
+                sleutel,
+                datum: new Date(
+                  Date.UTC(
+                    jaar,
+                    maand,
+                    1,
+                  ),
+                ),
+                aantal: 1,
+              },
+            );
+          }
+
+          return maanden;
+        },
+        new Map<
+          string,
+          {
+            sleutel: string;
+            datum: Date;
+            aantal: number;
+          }
+        >(),
+      ).values(),
+    ).sort(
+      (eerste, tweede) =>
+        eerste.datum.getTime() -
+        tweede.datum.getTime(),
+    );
+
+  const hoogsteTerreinMaandaantal =
+    Math.max(
+      1,
+      ...terreincontrolesPerMaand.map(
+        (maand) => maand.aantal,
+      ),
+    );
 
   const deadlineItems =
     deadlineControles
@@ -672,46 +987,293 @@ export default async function MijnOverzichtPage({
         </Link>
       </div>
 
-      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <StatistiekKaart
-          label="Mijn deskcontroles"
-          waarde={deskTotaal}
-        />
+      <section className="space-y-4">
+        <div>
+          <h2 className="text-xl font-bold text-slate-950">
+            Deskcontrole-opvolging
+          </h2>
 
-        <StatistiekKaart
-          label="Open deskcontroles"
-          waarde={deskOpen}
-          accent
-        />
+          <p className="mt-1 text-sm text-slate-500">
+            Deskcontroles en non-conformiteiten die aan de gekozen gebruiker gekoppeld zijn.
+          </p>
+        </div>
 
-        <StatistiekKaart
-          label="Afgeronde deskcontroles"
-          waarde={deskAfgerond}
-        />
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <StatistiekKaart
+            label="Aantal deskcontroles"
+            waarde={deskTotaal}
+          />
 
-        <StatistiekKaart
-          label="Verlopen deadlines"
-          waarde={deskDeadlineVerlopen}
-          waarschuwing={
-            deskDeadlineVerlopen > 0
-          }
-        />
+          <StatistiekKaart
+            label="Afgerond"
+            waarde={deskAfgerond}
+            accent
+          />
 
-        <StatistiekKaart
-          label="Mijn ingeplande terreincontroles"
-          waarde={terreinTotaal}
-        />
+          <StatistiekKaart
+            label="In opmaak"
+            waarde={deskInOpmaak}
+          />
 
-        <StatistiekKaart
-          label="Ingepland in opmaak"
-          waarde={terreinInOpmaak}
-          accent
-        />
+          <StatistiekKaart
+            label="Geactualiseerd"
+            waarde={deskGeactualiseerd}
+          />
 
-        <StatistiekKaart
-          label="Geplande plaatsbezoeken"
-          waarde={terreinGepland}
-        />
+          <StatistiekKaart
+            label="Openstaand"
+            waarde={deskOpenstaand}
+            waarschuwing={
+              deskOpenstaand > 0
+            }
+          />
+
+          <StatistiekKaart
+            label="Binnen 7 dagen"
+            waarde={
+              deskBinnenZevenDagen
+            }
+            waarschuwing={
+              deskBinnenZevenDagen >
+              0
+            }
+          />
+
+          <StatistiekKaart
+            label="Verstreken"
+            waarde={deskVerstreken}
+            waarschuwing={
+              deskVerstreken > 0
+            }
+          />
+
+          <StatistiekKaart
+            label="Non-conformiteiten"
+            waarde={
+              deskNonConformiteiten
+            }
+          />
+        </div>
+      </section>
+
+      <section className="mt-8 space-y-4">
+        <div>
+          <h2 className="text-xl font-bold text-slate-950">
+            Terreincontroles
+          </h2>
+
+          <p className="mt-1 text-sm text-slate-500">
+            Gefinaliseerde terreincontroles die aan de gekozen gebruiker gekoppeld zijn.
+          </p>
+        </div>
+
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <StatistiekKaart
+            label="Aantal terreincontroles"
+            waarde={
+              terreincontroleTotaal
+            }
+          />
+
+          <StatistiekKaart
+            label="Non-conformiteiten"
+            waarde={
+              terreincontroleNonConformiteiten
+            }
+          />
+        </div>
+      </section>
+
+      <section className="mt-8 space-y-4">
+        <div>
+          <h2 className="text-xl font-bold text-slate-950">
+            Inplannen terreincontrole
+          </h2>
+
+          <p className="mt-1 text-sm text-slate-500">
+            Ingeplande plaatsbezoeken, facturen en atteststatussen van de gekozen gebruiker.
+          </p>
+        </div>
+
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <StatistiekKaart
+            label="Aantal plaatsbezoeken"
+            waarde={
+              plaatsbezoekenTotaal
+            }
+          />
+
+          <StatistiekKaart
+            label="Niet verzonden facturen"
+            waarde={
+              facturenNietVerzonden
+            }
+            waarschuwing={
+              facturenNietVerzonden >
+              0
+            }
+          />
+
+          <StatistiekKaart
+            label="GEARCHIVEERD_ATTEST"
+            waarde={
+              plaatsbezoekenGearchiveerdAttest
+            }
+          />
+
+          <StatistiekKaart
+            label="IN_OPMAAK"
+            waarde={
+              plaatsbezoekenInOpmaak
+            }
+          />
+        </div>
+      </section>
+
+      <section className="mt-8 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+        <header className="border-b border-slate-200 px-5 py-4">
+          <h2 className="text-lg font-bold text-slate-950">
+            Deskcontroles per maand
+          </h2>
+
+          <p className="mt-1 text-sm text-slate-500">
+            Aantal deskcontroles per maand binnen de gekozen periode.
+          </p>
+        </header>
+
+        {deskcontrolesPerMaand.length ===
+        0 ? (
+          <p className="px-5 py-10 text-center text-sm text-slate-500">
+            Er zijn geen deskcontroles voor deze periode.
+          </p>
+        ) : (
+          <div className="space-y-4 p-5">
+            {deskcontrolesPerMaand.map(
+              (maand) => {
+                const breedte =
+                  Math.max(
+                    4,
+                    Math.round(
+                      (
+                        maand.aantal /
+                        hoogsteMaandaantal
+                      ) * 100,
+                    ),
+                  );
+
+                const maandLabel =
+                  new Intl.DateTimeFormat(
+                    "nl-BE",
+                    {
+                      month: "long",
+                      year: "numeric",
+                      timeZone: "UTC",
+                    },
+                  ).format(
+                    maand.datum,
+                  );
+
+                return (
+                  <div
+                    key={maand.sleutel}
+                    className="grid gap-2 sm:grid-cols-[180px_1fr_60px] sm:items-center"
+                  >
+                    <p className="text-sm font-semibold capitalize text-slate-700">
+                      {maandLabel}
+                    </p>
+
+                    <div className="h-3 overflow-hidden rounded-full bg-slate-100">
+                      <div
+                        className="h-full rounded-full bg-emerald-600"
+                        style={{
+                          width:
+                            `${breedte}%`,
+                        }}
+                      />
+                    </div>
+
+                    <p className="text-sm font-bold text-slate-950 sm:text-right">
+                      {maand.aantal}
+                    </p>
+                  </div>
+                );
+              },
+            )}
+          </div>
+        )}
+      </section>
+
+      <section className="mt-8 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+        <header className="border-b border-slate-200 px-5 py-4">
+          <h2 className="text-lg font-bold text-slate-950">
+            Ingeplande terreincontroles per maand
+          </h2>
+
+          <p className="mt-1 text-sm text-slate-500">
+            Aantal plaatsbezoeken per maand binnen de gekozen periode.
+          </p>
+        </header>
+
+        {terreincontrolesPerMaand.length ===
+        0 ? (
+          <p className="px-5 py-10 text-center text-sm text-slate-500">
+            Er zijn geen ingeplande terreincontroles voor deze periode.
+          </p>
+        ) : (
+          <div className="space-y-4 p-5">
+            {terreincontrolesPerMaand.map(
+              (maand) => {
+                const breedte =
+                  Math.max(
+                    4,
+                    Math.round(
+                      (
+                        maand.aantal /
+                        hoogsteTerreinMaandaantal
+                      ) * 100,
+                    ),
+                  );
+
+                const maandLabel =
+                  new Intl.DateTimeFormat(
+                    "nl-BE",
+                    {
+                      month: "long",
+                      year: "numeric",
+                      timeZone: "UTC",
+                    },
+                  ).format(
+                    maand.datum,
+                  );
+
+                return (
+                  <div
+                    key={maand.sleutel}
+                    className="grid gap-2 sm:grid-cols-[180px_1fr_60px] sm:items-center"
+                  >
+                    <p className="text-sm font-semibold capitalize text-slate-700">
+                      {maandLabel}
+                    </p>
+
+                    <div className="h-3 overflow-hidden rounded-full bg-slate-100">
+                      <div
+                        className="h-full rounded-full bg-sky-600"
+                        style={{
+                          width:
+                            `${breedte}%`,
+                        }}
+                      />
+                    </div>
+
+                    <p className="text-sm font-bold text-slate-950 sm:text-right">
+                      {maand.aantal}
+                    </p>
+                  </div>
+                );
+              },
+            )}
+          </div>
+        )}
       </section>
 
       <section className="mt-8 overflow-hidden rounded-2xl border border-amber-200 bg-white shadow-sm">
