@@ -117,6 +117,42 @@ function maakGoogleMapsUrl(
   );
 }
 
+function statusLabel(
+  status: TerreincontroleStatus,
+): string {
+  switch (status) {
+    case "IN_OPMAAK":
+      return "In opmaak";
+
+    case "GEARCHIVEERD_ATTEST":
+      return "Gearchiveerd attest";
+
+    case "ACTUEEL_ATTEST":
+      return "Actueel attest";
+
+    default:
+      return "—";
+  }
+}
+
+function statusStijl(
+  status: TerreincontroleStatus,
+): string {
+  switch (status) {
+    case "IN_OPMAAK":
+      return "border-amber-200 bg-amber-100 text-amber-900";
+
+    case "GEARCHIVEERD_ATTEST":
+      return "border-slate-300 bg-slate-200 text-slate-800";
+
+    case "ACTUEEL_ATTEST":
+      return "border-emerald-200 bg-emerald-100 text-emerald-900";
+
+    default:
+      return "border-slate-200 bg-slate-100 text-slate-600";
+  }
+}
+
 function toonWaarde(
   waarde:
     | string
@@ -390,7 +426,7 @@ export function TerreincontrolesTabel({
         </div>
       ) : (
         <div className="overflow-x-auto">
-          <table className="min-w-[4400px] border-collapse text-left text-xs">
+          <table className="min-w-[4550px] border-collapse text-left text-xs">
             <thead className="bg-slate-50 font-semibold uppercase tracking-wide text-slate-600">
               <tr>
                 <th className="sticky left-0 z-20 border-b border-r border-slate-200 bg-slate-50 px-4 py-3">
@@ -399,6 +435,10 @@ export function TerreincontrolesTabel({
 
                 <th className="border-b border-slate-200 px-4 py-3">
                   Acties
+                </th>
+
+                <th className="border-b border-slate-200 px-4 py-3">
+                  Status
                 </th>
 
                 <th className="border-b border-slate-200 px-4 py-3">
@@ -525,6 +565,18 @@ export function TerreincontrolesTabel({
                         >
                           Bekijken
                         </Link>
+                      </td>
+
+                      <td className="whitespace-nowrap px-4 py-3">
+                        <span
+                          className={`inline-flex rounded-full border px-3 py-1 font-bold ${statusStijl(
+                            rij.status,
+                          )}`}
+                        >
+                          {statusLabel(
+                            rij.status,
+                          )}
+                        </span>
                       </td>
 
                       <td className="whitespace-nowrap px-4 py-3 font-medium">

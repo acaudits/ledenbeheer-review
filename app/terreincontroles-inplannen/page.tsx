@@ -5,6 +5,9 @@ import {
   TerreincontrolesTabel,
   type TerreincontroleRij,
 } from "@/components/TerreincontrolesTabel";
+import {
+  IngeplandeTerreincontroleStatusExcelImport,
+} from "@/components/IngeplandeTerreincontroleStatusExcelImport";
 import { vereisMachtiging } from "@/lib/auth";
 import { heeftMachtiging } from "@/lib/autorisatie";
 import { prisma } from "@/lib/prisma";
@@ -29,6 +32,12 @@ export default async function TerreincontrolesPage() {
     heeftMachtiging(
       gebruiker.rol,
       "TERREINCONTROLES_EXPORTEREN",
+    );
+
+  const magStatussenImporteren =
+    heeftMachtiging(
+      gebruiker.rol,
+      "TERREINCONTROLES_STATUS_IMPORTEREN",
     );
 
   function Link(
@@ -249,6 +258,10 @@ export default async function TerreincontrolesPage() {
         </div>
 
       </header>
+
+      {magStatussenImporteren ? (
+        <IngeplandeTerreincontroleStatusExcelImport />
+      ) : null}
 
       <TerreincontrolesTabel
         rijen={rijen}

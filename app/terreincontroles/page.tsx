@@ -1,7 +1,5 @@
 import Link from "next/link";
 
-import { TerreincontroleStatusExcelImport } from "@/components/TerreincontroleStatusExcelImport";
-
 import {
   TerreincontroleDossiersTabel,
   type TerreincontroleDossierRij,
@@ -61,12 +59,6 @@ export default async function TerreincontrolesPage() {
     heeftMachtiging(
       gebruiker.rol,
       "TERREINCONTROLES_EXPORTEREN",
-    );
-
-  const magStatussenImporteren =
-    heeftMachtiging(
-      gebruiker.rol,
-      "TERREINCONTROLES_STATUS_IMPORTEREN",
     );
 
   const dossiers =
@@ -181,10 +173,6 @@ export default async function TerreincontrolesPage() {
           ) : null}
         </div>
       </header>
-
-      {magStatussenImporteren ? (
-        <TerreincontroleStatusExcelImport />
-      ) : null}
 
       <TerreincontroleDossiersTabel
         rijen={rijen}

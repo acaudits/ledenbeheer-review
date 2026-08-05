@@ -35,7 +35,6 @@ const kolommen: Array<{
   { sleutel: "naamAdi", label: "Naam ADI" },
   { sleutel: "linkAttest", label: "Link Attest" },
   { sleutel: "attestnummer", label: "Attestnummer" },
-  { sleutel: "status", label: "Status" },
   {
     sleutel: "certificatiePlatform",
     label: "Certificatieplatform",
@@ -128,7 +127,7 @@ export function TerreincontroleDossiersTabel({
         </div>
       ) : (
         <div className="overflow-x-auto">
-          <table className="min-w-[3300px] border-collapse text-left text-xs">
+          <table className="min-w-[3100px] border-collapse text-left text-xs">
             <thead className="bg-slate-50 text-slate-600">
               <tr>
                 {kolommen.map((kolom) => (
