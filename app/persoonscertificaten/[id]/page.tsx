@@ -3,6 +3,7 @@ import { ControleTargetOverzicht } from "@/components/ControleTargetOverzicht";
 import { TopTienNonConformiteiten } from "@/components/TopTienNonConformiteiten";
 import { PersoonsTerreincontroles } from "@/components/PersoonsTerreincontroles";
 import { PersoonsIngeplandeTerreincontroles } from "@/components/PersoonsIngeplandeTerreincontroles";
+import { PersoonsNaFinalisatie } from "@/components/PersoonsNaFinalisatie";
 import {
   notFound,
 } from "next/navigation";
@@ -993,6 +994,10 @@ export default async function PersoonscertificaatDetailPage({
         terreincontroles={
           ingeplandeTerreincontroles
         }
+      />
+
+      <PersoonsNaFinalisatie
+        lidId={persoon.id}
       />
     </div>
   );

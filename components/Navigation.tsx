@@ -118,6 +118,26 @@ const navigatie = [
   },
 
   {
+    naam: "Na finalisatie",
+    href: "/na-finalisatie",
+    icoon: (
+      <svg
+        viewBox="0 0 24 24"
+        fill="none"
+        className="size-5"
+      >
+        <path
+          d="M8 4h8m-9 3h10a2 2 0 0 1 2 2v11H5V9a2 2 0 0 1 2-2Zm2 6 2 2 4-5"
+          stroke="currentColor"
+          strokeWidth="1.8"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      </svg>
+    ),
+  },
+
+  {
     naam: "Atteststatistieken",
     href: "/atteststatistieken",
     icoon: (

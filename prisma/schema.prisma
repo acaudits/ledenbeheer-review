@@ -426,3 +426,52 @@ model TerreincontroleReservering {
   @@index([verlooptOp])
   @@map("terreincontrole_reserveringen")
 }
+
+enum NaFinalisatiePlaatsbezoek {
+  SPONTAAN
+  TELEFONISCHE_AFSPRAAK
+  EMAILAFSPRAAK
+  KLACHT
+}
+
+enum NaFinalisatieTypeControle {
+  GEHEEL
+  DEELS
+  ENKEL_OPENBARE_WEG
+}
+
+model NaFinalisatie {
+  id Int @id @default(autoincrement())
+
+  auditeur      String  @db.VarChar(255)
+  naamAdi       String? @map("naam_adi") @db.VarChar(255)
+  geregistreerd Boolean @default(false)
+
+  linkAttest   String @map("link_attest") @db.VarChar(2000)
+  attestnummer String @db.VarChar(255)
+  attestId     String @map("attest_id") @db.Uuid
+
+  datumNaFinalisatie DateTime                  @map("datum_na_finalisatie") @db.Date
+  plaatsbezoek       NaFinalisatiePlaatsbezoek
+  typeControle       NaFinalisatieTypeControle @map("type_controle")
+  reden              String?                   @db.Text
+  opmerking          String                    @db.Text
+
+  inspectielocatie String? @db.Text
+  naamBedrijf      String? @map("naam_bedrijf") @db.VarChar(500)
+  persoonsId       String? @map("persoons_id") @db.VarChar(100)
+
+  bronBestandsnaam String?   @map("bron_bestandsnaam") @db.VarChar(255)
+  aangemaaktOp     DateTime  @default(now()) @map("aangemaakt_op")
+  bijgewerktOp     DateTime  @updatedAt @map("bijgewerkt_op")
+  verwijderdOp     DateTime? @map("verwijderd_op")
+
+  @@index([verwijderdOp])
+  @@index([geregistreerd])
+  @@index([datumNaFinalisatie])
+  @@index([auditeur])
+  @@index([persoonsId])
+  @@index([attestId])
+  @@index([attestId, datumNaFinalisatie, plaatsbezoek, typeControle])
+  @@map("na_finalisatie")
+}

@@ -1,6 +1,9 @@
 import Link from "next/link";
 
 import { PageHeader } from "@/components/PageHeader";
+import {
+  MijnOverzichtNaFinalisatie,
+} from "@/components/MijnOverzichtNaFinalisatie";
 import { vereisIngelogdeGebruiker } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
@@ -1624,6 +1627,11 @@ export default async function MijnOverzichtPage({
           </div>
         )}
       </section>
+      <MijnOverzichtNaFinalisatie
+        auditeur={planningAuditeurNaam}
+        datumVanaf={datumVanaf}
+      />
+
     </div>
   );
 }
