@@ -392,11 +392,10 @@ export function NaFinalisatieFormulier({
           </label>
 
           <label className="text-sm font-semibold text-slate-700 md:col-span-2">
-            Opmerking *
+            Opmerking
             <textarea
               name="opmerking"
               rows={5}
-              required
               maxLength={5000}
               defaultValue={
                 waarden?.opmerking ??

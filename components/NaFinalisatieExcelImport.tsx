@@ -196,10 +196,9 @@ export function NaFinalisatieExcelImport() {
           </label>
 
           <label className="text-sm font-semibold text-slate-700 md:col-span-3">
-            Opmerking *
+            Opmerking
             <textarea
               name="opmerking"
-              required
               maxLength={5000}
               className={tekstvakStijl}
             />

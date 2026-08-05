@@ -417,14 +417,6 @@ function valideerInvoer(
     };
   }
 
-  if (!opmerking) {
-    return {
-      geldig: false,
-      fout:
-        "Opmerking is verplicht.",
-    };
-  }
-
   if (
     !controleerLengte(
       auditeur,

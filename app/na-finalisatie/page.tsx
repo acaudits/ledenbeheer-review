@@ -1,6 +1,9 @@
 import Link from "next/link";
 
 import {
+  NaFinalisatieBulkImport,
+} from "@/components/NaFinalisatieBulkImport";
+import {
   NaFinalisatieTabel,
   type NaFinalisatieRij,
 } from "@/components/NaFinalisatieTabel";
@@ -190,6 +193,10 @@ export default async function NaFinalisatiePage() {
           </p>
         </article>
       </section>
+
+      {magBeheren ? (
+        <NaFinalisatieBulkImport />
+      ) : null}
 
       <NaFinalisatieTabel
         rijen={rijen}

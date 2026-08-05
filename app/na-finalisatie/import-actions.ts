@@ -413,6 +413,42 @@ export async function importeerNaFinalisatieUitExcel(
       "opmerking",
     );
 
+  const auditeurReferentie =
+    leesFormulierTekst(
+      formData,
+      "auditeur",
+    );
+
+  const naamAdiReferentie =
+    leesFormulierTekst(
+      formData,
+      "naamAdi",
+    );
+
+  const naamBedrijfReferentie =
+    leesFormulierTekst(
+      formData,
+      "naamBedrijf",
+    );
+
+  const persoonsIdReferentie =
+    leesFormulierTekst(
+      formData,
+      "persoonsId",
+    ).toUpperCase();
+
+  const inspectielocatieReferentie =
+    leesFormulierTekst(
+      formData,
+      "inspectielocatie",
+    );
+
+  const bronId =
+    leesFormulierTekst(
+      formData,
+      "bronId",
+    ) || null;
+
   if (
     geregistreerd === null
   ) {
@@ -448,12 +484,6 @@ export async function importeerNaFinalisatieUitExcel(
     );
   }
 
-  if (!opmerking) {
-    return fout(
-      "Opmerking is verplicht.",
-    );
-  }
-
   if (
     opmerking.length > 5000 ||
     (reden &&
@@ -461,6 +491,15 @@ export async function importeerNaFinalisatieUitExcel(
   ) {
     return fout(
       "Reden en opmerking mogen maximaal 5000 tekens bevatten.",
+    );
+  }
+
+  if (
+    bronId &&
+    bronId.length > 255
+  ) {
+    return fout(
+      "Het bron-ID mag maximaal 255 tekens bevatten.",
     );
   }
 
@@ -581,11 +620,14 @@ export async function importeerNaFinalisatieUitExcel(
     ).toUpperCase();
 
   const inspectielocatie =
+    inspectielocatieReferentie ||
     leesCelTekst(
       werkblad.getCell("A7"),
-    ) || null;
+    ) ||
+    null;
 
   const persoonsId =
+    persoonsIdReferentie ||
     leesCelTekst(
       werkblad.getCell("B7"),
     ).toUpperCase();
@@ -601,6 +643,7 @@ export async function importeerNaFinalisatieUitExcel(
     );
 
   const auditeur =
+    auditeurReferentie ||
     leesCelTekst(
       werkblad.getCell("G13"),
     );
@@ -624,20 +667,6 @@ export async function importeerNaFinalisatieUitExcel(
     );
   }
 
-  if (!persoonsId) {
-    return fout(
-      "PersoonsID ontbreekt.",
-      "Cel B7 bevat geen PersoonsID.",
-    );
-  }
-
-  if (!ondernemingsnummer) {
-    return fout(
-      "Ondernemingsnummer ontbreekt.",
-      "Cel C7 bevat geen geldig ondernemingsnummer.",
-    );
-  }
-
   if (
     !linkAttest ||
     !attestId ||
@@ -652,7 +681,7 @@ export async function importeerNaFinalisatieUitExcel(
   if (!auditeur) {
     return fout(
       "Auditeur ontbreekt.",
-      "Cel G13 bevat geen auditeur.",
+      "Vul de kolom Auditeur in het referentiebestand in.",
     );
   }
 
@@ -660,85 +689,96 @@ export async function importeerNaFinalisatieUitExcel(
     lid,
     procescertificaten,
   ] = await Promise.all([
-    prisma.lid.findFirst({
-      where: {
-        ovamId: {
-          equals:
-            persoonsId,
-          mode: "insensitive",
-        },
-        verwijderdOp: null,
-      },
-      select: {
-        naamPersoon: true,
-        ovamId: true,
-      },
-    }),
+    persoonsId
+      ? prisma.lid.findFirst({
+          where: {
+            ovamId: {
+              equals:
+                persoonsId,
+              mode:
+                "insensitive",
+            },
+            verwijderdOp: null,
+          },
+          select: {
+            naamPersoon: true,
+            ovamId: true,
+          },
+        })
+      : Promise.resolve(null),
 
-    prisma.procescertificaat.findMany({
-      where: {
-        verwijderdOp: null,
-      },
-      select: {
-        naamBedrijf: true,
-        kboNummer: true,
-      },
-    }),
+    ondernemingsnummer
+      ? prisma.procescertificaat.findMany({
+          where: {
+            verwijderdOp: null,
+          },
+          select: {
+            naamBedrijf: true,
+            kboNummer: true,
+          },
+        })
+      : Promise.resolve([]),
   ]);
 
-  if (!lid) {
-    return fout(
-      `Geen actief persoonscertificaat gevonden voor PersoonsID ${persoonsId}.`,
-      "Controleer cel B7.",
-    );
-  }
-
   const genormaliseerdNummer =
-    normaliseerOndernemingsnummer(
-      ondernemingsnummer,
-    );
+    ondernemingsnummer
+      ? normaliseerOndernemingsnummer(
+          ondernemingsnummer,
+        )
+      : "";
 
   const overeenkomendeProcessen =
-    procescertificaten.filter(
-      (procescertificaat) =>
-        normaliseerOndernemingsnummer(
-          procescertificaat.kboNummer,
-        ) ===
-        genormaliseerdNummer,
-    );
-
-  if (
-    overeenkomendeProcessen.length ===
-    0
-  ) {
-    return fout(
-      `Geen actief procescertificaat gevonden voor ${ondernemingsnummer}.`,
-      "Controleer cel C7.",
-    );
-  }
-
-  if (
-    overeenkomendeProcessen.length >
-    1
-  ) {
-    return fout(
-      `Meerdere procescertificaten gevonden voor ${ondernemingsnummer}.`,
-      "Los eerst de dubbele procescertificaten op.",
-    );
-  }
+    genormaliseerdNummer
+      ? procescertificaten.filter(
+          (procescertificaat) =>
+            normaliseerOndernemingsnummer(
+              procescertificaat.kboNummer,
+            ) ===
+            genormaliseerdNummer,
+        )
+      : [];
 
   const procescertificaat =
-    overeenkomendeProcessen[0];
+    overeenkomendeProcessen.length ===
+    1
+      ? overeenkomendeProcessen[0]
+      : null;
+
+  const naamAdi =
+    naamAdiReferentie ||
+    lid?.naamPersoon ||
+    null;
+
+  const naamBedrijf =
+    naamBedrijfReferentie ||
+    procescertificaat?.naamBedrijf ||
+    null;
+
+  const opgeslagenPersoonsId =
+    lid?.ovamId ||
+    persoonsId ||
+    null;
 
   const duplicaat =
     await prisma.naFinalisatie.findFirst({
       where: {
         verwijderdOp: null,
-        attestId:
-          attestId.toLowerCase(),
-        datumNaFinalisatie,
-        plaatsbezoek,
-        typeControle,
+        OR: [
+          ...(bronId
+            ? [
+                {
+                  bronId,
+                },
+              ]
+            : []),
+          {
+            attestId:
+              attestId.toLowerCase(),
+            datumNaFinalisatie,
+            plaatsbezoek,
+            typeControle,
+          },
+        ],
       },
       select: {
         id: true,
@@ -759,8 +799,7 @@ export async function importeerNaFinalisatieUitExcel(
       await prisma.naFinalisatie.create({
         data: {
           auditeur,
-          naamAdi:
-            lid.naamPersoon,
+          naamAdi,
           geregistreerd,
           linkAttest,
           attestnummer,
@@ -772,10 +811,10 @@ export async function importeerNaFinalisatieUitExcel(
           reden,
           opmerking,
           inspectielocatie,
-          naamBedrijf:
-            procescertificaat.naamBedrijf,
+          naamBedrijf,
           persoonsId:
-            lid.ovamId,
+            opgeslagenPersoonsId,
+          bronId,
           bronBestandsnaam:
             bestand.name,
         },
