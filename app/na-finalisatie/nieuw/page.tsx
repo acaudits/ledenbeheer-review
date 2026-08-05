@@ -1,6 +1,9 @@
 import Link from "next/link";
 
 import {
+  NaFinalisatieBulkImport,
+} from "@/components/NaFinalisatieBulkImport";
+import {
   NaFinalisatieFormulier,
 } from "@/components/NaFinalisatieFormulier";
 import {
@@ -38,9 +41,14 @@ function gebruikersnaam(
 }
 
 export default async function NieuweNaFinalisatiePage() {
-  await vereisMachtiging(
-    "TERREINCONTROLES_BEHEREN",
-  );
+  const gebruiker =
+    await vereisMachtiging(
+      "TERREINCONTROLES_BEHEREN",
+    );
+
+  const isBeheerder =
+    gebruiker.rol ===
+    "BEHEERDER";
 
   const gebruikers =
     await prisma.toegestaneGebruiker.findMany({
@@ -121,6 +129,22 @@ export default async function NieuweNaFinalisatiePage() {
           auditeurs={auditeurs}
         />
       </section>
+
+      {isBeheerder ? (
+        <>
+          <div className="flex items-center gap-4">
+            <div className="h-px flex-1 bg-slate-200" />
+
+            <span className="text-xs font-bold uppercase tracking-[0.14em] text-slate-400">
+              Of in bulk importeren
+            </span>
+
+            <div className="h-px flex-1 bg-slate-200" />
+          </div>
+
+          <NaFinalisatieBulkImport />
+        </>
+      ) : null}
     </div>
   );
 }

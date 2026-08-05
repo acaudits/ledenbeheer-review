@@ -6,7 +6,7 @@ import {
   importeerNaFinalisatieUitExcel,
 } from "@/app/na-finalisatie/import-actions";
 import {
-  vereisMachtiging,
+  vereisBeheerder,
 } from "@/lib/auth";
 import {
   prisma,
@@ -1151,9 +1151,7 @@ function isRedirect(
 export async function analyseerNaFinalisatieBatch(
   formData: FormData,
 ): Promise<NaFinalisatieBulkResultaat> {
-  await vereisMachtiging(
-    "TERREINCONTROLES_BEHEREN",
-  );
+  await vereisBeheerder();
 
   try {
     const {
@@ -1202,9 +1200,7 @@ export async function analyseerNaFinalisatieBatch(
 export async function importeerNaFinalisatieBatch(
   formData: FormData,
 ): Promise<NaFinalisatieBulkResultaat> {
-  await vereisMachtiging(
-    "TERREINCONTROLES_BEHEREN",
-  );
+  await vereisBeheerder();
 
   try {
     const {

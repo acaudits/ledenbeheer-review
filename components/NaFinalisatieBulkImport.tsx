@@ -137,7 +137,7 @@ export function NaFinalisatieBulkImport() {
       <p className="mt-2 max-w-4xl text-sm text-slate-600">
         Voeg eerst het bestand met het
         werkblad &quot;Na Finalisatie&quot;
-        toe. Voeg daarna maximaal 20
+        toe. Voeg daarna de
         terreincontrolebestanden toe.
         Je kunt maximaal 500 bestanden
         selecteren, met een totale
