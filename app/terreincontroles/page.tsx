@@ -76,6 +76,17 @@ export default async function TerreincontrolesPage() {
       ],
     });
 
+  const aantalVaststellingen =
+    await prisma.terreincontroleVaststelling.count({
+      where: {
+        terreincontroleDossier: {
+          is: {
+            verwijderdOp: null,
+          },
+        },
+      },
+    });
+
   const rijen:
     TerreincontroleDossierRij[] =
     dossiers.map((dossier) => ({
@@ -116,30 +127,31 @@ export default async function TerreincontrolesPage() {
     }));
 
   return (
-    <div className="space-y-5">
-      <header className="flex flex-col gap-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <p className="text-sm font-semibold text-emerald-700">
+    <div className="space-y-4">
+      <header className="relative rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+        <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+          <div className="min-w-0">
+          <p className="text-xs font-bold uppercase tracking-[0.16em] text-emerald-700">
             Controlebeheer
           </p>
 
-          <h1 className="mt-1 text-2xl font-bold text-slate-950">
+          <h1 className="mt-1 text-2xl font-black tracking-tight text-slate-950 sm:text-3xl">
             Terreincontroles
           </h1>
 
-          <p className="mt-1 text-sm text-slate-600">
+          <p className="mt-1.5 text-sm text-slate-500">
             {dossiers.length} actieve{" "}
             {dossiers.length === 1
               ? "terreincontrole"
               : "terreincontroles"}
           </p>
-        </div>
+          </div>
 
-        <div className="flex flex-wrap gap-3">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
           {magBeheren ? (
             <Link
               href="/terreincontroles/nieuw"
-              className="inline-flex h-11 items-center justify-center rounded-xl bg-emerald-700 px-5 text-sm font-bold text-white hover:bg-emerald-800"
+              className="inline-flex h-11 items-center justify-center rounded-xl bg-emerald-700 px-5 text-sm font-bold text-white shadow-sm transition hover:bg-emerald-600 focus:outline-none focus:ring-4 focus:ring-emerald-200"
             >
               Nieuwe terreincontrole
             </Link>
@@ -149,14 +161,14 @@ export default async function TerreincontrolesPage() {
             <>
               <a
                 href="/terreincontroles/export"
-                className="inline-flex h-11 items-center justify-center rounded-xl border border-emerald-300 bg-emerald-50 px-5 text-sm font-bold text-emerald-800 hover:bg-emerald-100"
+                className="inline-flex h-11 items-center justify-center rounded-xl border border-emerald-300 bg-emerald-50 px-5 text-sm font-bold text-emerald-800 shadow-sm transition hover:bg-emerald-100"
               >
                 Exporteren naar Excel
               </a>
 
               <a
                 href="/terreincontroles/export-openstaand"
-                className="inline-flex h-11 items-center justify-center rounded-xl border border-amber-300 bg-amber-50 px-5 text-sm font-bold text-amber-900 hover:bg-amber-100"
+                className="inline-flex h-11 items-center justify-center rounded-xl border border-amber-300 bg-amber-50 px-5 text-sm font-bold text-amber-900 shadow-sm transition hover:bg-amber-100"
               >
                 Excel Geen / In opmaak
               </a>
@@ -166,16 +178,40 @@ export default async function TerreincontrolesPage() {
           {magBeheren ? (
             <Link
               href="/terreincontroles/verwijderd"
-              className="inline-flex h-11 items-center justify-center rounded-xl border border-slate-300 bg-white px-5 text-sm font-bold text-slate-700"
+              className="inline-flex h-11 items-center justify-center rounded-xl border border-slate-300 bg-white px-5 text-sm font-bold text-slate-700 shadow-sm transition hover:bg-slate-50"
             >
               Verwijderde
             </Link>
           ) : null}
         </div>
+        </div>
       </header>
+
+      <section className="grid gap-3 sm:grid-cols-2">
+        <article className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-left text-emerald-950 shadow-sm transition">
+          <p className="text-xs font-bold uppercase tracking-wide opacity-70">
+            Aantal terreincontroles
+          </p>
+
+          <p className="mt-2 text-3xl font-black">
+            {dossiers.length}
+          </p>
+        </article>
+
+        <article className="rounded-2xl border border-sky-200 bg-sky-50 p-4 text-left text-sky-950 shadow-sm transition">
+          <p className="text-xs font-bold uppercase tracking-wide opacity-70">
+            Aantal non-conformiteiten
+          </p>
+
+          <p className="mt-2 text-3xl font-black">
+            {aantalVaststellingen}
+          </p>
+        </article>
+      </section>
 
       <TerreincontroleDossiersTabel
         rijen={rijen}
+        magBeheren={magBeheren}
       />
     </div>
   );

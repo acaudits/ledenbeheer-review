@@ -117,6 +117,34 @@ export default async function TerreincontrolesPage() {
       },
     });
 
+  const aantalInOpmaak =
+    terreincontroles.filter(
+      (controle) =>
+        controle.status ===
+        "IN_OPMAAK",
+    ).length;
+
+  const aantalGearchiveerd =
+    terreincontroles.filter(
+      (controle) =>
+        controle.status ===
+        "GEARCHIVEERD_ATTEST",
+    ).length;
+
+  const aantalActueelAttest =
+    terreincontroles.filter(
+      (controle) =>
+        controle.status ===
+        "ACTUEEL_ATTEST",
+    ).length;
+
+  const aantalNietVerzondenFacturen =
+    terreincontroles.filter(
+      (controle) =>
+        controle.factuurVerzonden !==
+        true,
+    ).length;
+
   const rijen:
     TerreincontroleRij[] =
     terreincontroles.map(
@@ -209,18 +237,19 @@ export default async function TerreincontrolesPage() {
     );
 
   return (
-    <div className="space-y-5">
-      <header className="flex flex-col gap-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <p className="text-sm font-medium text-emerald-700">
+    <div className="space-y-4">
+      <header className="relative rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+        <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+          <div className="min-w-0">
+          <p className="text-xs font-bold uppercase tracking-[0.16em] text-emerald-700">
             Controlebeheer
           </p>
 
-          <h1 className="mt-1 text-2xl font-bold tracking-tight text-slate-950">
+          <h1 className="mt-1 text-2xl font-black tracking-tight text-slate-950 sm:text-3xl">
             Inplannen terreincontrole
           </h1>
 
-          <p className="mt-1 text-sm text-slate-600">
+          <p className="mt-1.5 text-sm text-slate-500">
             {
               terreincontroles.length
             }{" "}
@@ -230,12 +259,12 @@ export default async function TerreincontrolesPage() {
               ? "terreincontrole"
               : "terreincontroles"}
           </p>
-        </div>
+          </div>
 
-        <div className="flex flex-wrap gap-3">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
           <Link
             href="/terreincontroles-inplannen/verwijderd"
-            className="inline-flex h-11 items-center justify-center rounded-xl border border-slate-300 bg-white px-5 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50"
+            className="inline-flex h-11 items-center justify-center rounded-xl border border-slate-300 bg-white px-5 text-sm font-bold text-slate-700 shadow-sm transition hover:bg-slate-50"
           >
             Verwijderde terreincontroles
           </Link>
@@ -243,7 +272,7 @@ export default async function TerreincontrolesPage() {
           {magExporteren ? (
 <a
             href="/terreincontroles-inplannen/export"
-            className="inline-flex h-11 items-center justify-center rounded-xl border border-emerald-300 bg-emerald-50 px-5 text-sm font-semibold text-emerald-800 shadow-sm transition hover:bg-emerald-100"
+            className="inline-flex h-11 items-center justify-center rounded-xl border border-emerald-300 bg-emerald-50 px-5 text-sm font-bold text-emerald-800 shadow-sm transition hover:bg-emerald-100"
           >
             Exporteren naar Excel
           </a>
@@ -251,13 +280,65 @@ export default async function TerreincontrolesPage() {
 
           <Link
             href="/terreincontroles-inplannen/nieuw"
-            className="inline-flex h-11 items-center justify-center rounded-xl bg-emerald-700 px-5 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-800"
+            className="inline-flex h-11 items-center justify-center rounded-xl bg-emerald-700 px-5 text-sm font-bold text-white shadow-sm transition hover:bg-emerald-600 focus:outline-none focus:ring-4 focus:ring-emerald-200"
           >
             Nieuwe terreincontrole
           </Link>
         </div>
-
+        </div>
       </header>
+
+      <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+        <article className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-left text-emerald-950 shadow-sm transition">
+          <p className="text-xs font-bold uppercase tracking-wide opacity-70">
+            Aantal plaatsbezoeken
+          </p>
+
+          <p className="mt-2 text-3xl font-black">
+            {terreincontroles.length}
+          </p>
+        </article>
+
+        <article className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-left text-amber-950 shadow-sm transition">
+          <p className="text-xs font-bold uppercase tracking-wide opacity-70">
+            Aantal in opmaak
+          </p>
+
+          <p className="mt-2 text-3xl font-black">
+            {aantalInOpmaak}
+          </p>
+        </article>
+
+        <article className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-left text-slate-950 shadow-sm transition">
+          <p className="text-xs font-bold uppercase tracking-wide opacity-70">
+            Aantal gearchiveerd
+          </p>
+
+          <p className="mt-2 text-3xl font-black">
+            {aantalGearchiveerd}
+          </p>
+        </article>
+
+        <article className="rounded-2xl border border-sky-200 bg-sky-50 p-4 text-left text-sky-950 shadow-sm transition">
+          <p className="text-xs font-bold uppercase tracking-wide opacity-70">
+            Aantal actueel attest
+          </p>
+
+          <p className="mt-2 text-3xl font-black">
+            {aantalActueelAttest}
+          </p>
+        </article>
+
+        <article className="rounded-2xl border border-red-200 bg-red-50 p-4 text-left text-red-950 shadow-sm transition">
+          <p className="text-xs font-bold uppercase tracking-wide opacity-70">
+            Aantal niet verzonden facturen
+          </p>
+
+          <p className="mt-2 text-3xl font-black">
+            {aantalNietVerzondenFacturen}
+          </p>
+        </article>
+      </section>
 
       {magStatussenImporteren ? (
         <IngeplandeTerreincontroleStatusExcelImport />
