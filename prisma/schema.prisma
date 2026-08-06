@@ -8,22 +8,23 @@ datasource db {
 }
 
 model Lid {
-  id                      Int                      @id @default(autoincrement())
-  naamPersoon             String                   @map("naam_persoon")
+  id                      Int                              @id @default(autoincrement())
+  naamPersoon             String                           @map("naam_persoon")
   telefoonnummer          String?
   mailadres               String?
-  ovamId                  String                   @unique @map("ovam_id")
-  certificaatnummer       String                   @unique
-  uitgereiktOp            DateTime?                @map("uitgereikt_op") @db.Date
+  ovamId                  String                           @unique @map("ovam_id")
+  certificaatnummer       String                           @unique
+  uitgereiktOp            DateTime?                        @map("uitgereikt_op") @db.Date
   bedrijf                 String?
   aansluiting             String?
-  opmerking               String?                  @db.Text
-  certificatiePlatform    String?                  @map("certificatie_platform")
-  aangemaaktOp            DateTime                 @default(now()) @map("aangemaakt_op")
-  bijgewerktOp            DateTime                 @updatedAt @map("bijgewerkt_op")
-  verwijderdOp            DateTime?                @map("verwijderd_op")
+  opmerking               String?                          @db.Text
+  certificatiePlatform    String?                          @map("certificatie_platform")
+  aangemaaktOp            DateTime                         @default(now()) @map("aangemaakt_op")
+  bijgewerktOp            DateTime                         @updatedAt @map("bijgewerkt_op")
+  verwijderdOp            DateTime?                        @map("verwijderd_op")
   deskcontroles           Deskcontrole[]
   terreincontroleDossiers TerreincontroleDossier[]
+  laattijdigeMeldingen    LaattijdigePlaatsbezoekMelding[]
 
   @@index([verwijderdOp])
   @@map("leden")
@@ -475,4 +476,52 @@ model NaFinalisatie {
   @@index([attestId])
   @@index([attestId, datumNaFinalisatie, plaatsbezoek, typeControle])
   @@map("na_finalisatie")
+}
+
+model LaattijdigePlaatsbezoekMelding {
+  id Int @id @default(autoincrement())
+
+  lidId        Int    @map("lid_id")
+  naamAdi      String @map("naam_adi") @db.VarChar(255)
+  bedrijfsnaam String @db.VarChar(500)
+
+  aangemeldOp DateTime @default(now()) @map("aangemeld_op")
+
+  lid      Lid                      @relation(fields: [lidId], references: [id], onDelete: Restrict)
+  bezoeken LaattijdigPlaatsbezoek[]
+
+  @@index([lidId])
+  @@index([aangemeldOp])
+  @@map("laattijdige_plaatsbezoek_meldingen")
+}
+
+model LaattijdigPlaatsbezoek {
+  id Int @id @default(autoincrement())
+
+  meldingId Int @map("melding_id")
+
+  inspectielocatie        String   @db.VarChar(500)
+  geopuntId               String?  @map("geopunt_id") @db.VarChar(100)
+  straat                  String?  @db.VarChar(255)
+  huisnummer              String?  @db.VarChar(50)
+  busnummer               String?  @db.VarChar(50)
+  postcode                String?  @db.VarChar(20)
+  gemeente                String?  @db.VarChar(255)
+  extraAdresdetails       String?  @map("extra_adresdetails") @db.Text
+  gemeenschappelijkeDelen Boolean  @default(false) @map("gemeenschappelijke_delen")
+  latitude                Decimal? @db.Decimal(10, 7)
+  longitude               Decimal? @db.Decimal(10, 7)
+
+  datumPlaatsbezoek DateTime @map("datum_plaatsbezoek") @db.Date
+  tijdstip          DateTime @db.Time(0)
+  reden             String   @db.Text
+
+  aangemaaktOp DateTime @default(now()) @map("aangemaakt_op")
+
+  melding LaattijdigePlaatsbezoekMelding @relation(fields: [meldingId], references: [id], onDelete: Cascade)
+
+  @@index([meldingId])
+  @@index([datumPlaatsbezoek])
+  @@index([aangemaaktOp])
+  @@map("laattijdige_plaatsbezoeken")
 }

@@ -7,6 +7,8 @@ function isPubliekeRoute(pathname: string) {
     pathname === "/inloggen" ||
     pathname === "/wachtwoord-vergeten" ||
     pathname === "/wachtwoord-instellen" ||
+    pathname === "/aanmelden-laattijdige-plaatsbezoeken" ||
+    pathname === "/api/publiek/geopunt" ||
     pathname.startsWith("/auth/")
   );
 }

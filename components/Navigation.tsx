@@ -137,6 +137,27 @@ const navigatie = [
     ),
   },
 
+
+  {
+    naam: "Laattijdige plaatsbezoeken",
+    href: "/laattijdige-plaatsbezoeken",
+    icoon: (
+      <svg
+        viewBox="0 0 24 24"
+        fill="none"
+        className="size-5"
+      >
+        <path
+          d="M12 7v5l3 2m6-2a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"
+          stroke="currentColor"
+          strokeWidth="1.8"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      </svg>
+    ),
+  },
+
   {
     naam: "Atteststatistieken",
     href: "/atteststatistieken",
