@@ -7,6 +7,11 @@ import {
 export const metadata = {
   title:
     "Aanmelden laattijdige plaatsbezoeken",
+  robots: {
+    index: false,
+    follow: false,
+    noarchive: true,
+  },
 };
 
 export default function AanmeldenLaattijdigePlaatsbezoekenPage() {
@@ -23,11 +28,7 @@ export default function AanmeldenLaattijdigePlaatsbezoekenPage() {
             className="mx-auto h-auto w-36"
           />
 
-          <p className="mt-6 text-xs font-black uppercase tracking-[0.18em] text-emerald-700">
-            Publieke melding
-          </p>
-
-          <h1 className="mt-2 text-3xl font-black tracking-tight text-slate-950 sm:text-4xl">
+          <h1 className="mt-6 text-3xl font-black tracking-tight text-slate-950 sm:text-4xl">
             Aanmelden laattijdige
             plaatsbezoeken
           </h1>

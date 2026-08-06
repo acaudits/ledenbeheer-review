@@ -36,7 +36,7 @@ export async function GET(
       sleutel: `adres:${clientSleutel(
         request,
       )}`,
-      maximum: 100,
+      maximum: 60,
       vensterMs: 60_000,
     })
   ) {

@@ -7,7 +7,6 @@ import {
 } from "react";
 
 import {
-  controleerLidCombinatie,
   meldLaattijdigePlaatsbezoeken,
   type LaattijdigeMeldingState,
 } from "@/app/aanmelden-laattijdige-plaatsbezoeken/actions";
@@ -110,18 +109,6 @@ export function LaattijdigePlaatsbezoekenFormulier() {
     setBedrijfsnaam,
   ] = useState("");
 
-  const [
-    lidStatus,
-    setLidStatus,
-  ] = useState<
-    "ONGECONTROLEERD" |
-    "BEZIG" |
-    "GELDIG" |
-    "ONGELDIG"
-  >("ONGECONTROLEERD");
-
-  const [lidFout, setLidFout] =
-    useState("");
 
   const [bezoeken, setBezoeken] =
     useState<Bezoek[]>(() => [
@@ -288,26 +275,6 @@ export function LaattijdigePlaatsbezoekenFormulier() {
     }
   }
 
-  async function controleerLid() {
-    setLidStatus("BEZIG");
-    setLidFout("");
-
-    const resultaat =
-      await controleerLidCombinatie(
-        naamAdi,
-        bedrijfsnaam,
-      );
-
-    if (resultaat.bestaat) {
-      setLidStatus("GELDIG");
-    } else {
-      setLidStatus("ONGELDIG");
-      setLidFout(
-        resultaat.fout ??
-          "De combinatie van ADI-naam en bedrijfsnaam werd niet gevonden.",
-      );
-    }
-  }
 
   if (state.geslaagd) {
     return (
@@ -385,9 +352,6 @@ export function LaattijdigePlaatsbezoekenFormulier() {
                 setNaamAdi(
                   event.target.value,
                 );
-                setLidStatus(
-                  "ONGECONTROLEERD",
-                );
               }}
               className={invoerStijl}
             />
@@ -411,45 +375,12 @@ export function LaattijdigePlaatsbezoekenFormulier() {
                 setBedrijfsnaam(
                   event.target.value,
                 );
-                setLidStatus(
-                  "ONGECONTROLEERD",
-                );
               }}
               className={invoerStijl}
             />
           </label>
         </div>
 
-        <div className="mt-3 flex items-center gap-3">
-          <button
-            type="button"
-            onClick={() => {
-              void controleerLid();
-            }}
-            disabled={
-              !naamAdi.trim() ||
-              !bedrijfsnaam.trim() ||
-              lidStatus === "BEZIG"
-            }
-            className="rounded-lg border px-3 py-2 text-xs font-bold"
-          >
-            {lidStatus === "BEZIG"
-              ? "Controleren..."
-              : "Gegevens controleren"}
-          </button>
-
-          {lidStatus === "GELDIG" ? (
-            <span className="text-sm font-bold text-emerald-700">
-              ✓ De combinatie bestaat
-            </span>
-          ) : null}
-
-          {lidFout ? (
-            <span className="text-sm font-bold text-red-700">
-              {lidFout}
-            </span>
-          ) : null}
-        </div>
       </section>
 
       <section className="border-t pt-7">

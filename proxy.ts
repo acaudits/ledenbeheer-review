@@ -2,6 +2,9 @@ import { createServerClient } from "@supabase/ssr";
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
+const MAXIMALE_PUBLIEKE_POST_GROOTTE =
+  128 * 1024;
+
 function isPubliekeRoute(pathname: string) {
   return (
     pathname === "/inloggen" ||
@@ -27,6 +30,34 @@ function maakLoginUrl(request: NextRequest, fout?: string) {
 }
 
 export async function proxy(request: NextRequest) {
+  if (
+    request.method === "POST" &&
+    request.nextUrl.pathname ===
+      "/aanmelden-laattijdige-plaatsbezoeken"
+  ) {
+    const contentLength = Number(
+      request.headers.get(
+        "content-length",
+      ) ?? "0",
+    );
+
+    if (
+      Number.isFinite(contentLength) &&
+      contentLength >
+        MAXIMALE_PUBLIEKE_POST_GROOTTE
+    ) {
+      return NextResponse.json(
+        {
+          message:
+            "De aanvraag is te groot.",
+        },
+        {
+          status: 413,
+        },
+      );
+    }
+  }
+
   let response = NextResponse.next({
     request,
   });

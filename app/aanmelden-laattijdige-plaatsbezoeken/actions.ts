@@ -1,5 +1,7 @@
 "use server";
 
+import { randomUUID } from "node:crypto";
+
 import { headers } from "next/headers";
 
 import {
@@ -14,9 +16,16 @@ import {
 export type LaattijdigeMeldingState = {
   fout?: string;
   geslaagd?: boolean;
-  referentie?: number;
+  referentie?: string;
   aantal?: number;
 };
+
+function maakPubliekeReferentie() {
+  return randomUUID()
+    .replaceAll("-", "")
+    .slice(0, 12)
+    .toUpperCase();
+}
 
 type BezoekInvoer = {
   gemeente?: unknown;
@@ -197,56 +206,6 @@ async function zoekActiefLid(
   });
 }
 
-export async function controleerLidCombinatie(
-  naamAdi: string,
-  bedrijfsnaam: string,
-) {
-  const naam = naamAdi
-    .trim()
-    .replace(/\s+/g, " ");
-
-  const bedrijf = bedrijfsnaam
-    .trim()
-    .replace(/\s+/g, " ");
-
-  if (
-    naam.length < 2 ||
-    naam.length > 255 ||
-    bedrijf.length < 2 ||
-    bedrijf.length > 500
-  ) {
-    return {
-      bestaat: false,
-    };
-  }
-
-  const sleutel =
-    await haalClientSleutelOp();
-
-  if (
-    !controleerPubliekeRateLimit({
-      sleutel: `lidcontrole:${sleutel}`,
-      maximum: 40,
-      vensterMs: 10 * 60_000,
-    })
-  ) {
-    return {
-      bestaat: false,
-      fout:
-        "Te veel controles. Probeer het later opnieuw.",
-    };
-  }
-
-  const lid = await zoekActiefLid(
-    naam,
-    bedrijf,
-  );
-
-  return {
-    bestaat: Boolean(lid),
-  };
-}
-
 export async function meldLaattijdigePlaatsbezoeken(
   _vorigeState: LaattijdigeMeldingState,
   formData: FormData,
@@ -258,7 +217,7 @@ export async function meldLaattijdigePlaatsbezoeken(
     !controleerPubliekeRateLimit({
       sleutel: `melding:${sleutel}`,
       maximum: 5,
-      vensterMs: 15 * 60_000,
+      vensterMs: 60 * 60_000,
     })
   ) {
     return {
@@ -274,7 +233,8 @@ export async function meldLaattijdigePlaatsbezoeken(
   if (website) {
     return {
       geslaagd: true,
-      referentie: 0,
+      referentie:
+        maakPubliekeReferentie(),
       aantal: 0,
     };
   }
@@ -307,17 +267,6 @@ export async function meldLaattijdigePlaatsbezoeken(
     };
   }
 
-  const lid = await zoekActiefLid(
-    naamAdi,
-    bedrijfsnaam,
-  );
-
-  if (!lid || !lid.bedrijf) {
-    return {
-      fout:
-        "De combinatie van ADI en bedrijf werd niet gevonden in de actieve persoonscertificaten.",
-    };
-  }
 
   const bezoekenJson =
     normaliseerTekst(
@@ -515,8 +464,21 @@ export async function meldLaattijdigePlaatsbezoeken(
     });
   }
 
-  const melding =
-    await prisma
+  const lid = await zoekActiefLid(
+    naamAdi,
+    bedrijfsnaam,
+  );
+
+  if (!lid || !lid.bedrijf) {
+    return {
+      geslaagd: true,
+      referentie:
+        maakPubliekeReferentie(),
+      aantal: geldigeBezoeken.length,
+    };
+  }
+
+  await prisma
       .laattijdigePlaatsbezoekMelding
       .create({
         data: {
@@ -570,7 +532,8 @@ export async function meldLaattijdigePlaatsbezoeken(
 
   return {
     geslaagd: true,
-    referentie: melding.id,
+    referentie:
+      maakPubliekeReferentie(),
     aantal: geldigeBezoeken.length,
   };
 }

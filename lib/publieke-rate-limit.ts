@@ -2,15 +2,19 @@ import "server-only";
 
 type LimietRegistratie = {
   gestartOp: number;
+  vervaltOp: number;
   aantal: number;
 };
 
-const globaleRateLimit = globalThis as typeof globalThis & {
-  publiekeRateLimitRegistraties?: Map<
-    string,
-    LimietRegistratie
-  >;
-};
+const MAXIMAAL_AANTAL_SLEUTELS = 10_000;
+
+const globaleRateLimit =
+  globalThis as typeof globalThis & {
+    publiekeRateLimitRegistraties?: Map<
+      string,
+      LimietRegistratie
+    >;
+  };
 
 const registraties =
   globaleRateLimit.publiekeRateLimitRegistraties ??
@@ -18,6 +22,23 @@ const registraties =
 
 globaleRateLimit.publiekeRateLimitRegistraties =
   registraties;
+
+function verwijderVerlopenRegistraties(
+  nu: number,
+) {
+  if (registraties.size < 1_000) {
+    return;
+  }
+
+  for (const [
+    sleutel,
+    registratie,
+  ] of registraties) {
+    if (registratie.vervaltOp <= nu) {
+      registraties.delete(sleutel);
+    }
+  }
+}
 
 export function controleerPubliekeRateLimit({
   sleutel,
@@ -29,14 +50,27 @@ export function controleerPubliekeRateLimit({
   vensterMs: number;
 }) {
   const nu = Date.now();
-  const bestaand = registraties.get(sleutel);
+
+  verwijderVerlopenRegistraties(nu);
+
+  const bestaand =
+    registraties.get(sleutel);
 
   if (
     !bestaand ||
-    nu - bestaand.gestartOp >= vensterMs
+    bestaand.vervaltOp <= nu
   ) {
+    if (
+      !bestaand &&
+      registraties.size >=
+        MAXIMAAL_AANTAL_SLEUTELS
+    ) {
+      return false;
+    }
+
     registraties.set(sleutel, {
       gestartOp: nu,
+      vervaltOp: nu + vensterMs,
       aantal: 1,
     });
 
