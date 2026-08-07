@@ -102,9 +102,33 @@ table {
     1s step-end infinite;
 }
 
+
+@keyframes plaatsbezoek-kaartmarker-knipperen {
+  0%,
+  45% {
+    opacity: 1;
+  }
+
+  50%,
+  95% {
+    opacity: 0.2;
+  }
+
+  100% {
+    opacity: 1;
+  }
+}
+
+.plaatsbezoek-kaartmarker-knipper {
+  animation:
+    plaatsbezoek-kaartmarker-knipperen
+    1s step-end infinite;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .timer-knipper,
-  .plaatsbezoek-rij-knipper {
+  .plaatsbezoek-rij-knipper,
+  .plaatsbezoek-kaartmarker-knipper {
     animation: none;
   }
 }

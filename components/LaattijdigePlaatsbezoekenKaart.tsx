@@ -11,6 +11,7 @@ import {
 export type LaattijdigKaartbezoek = {
   id: number;
   status: "GROEN" | "ROOD";
+  knippert: boolean;
   naamAdi: string;
   bedrijfsnaam: string;
   inspectielocatie: string;
@@ -166,6 +167,10 @@ function tekenMarkers(
         fillColor:
           kleuren.vulling,
         fillOpacity: 0.9,
+        className:
+          rij.knippert
+            ? "plaatsbezoek-kaartmarker-knipper"
+            : "",
       },
     )
       .bindPopup(
@@ -176,6 +181,30 @@ function tekenMarkers(
       )
       .addTo(groep);
   }
+}
+
+function maakMarkerSleutel(
+  rijen: LaattijdigKaartbezoek[],
+) {
+  return rijen
+    .map(
+      (rij) =>
+        [
+          rij.id,
+          rij.status,
+          rij.knippert
+            ? "1"
+            : "0",
+          rij.latitude,
+          rij.longitude,
+          rij.naamAdi,
+          rij.bedrijfsnaam,
+          rij.inspectielocatie,
+          rij.datum,
+          rij.tijdstip,
+        ].join("|"),
+    )
+    .join(";");
 }
 
 export function LaattijdigePlaatsbezoekenKaart({
@@ -221,6 +250,9 @@ export function LaattijdigePlaatsbezoekenKaart({
 
   const laatsteRijen =
     useRef(geldigeRijen);
+
+  const laatsteMarkerSleutel =
+    useRef("");
 
   /*
    * De kaart wordt maar één keer aangemaakt.
@@ -299,6 +331,11 @@ export function LaattijdigePlaatsbezoekenKaart({
         laatsteRijen.current,
       );
 
+      laatsteMarkerSleutel.current =
+        maakMarkerSleutel(
+          laatsteRijen.current,
+        );
+
       /*
        * Grenzen van Vlaanderen. Dit wordt
        * bewust maar één keer uitgevoerd.
@@ -336,6 +373,9 @@ export function LaattijdigePlaatsbezoekenKaart({
 
       markerGroep.current =
         null;
+
+      laatsteMarkerSleutel.current =
+        "";
 
       leafletInstantie.current =
         null;
@@ -375,11 +415,26 @@ export function LaattijdigePlaatsbezoekenKaart({
       return;
     }
 
+    const nieuweMarkerSleutel =
+      maakMarkerSleutel(
+        geldigeRijen,
+      );
+
+    if (
+      nieuweMarkerSleutel ===
+      laatsteMarkerSleutel.current
+    ) {
+      return;
+    }
+
     tekenMarkers(
       L,
       groep,
       geldigeRijen,
     );
+
+    laatsteMarkerSleutel.current =
+      nieuweMarkerSleutel;
   }, [geldigeRijen]);
 
   return (

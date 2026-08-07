@@ -332,6 +332,9 @@ export function LaattijdigePlaatsbezoekenTabel({
                 rij.waarschuwingTerreincontrole
                   ? "ROOD"
                   : "GROEN",
+              knippert:
+                status.soort ===
+                "BEGONNEN",
               naamAdi:
                 rij.naamAdi,
               bedrijfsnaam:
