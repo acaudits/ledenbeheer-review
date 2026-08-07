@@ -154,6 +154,11 @@ export default async function LaattijdigePlaatsbezoekenPage() {
           aangemeldOp: "desc",
         },
         include: {
+          lid: {
+            select: {
+              ovamId: true,
+            },
+          },
           bezoeken: {
             orderBy: [
               {
@@ -167,6 +172,190 @@ export default async function LaattijdigePlaatsbezoekenPage() {
           },
         },
       });
+
+  const ovamIds = [
+    ...new Set(
+      meldingen
+        .map(
+          (melding) =>
+            melding.lid.ovamId.trim(),
+        )
+        .filter(Boolean),
+    ),
+  ];
+
+  const [
+    atteststatistieken,
+    terreincontroletellingen,
+  ] = await Promise.all([
+    ovamIds.length === 0
+      ? Promise.resolve([])
+      : prisma.attestPersoonStatistiek.findMany({
+          where: {
+            persoonsId: {
+              in: ovamIds,
+            },
+          },
+          select: {
+            persoonsId: true,
+            aantalAttesten: true,
+          },
+        }),
+
+    ovamIds.length === 0
+      ? Promise.resolve([])
+      : prisma.terreincontrole.groupBy({
+          by: ["ovamId"],
+          where: {
+            verwijderdOp: null,
+            ovamId: {
+              in: ovamIds,
+              mode: "insensitive",
+            },
+          },
+          _count: {
+            _all: true,
+          },
+          _max: {
+            datumPlaatsbezoek:
+              true,
+          },
+        }),
+  ]);
+
+  const normaliseerSleutel = (
+    waarde: string,
+  ) =>
+    waarde
+      .normalize("NFD")
+      .replace(
+        /\p{Diacritic}/gu,
+        "",
+      )
+      .trim()
+      .toLocaleLowerCase(
+        "nl-BE",
+      )
+      .replace(/\s+/g, " ");
+
+  const attestenPerOvamId =
+    new Map(
+      atteststatistieken.map(
+        (statistiek) => [
+          normaliseerSleutel(
+            statistiek.persoonsId,
+          ),
+          statistiek.aantalAttesten,
+        ],
+      ),
+    );
+
+  const controlesPerOvamId =
+    new Map(
+      terreincontroletellingen
+        .filter(
+          (telling) =>
+            Boolean(telling.ovamId),
+        )
+        .map(
+          (telling) => [
+            normaliseerSleutel(
+              telling.ovamId ?? "",
+            ),
+            {
+              aantal:
+                telling._count._all,
+              laatste:
+                telling._max
+                  .datumPlaatsbezoek,
+            },
+          ],
+        ),
+    );
+
+  const grensVeertienDagen =
+    new Date(tijdResultaat.nu);
+
+  grensVeertienDagen.setUTCHours(
+    0,
+    0,
+    0,
+    0,
+  );
+
+  grensVeertienDagen.setUTCDate(
+    grensVeertienDagen.getUTCDate() -
+      14,
+  );
+
+  const statistiekPerOvamId =
+    new Map(
+      ovamIds.map((ovamId) => {
+        const sleutel =
+          normaliseerSleutel(
+            ovamId,
+          );
+
+        const aantalAttesten =
+          attestenPerOvamId.get(
+            sleutel,
+          ) ?? 0;
+
+        const controlegegevens =
+          controlesPerOvamId.get(
+            sleutel,
+          );
+
+        const aantalTerreincontroles =
+          controlegegevens?.aantal ??
+          0;
+
+        const laatsteTerreincontrole =
+          controlegegevens?.laatste ??
+          null;
+
+        const terreincontroleTarget =
+          aantalAttesten > 0
+            ? Math.min(
+                4,
+                Math.ceil(
+                  aantalAttesten /
+                    100,
+                ),
+              )
+            : 0;
+
+        const terreincontroleNodig =
+          aantalTerreincontroles <
+          terreincontroleTarget;
+
+        const laatsteControleTeOud =
+          laatsteTerreincontrole ===
+            null ||
+          laatsteTerreincontrole
+            .getTime() <
+            grensVeertienDagen
+              .getTime();
+
+        return [
+          sleutel,
+          {
+            aantalAttesten,
+            aantalTerreincontroles,
+            laatsteTerreincontrole:
+              laatsteTerreincontrole
+                ? formatteerDatum(
+                    laatsteTerreincontrole,
+                  )
+                : "Nooit",
+            terreincontroleNodig,
+            waarschuwingTerreincontrole:
+              terreincontroleNodig &&
+              laatsteControleTeOud,
+          },
+        ] as const;
+      }),
+    );
 
   const rijen:
     LaattijdigPlaatsbezoekRij[] =
@@ -186,6 +375,43 @@ export default async function LaattijdigePlaatsbezoekenPage() {
               melding.naamAdi,
             bedrijfsnaam:
               melding.bedrijfsnaam,
+            aantalAttesten:
+              statistiekPerOvamId.get(
+                normaliseerSleutel(
+                  melding.lid.ovamId,
+                ),
+              )?.aantalAttesten ?? 0,
+            laatsteTerreincontrole:
+              statistiekPerOvamId.get(
+                normaliseerSleutel(
+                  melding.lid.ovamId,
+                ),
+              )?.laatsteTerreincontrole ??
+              "Nooit",
+            aantalTerreincontroles:
+              statistiekPerOvamId.get(
+                normaliseerSleutel(
+                  melding.lid.ovamId,
+                ),
+              )
+                ?.aantalTerreincontroles ??
+              0,
+            terreincontroleNodig:
+              statistiekPerOvamId.get(
+                normaliseerSleutel(
+                  melding.lid.ovamId,
+                ),
+              )
+                ?.terreincontroleNodig ??
+              false,
+            waarschuwingTerreincontrole:
+              statistiekPerOvamId.get(
+                normaliseerSleutel(
+                  melding.lid.ovamId,
+                ),
+              )
+                ?.waarschuwingTerreincontrole ??
+              false,
             inspectielocatie:
               bezoek.inspectielocatie,
             latitude:

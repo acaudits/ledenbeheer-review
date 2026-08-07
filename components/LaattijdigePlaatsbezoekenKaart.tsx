@@ -10,7 +10,7 @@ import {
 
 export type LaattijdigKaartbezoek = {
   id: number;
-  status: "GROEN" | "GEEL";
+  status: "GROEN" | "ROOD";
   naamAdi: string;
   bedrijfsnaam: string;
   inspectielocatie: string;
@@ -103,12 +103,12 @@ function maakPopup(
   status.className =
     rij.status === "GROEN"
       ? "mt-2 font-bold text-emerald-700"
-      : "mt-2 font-bold text-amber-700";
+      : "mt-2 font-bold text-red-700";
 
   status.textContent =
     rij.status === "GROEN"
-      ? "Plaatsbezoek moet nog beginnen"
-      : "Plaatsbezoek is begonnen";
+      ? "Geen dringende terreincontrole nodig"
+      : "Terreincontrole nodig: laatste controle ouder dan 14 dagen of nooit uitgevoerd";
 
   container.appendChild(status);
 
@@ -153,8 +153,8 @@ function tekenMarkers(
             vulling: "#10b981",
           }
         : {
-            lijn: "#b45309",
-            vulling: "#f59e0b",
+            lijn: "#b91c1c",
+            vulling: "#ef4444",
           };
 
     L.circleMarker(
@@ -391,7 +391,7 @@ export function LaattijdigePlaatsbezoekenKaart({
           </h2>
 
           <p className="mt-1 text-sm text-slate-500">
-            Groene en gele
+            Groene en rode
             plaatsbezoeken met een
             geldige locatie.
           </p>
@@ -400,12 +400,12 @@ export function LaattijdigePlaatsbezoekenKaart({
         <div className="flex items-center gap-4 text-xs font-bold">
           <span className="inline-flex items-center gap-1.5 text-emerald-800">
             <span className="size-3 rounded-full bg-emerald-500" />
-            Moet nog beginnen
+            Geen dringende terreincontrole
           </span>
 
-          <span className="inline-flex items-center gap-1.5 text-amber-800">
-            <span className="size-3 rounded-full bg-amber-500" />
-            Begonnen
+          <span className="inline-flex items-center gap-1.5 text-red-800">
+            <span className="size-3 rounded-full bg-red-500" />
+            Terreincontrole nodig
           </span>
         </div>
       </div>

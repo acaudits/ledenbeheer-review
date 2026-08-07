@@ -16,6 +16,11 @@ export type LaattijdigPlaatsbezoekRij = {
   startMomentIso: string;
   naamAdi: string;
   bedrijfsnaam: string;
+  aantalAttesten: number;
+  laatsteTerreincontrole: string;
+  aantalTerreincontroles: number;
+  terreincontroleNodig: boolean;
+  waarschuwingTerreincontrole: boolean;
   inspectielocatie: string;
   latitude: number | null;
   longitude: number | null;
@@ -177,9 +182,11 @@ function googleMapsUrl(
 function Timer({
   startMomentIso,
   nu,
+  waarschuwingTerreincontrole,
 }: {
   startMomentIso: string;
   nu: number;
+  waarschuwingTerreincontrole: boolean;
 }) {
   const status =
     bepaalTimerStatus(
@@ -187,13 +194,28 @@ function Timer({
       nu,
     );
 
+  const timerStijl =
+    waarschuwingTerreincontrole
+      ? {
+          hoofd:
+            "border-red-300 bg-red-100 text-red-950",
+          label:
+            "text-red-800",
+        }
+      : {
+          hoofd:
+            "border-emerald-300 bg-emerald-100 text-emerald-950",
+          label:
+            "text-emerald-800",
+        };
+
   if (
     status.soort ===
     "VERLOPEN"
   ) {
     return (
       <div
-        className="inline-flex min-w-28 items-center justify-center rounded-xl border border-red-300 bg-red-100 px-3 py-2 text-sm font-black text-red-900"
+        className={`inline-flex min-w-28 items-center justify-center rounded-xl border px-3 py-2 text-sm font-black ${timerStijl.hoofd}`}
         aria-label={
           status.toegankelijkLabel
         }
@@ -205,12 +227,7 @@ function Timer({
 
   return (
     <div
-      className={
-        status.soort ===
-        "TOEKOMSTIG"
-          ? "inline-flex min-w-32 flex-col items-center rounded-xl border border-emerald-300 bg-emerald-100 px-3 py-2 text-emerald-950"
-          : "inline-flex min-w-40 flex-col items-center rounded-xl border border-amber-300 bg-amber-100 px-3 py-2 text-amber-950"
-      }
+      className={`inline-flex min-w-40 flex-col items-center rounded-xl border px-3 py-2 ${timerStijl.hoofd}`}
       aria-label={
         status.toegankelijkLabel
       }
@@ -241,12 +258,7 @@ function Timer({
       </span>
 
       <span
-        className={
-          status.soort ===
-          "TOEKOMSTIG"
-            ? "mt-0.5 text-[10px] font-black uppercase tracking-wide text-emerald-800"
-            : "mt-0.5 text-[10px] font-black uppercase tracking-wide text-amber-800"
-        }
+        className={`mt-0.5 text-[10px] font-black uppercase tracking-wide ${timerStijl.label}`}
       >
         {status.label}
       </span>
@@ -317,10 +329,9 @@ export function LaattijdigePlaatsbezoekenTabel({
             {
               id: rij.id,
               status:
-                status.soort ===
-                "TOEKOMSTIG"
-                  ? "GROEN"
-                  : "GEEL",
+                rij.waarschuwingTerreincontrole
+                  ? "ROOD"
+                  : "GROEN",
               naamAdi:
                 rij.naamAdi,
               bedrijfsnaam:
@@ -362,7 +373,7 @@ export function LaattijdigePlaatsbezoekenTabel({
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[1480px] text-left text-sm">
+            <table className="w-full min-w-[1880px] text-left text-sm">
               <thead className="bg-slate-100 text-xs uppercase tracking-wide text-slate-600">
                 <tr>
                   <th className="px-4 py-3">
@@ -373,6 +384,15 @@ export function LaattijdigePlaatsbezoekenTabel({
                   </th>
                   <th className="px-4 py-3">
                     Bedrijf
+                  </th>
+                  <th className="px-4 py-3">
+                    Aantal attesten
+                  </th>
+                  <th className="px-4 py-3">
+                    Datum laatste terreincontrole
+                  </th>
+                  <th className="px-4 py-3">
+                    Aantal terreincontroles
                   </th>
                   <th className="px-4 py-3">
                     Inspectielocatie
@@ -410,7 +430,23 @@ export function LaattijdigePlaatsbezoekenTabel({
                     return (
                       <tr
                         key={rij.id}
-                        className={`align-top transition-colors ${status.rijStijl}`}
+                        className={`align-top transition-colors ${
+                          rij.waarschuwingTerreincontrole
+                            ? "bg-red-50 hover:bg-red-100/80"
+                            : "bg-emerald-50 hover:bg-emerald-100/80"
+                        } ${
+                          status.soort ===
+                          "BEGONNEN"
+                            ? "plaatsbezoek-rij-knipper"
+                            : ""
+                        }`}
+                        title={
+                          rij.waarschuwingTerreincontrole
+                            ? "Terreincontrole nodig en laatste terreincontrole is langer dan 14 dagen geleden of werd nooit uitgevoerd."
+                            : rij.terreincontroleNodig
+                              ? "Terreincontrole nodig, maar de laatste terreincontrole is minder dan 14 dagen geleden."
+                              : "Terreincontroletarget behaald of geen terreincontrole vereist."
+                        }
                       >
                         <td className="whitespace-nowrap px-4 py-4">
                           <div className="flex items-center gap-2">
@@ -419,6 +455,9 @@ export function LaattijdigePlaatsbezoekenTabel({
                                 rij.startMomentIso
                               }
                               nu={nu}
+                              waarschuwingTerreincontrole={
+                                rij.waarschuwingTerreincontrole
+                              }
                             />
 
                             <a
@@ -443,6 +482,34 @@ export function LaattijdigePlaatsbezoekenTabel({
                           {
                             rij.bedrijfsnaam
                           }
+                        </td>
+
+                        <td className="whitespace-nowrap px-4 py-4">
+                          <span className="inline-flex min-w-12 justify-center rounded-lg border border-slate-200 bg-white/80 px-2.5 py-1.5 font-black text-slate-900">
+                            {
+                              rij.aantalAttesten
+                            }
+                          </span>
+                        </td>
+
+                        <td className="whitespace-nowrap px-4 py-4 text-slate-700">
+                          {
+                            rij.laatsteTerreincontrole
+                          }
+                        </td>
+
+                        <td className="whitespace-nowrap px-4 py-4">
+                          <span
+                            className={
+                              rij.terreincontroleNodig
+                                ? "inline-flex min-w-12 justify-center rounded-lg border border-red-200 bg-red-100 px-2.5 py-1.5 font-black text-red-900"
+                                : "inline-flex min-w-12 justify-center rounded-lg border border-emerald-200 bg-emerald-100 px-2.5 py-1.5 font-black text-emerald-900"
+                            }
+                          >
+                            {
+                              rij.aantalTerreincontroles
+                            }
+                          </span>
                         </td>
 
                         <td className="px-4 py-4 text-slate-700">
