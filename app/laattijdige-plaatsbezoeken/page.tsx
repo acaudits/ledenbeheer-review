@@ -1,4 +1,8 @@
 import {
+  LaattijdigePlaatsbezoekenTabel,
+  type LaattijdigPlaatsbezoekRij,
+} from "@/components/LaattijdigePlaatsbezoekenTabel";
+import {
   PageHeader,
 } from "@/components/PageHeader";
 import {
@@ -41,15 +45,106 @@ function formatteerAanmelding(
       year: "numeric",
       hour: "2-digit",
       minute: "2-digit",
-      timeZone: "Europe/Brussels",
+      timeZone:
+        "Europe/Brussels",
     },
   ).format(datum);
+}
+
+function belgischMomentNaarUtc({
+  datum,
+  tijd,
+}: {
+  datum: Date;
+  tijd: Date;
+}) {
+  const jaar =
+    datum.getUTCFullYear();
+  const maand =
+    datum.getUTCMonth() + 1;
+  const dag =
+    datum.getUTCDate();
+  const uur =
+    tijd.getUTCHours();
+  const minuut =
+    tijd.getUTCMinutes();
+
+  const gewenst = Date.UTC(
+    jaar,
+    maand - 1,
+    dag,
+    uur,
+    minuut,
+  );
+
+  let kandidaat = gewenst;
+
+  for (
+    let poging = 0;
+    poging < 3;
+    poging += 1
+  ) {
+    const onderdelen =
+      new Intl.DateTimeFormat(
+        "en-CA",
+        {
+          timeZone:
+            "Europe/Brussels",
+          year: "numeric",
+          month: "2-digit",
+          day: "2-digit",
+          hour: "2-digit",
+          minute: "2-digit",
+          hourCycle: "h23",
+        },
+      ).formatToParts(
+        new Date(kandidaat),
+      );
+
+    const waarden =
+      Object.fromEntries(
+        onderdelen.map(
+          (onderdeel) => [
+            onderdeel.type,
+            onderdeel.value,
+          ],
+        ),
+      );
+
+    const weergegeven =
+      Date.UTC(
+        Number(waarden.year),
+        Number(waarden.month) - 1,
+        Number(waarden.day),
+        Number(waarden.hour),
+        Number(waarden.minute),
+      );
+
+    kandidaat +=
+      gewenst - weergegeven;
+  }
+
+  return new Date(kandidaat);
 }
 
 export default async function LaattijdigePlaatsbezoekenPage() {
   await vereisMachtiging(
     "TERREINCONTROLES_BEKIJKEN",
   );
+
+  const [tijdResultaat] =
+    await prisma.$queryRaw<
+      Array<{ nu: Date }>
+    >`SELECT CURRENT_TIMESTAMP AS nu`;
+
+  if (!tijdResultaat?.nu) {
+    throw new Error(
+      "De huidige databasetijd kon niet worden bepaald.",
+    );
+  }
+
+  const referentieTijd =
+    tijdResultaat.nu.getTime();
 
   const meldingen =
     await prisma
@@ -73,18 +168,38 @@ export default async function LaattijdigePlaatsbezoekenPage() {
         },
       });
 
-  const rijen =
+  const rijen:
+    LaattijdigPlaatsbezoekRij[] =
     meldingen.flatMap(
       (melding) =>
         melding.bezoeken.map(
           (bezoek) => ({
             id: bezoek.id,
+            startMomentIso:
+              belgischMomentNaarUtc({
+                datum:
+                  bezoek.datumPlaatsbezoek,
+                tijd:
+                  bezoek.tijdstip,
+              }).toISOString(),
             naamAdi:
               melding.naamAdi,
             bedrijfsnaam:
               melding.bedrijfsnaam,
             inspectielocatie:
               bezoek.inspectielocatie,
+            latitude:
+              bezoek.latitude === null
+                ? null
+                : Number(
+                    bezoek.latitude,
+                  ),
+            longitude:
+              bezoek.longitude === null
+                ? null
+                : Number(
+                    bezoek.longitude,
+                  ),
             datum:
               formatteerDatum(
                 bezoek.datumPlaatsbezoek,
@@ -95,11 +210,14 @@ export default async function LaattijdigePlaatsbezoekenPage() {
               ),
             reden: bezoek.reden,
             gemeenschappelijkeDelen:
-              bezoek.gemeenschappelijkeDelen
+              bezoek
+                .gemeenschappelijkeDelen
                 ? "Ja"
                 : "Nee",
             extraAdresdetails:
-              bezoek.extraAdresdetails ?? "",
+              bezoek
+                .extraAdresdetails ??
+              "",
             aangemeldOp:
               formatteerAanmelding(
                 melding.aangemeldOp,
@@ -116,95 +234,12 @@ export default async function LaattijdigePlaatsbezoekenPage() {
         beschrijving={`${rijen.length} gemelde plaatsbezoeken in ${meldingen.length} meldingen`}
       />
 
-      <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-        {rijen.length === 0 ? (
-          <div className="px-6 py-16 text-center">
-            <h2 className="text-lg font-black text-slate-900">
-              Nog geen meldingen
-            </h2>
-
-            <p className="mt-2 text-sm text-slate-500">
-              Er werden nog geen laattijdige
-              plaatsbezoeken aangemeld.
-            </p>
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="min-w-[1200px] w-full text-left text-sm">
-              <thead className="bg-slate-100 text-xs uppercase tracking-wide text-slate-600">
-                <tr>
-                  <th className="px-4 py-3">
-                    ADI
-                  </th>
-                  <th className="px-4 py-3">
-                    Bedrijf
-                  </th>
-                  <th className="px-4 py-3">
-                    Inspectielocatie
-                  </th>
-                  <th className="px-4 py-3">
-                    Datum
-                  </th>
-                  <th className="px-4 py-3">
-                    Tijdstip
-                  </th>
-                  <th className="px-4 py-3">
-                    Gemeenschappelijke delen
-                  </th>
-                  <th className="px-4 py-3">
-                    Extra adresdetails
-                  </th>
-                  <th className="px-4 py-3">
-                    Reden
-                  </th>
-                  <th className="px-4 py-3">
-                    Aangemeld op
-                  </th>
-                </tr>
-              </thead>
-
-              <tbody className="divide-y divide-slate-200">
-                {rijen.map(
-                  (rij) => (
-                    <tr
-                      key={rij.id}
-                      className="align-top hover:bg-slate-50"
-                    >
-                      <td className="px-4 py-4 font-semibold text-slate-900">
-                        {rij.naamAdi}
-                      </td>
-                      <td className="px-4 py-4 text-slate-700">
-                        {rij.bedrijfsnaam}
-                      </td>
-                      <td className="px-4 py-4 text-slate-700">
-                        {rij.inspectielocatie}
-                      </td>
-                      <td className="whitespace-nowrap px-4 py-4 text-slate-700">
-                        {rij.datum}
-                      </td>
-                      <td className="whitespace-nowrap px-4 py-4 text-slate-700">
-                        {rij.tijdstip}
-                      </td>
-                      <td className="whitespace-nowrap px-4 py-4 text-slate-700">
-                        {rij.gemeenschappelijkeDelen}
-                      </td>
-                      <td className="max-w-xs whitespace-pre-wrap px-4 py-4 text-slate-700">
-                        {rij.extraAdresdetails || "—"}
-                      </td>
-                      <td className="max-w-md whitespace-pre-wrap px-4 py-4 text-slate-700">
-                        {rij.reden}
-                      </td>
-                      <td className="whitespace-nowrap px-4 py-4 text-slate-600">
-                        {rij.aangemeldOp}
-                      </td>
-                    </tr>
-                  ),
-                )}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
+      <LaattijdigePlaatsbezoekenTabel
+        rijen={rijen}
+        referentieTijd={
+          referentieTijd
+        }
+      />
     </div>
   );
 }

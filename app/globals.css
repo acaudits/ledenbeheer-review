@@ -59,3 +59,32 @@ table {
   background: #a7f3d0;
   color: #052e26;
 }
+
+@keyframes timer-knipperen {
+  0%,
+  45% {
+    opacity: 1;
+  }
+
+  50%,
+  95% {
+    opacity: 0;
+  }
+
+  100% {
+    opacity: 1;
+  }
+}
+
+.timer-knipper {
+  display: inline-block;
+  animation:
+    timer-knipperen 1s
+    step-end infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .timer-knipper {
+    animation: none;
+  }
+}
