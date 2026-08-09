@@ -27,6 +27,7 @@ model Lid {
   laattijdigeMeldingen    LaattijdigePlaatsbezoekMelding[]
 
   @@index([verwijderdOp])
+  @@index([verwijderdOp, naamPersoon, id])
   @@map("leden")
 }
 
@@ -158,6 +159,7 @@ model TerreincontroleDossier {
 
   @@index([auditeurGebruikerId])
   @@index([lidId])
+  @@index([lidId, verwijderdOp])
   @@index([procescertificaatId])
   @@index([persoonsId])
   @@index([ondernemingsnummer])
@@ -229,6 +231,7 @@ model Deskcontrole {
   vaststellingen DeskcontroleVaststelling[]
 
   @@index([lidId])
+  @@index([lidId, verwijderdOp])
   @@index([procescertificaatId])
   @@index([auditeurGebruikerId])
   @@index([status])
