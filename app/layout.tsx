@@ -1,6 +1,13 @@
-import type { Metadata } from "next";
+import type {
+  Metadata,
+  Viewport,
+} from "next";
 import { AppChrome } from "@/components/AppChrome";
 import "./globals.css";
+
+export const viewport: Viewport = {
+  width: 1280,
+};
 
 export const metadata: Metadata = {
   title: {
