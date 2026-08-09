@@ -12,6 +12,11 @@ import {
   prisma,
 } from "@/lib/prisma";
 import {
+  isTargetStatus,
+  laadTargetSelectie,
+  type TargetStatus,
+} from "@/lib/persoonscertificaat-targetselectie";
+import {
   GEEN_TABEL_CACHE,
   maakTabelCursor,
   OngeldigePagineringFout,
@@ -24,12 +29,6 @@ export const dynamic =
 const SORTERINGEN = [
   "naamPersoon",
 ] as const;
-
-type TargetStatus =
-  | "GRIJS"
-  | "ROOD"
-  | "GEEL"
-  | "GROEN";
 
 function berekenTargetStatus({
   aantalAttesten,
@@ -134,9 +133,12 @@ export async function GET(
       );
     }
 
+    const url =
+      new URL(verzoek.url);
+
     const aanvraag =
       leesTabelAanvraag(
-        new URL(verzoek.url),
+        url,
         {
           toegelatenSorteringen:
             SORTERINGEN,
@@ -148,19 +150,56 @@ export async function GET(
         },
       );
 
-    const cursorNaam =
+    if (aanvraag.limiet > 50) {
+      throw new OngeldigePagineringFout(
+        "De paginalimiet mag voor persoonscertificaten maximaal 50 zijn.",
+      );
+    }
+
+    const statusParameter =
+      url.searchParams
+        .get("targetStatus")
+        ?.trim()
+        .toUpperCase() ?? "";
+
+    let targetStatus:
+      TargetStatus | null = null;
+
+    if (statusParameter) {
+      if (
+        !isTargetStatus(
+          statusParameter,
+        )
+      ) {
+        throw new OngeldigePagineringFout(
+          "De gekozen targetstatus is ongeldig.",
+        );
+      }
+
+      targetStatus =
+        statusParameter;
+    }
+
+    const cursorWaarde =
       aanvraag.cursor
         ?.waarde ?? null;
 
     if (
       aanvraag.cursor &&
-      typeof cursorNaam !==
+      typeof cursorWaarde !==
         "string"
     ) {
       throw new OngeldigePagineringFout(
         "De cursor past niet bij deze sortering.",
       );
     }
+
+    const cursorNaam:
+      string | null =
+        typeof cursorWaarde ===
+        "string"
+          ? cursorWaarde
+          : null;
 
     const zoekFilter =
       aanvraag.zoekterm
@@ -278,59 +317,198 @@ export async function GET(
       ],
     };
 
-    const [
-      gevondenLeden,
+    const laadResultaat =
+      targetStatus
+        ? await (async () => {
+            const selectie =
+              await laadTargetSelectie({
+                status:
+                  targetStatus,
+                zoekterm:
+                  aanvraag.zoekterm,
+                richting:
+                  aanvraag.richting,
+                limiet:
+                  aanvraag.limiet,
+                cursorNaam:
+                  aanvraag.cursor
+                    ? cursorNaam
+                    : null,
+                cursorId:
+                  aanvraag.cursor
+                    ?.id ?? null,
+              });
+
+            const heeftVolgendePagina =
+              selectie.length >
+              aanvraag.limiet;
+
+            const paginaSelectie =
+              selectie.slice(
+                0,
+                aanvraag.limiet,
+              );
+
+            const geselecteerdeIds =
+              paginaSelectie.map(
+                (rij) => rij.id,
+              );
+
+            const gevondenLeden =
+              geselecteerdeIds.length ===
+              0
+                ? []
+                : await prisma
+                    .lid.findMany({
+                      where: {
+                        id: {
+                          in:
+                            geselecteerdeIds,
+                        },
+                        verwijderdOp:
+                          null,
+                      },
+                      select: {
+                        id: true,
+                        naamPersoon:
+                          true,
+                        telefoonnummer:
+                          true,
+                        mailadres: true,
+                        ovamId: true,
+                        certificaatnummer:
+                          true,
+                        uitgereiktOp:
+                          true,
+                        bedrijf: true,
+                        aansluiting:
+                          true,
+                        opmerking: true,
+                        certificatiePlatform:
+                          true,
+                      },
+                    });
+
+            const ledenPerId =
+              new Map(
+                gevondenLeden.map(
+                  (lid) => [
+                    lid.id,
+                    lid,
+                  ],
+                ),
+              );
+
+            const leden =
+              paginaSelectie.flatMap(
+                (selectieRij) => {
+                  const lid =
+                    ledenPerId.get(
+                      selectieRij.id,
+                    );
+
+                  return lid
+                    ? [lid]
+                    : [];
+                },
+              );
+
+            if (
+              leden.length !==
+              paginaSelectie.length
+            ) {
+              throw new Error(
+                "Een geselecteerd persoonscertificaat kon niet worden geladen.",
+              );
+            }
+
+            return {
+              leden,
+              heeftVolgendePagina,
+              aantalTotaal:
+                aanvraag.cursor
+                  ? null
+                  : (
+                      selectie[0]
+                        ?.aantalTotaal ??
+                      0
+                    ),
+            };
+          })()
+        : await (async () => {
+            const [
+              gevondenLeden,
+              aantalTotaal,
+            ] = await Promise.all([
+              prisma.lid.findMany({
+                where,
+                orderBy: [
+                  {
+                    naamPersoon:
+                      aanvraag.richting,
+                  },
+                  {
+                    id:
+                      aanvraag.richting,
+                  },
+                ],
+                take:
+                  aanvraag.limiet +
+                  1,
+                select: {
+                  id: true,
+                  naamPersoon:
+                    true,
+                  telefoonnummer:
+                    true,
+                  mailadres: true,
+                  ovamId: true,
+                  certificaatnummer:
+                    true,
+                  uitgereiktOp:
+                    true,
+                  bedrijf: true,
+                  aansluiting:
+                    true,
+                  opmerking: true,
+                  certificatiePlatform:
+                    true,
+                },
+              }),
+
+              aanvraag.cursor
+                ? Promise.resolve(
+                    null,
+                  )
+                : prisma.lid.count({
+                    where: {
+                      verwijderdOp:
+                        null,
+                      ...zoekFilter,
+                    },
+                  }),
+            ]);
+
+            const heeftVolgendePagina =
+              gevondenLeden.length >
+              aanvraag.limiet;
+
+            return {
+              leden:
+                gevondenLeden.slice(
+                  0,
+                  aanvraag.limiet,
+                ),
+              heeftVolgendePagina,
+              aantalTotaal,
+            };
+          })();
+
+    const {
+      leden,
+      heeftVolgendePagina,
       aantalTotaal,
-    ] = await Promise.all([
-      prisma.lid.findMany({
-        where,
-        orderBy: [
-          {
-            naamPersoon:
-              aanvraag.richting,
-          },
-          {
-            id:
-              aanvraag.richting,
-          },
-        ],
-        take:
-          aanvraag.limiet + 1,
-        select: {
-          id: true,
-          naamPersoon: true,
-          telefoonnummer: true,
-          mailadres: true,
-          ovamId: true,
-          certificaatnummer: true,
-          uitgereiktOp: true,
-          bedrijf: true,
-          aansluiting: true,
-          opmerking: true,
-          certificatiePlatform: true,
-        },
-      }),
-
-      aanvraag.cursor
-        ? Promise.resolve(null)
-        : prisma.lid.count({
-            where: {
-              verwijderdOp:
-                null,
-              ...zoekFilter,
-            },
-          }),
-    ]);
-
-    const heeftVolgendePagina =
-      gevondenLeden.length >
-      aanvraag.limiet;
-
-    const leden =
-      gevondenLeden.slice(
-        0,
-        aanvraag.limiet,
-      );
+    } = laadResultaat;
 
     const lidIds =
       leden.map(

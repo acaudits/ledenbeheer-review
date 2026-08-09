@@ -33,7 +33,7 @@ type TargetSelectieInvoer = {
   cursorId: number | null;
 };
 
-function isTargetStatus(
+export function isTargetStatus(
   waarde: unknown,
 ): waarde is TargetStatus {
   return (
@@ -123,20 +123,60 @@ export async function laadTargetSelectie({
     cursorId,
   });
 
-  const zoekPatroon =
-    `%${zoekterm}%`;
-
   const zoekFilter =
     zoekterm
       ? Prisma.sql`
           AND (
-            l."naam_persoon" ILIKE ${zoekPatroon}
-            OR l."telefoonnummer" ILIKE ${zoekPatroon}
-            OR l."mailadres" ILIKE ${zoekPatroon}
-            OR l."ovam_id" ILIKE ${zoekPatroon}
-            OR l."certificaatnummer" ILIKE ${zoekPatroon}
-            OR l."bedrijf" ILIKE ${zoekPatroon}
-            OR l."aansluiting" ILIKE ${zoekPatroon}
+            STRPOS(
+              LOWER(l."naam_persoon"),
+              LOWER(${zoekterm})
+            ) > 0
+            OR STRPOS(
+              LOWER(
+                COALESCE(
+                  l."telefoonnummer",
+                  ''
+                )
+              ),
+              LOWER(${zoekterm})
+            ) > 0
+            OR STRPOS(
+              LOWER(
+                COALESCE(
+                  l."mailadres",
+                  ''
+                )
+              ),
+              LOWER(${zoekterm})
+            ) > 0
+            OR STRPOS(
+              LOWER(l."ovam_id"),
+              LOWER(${zoekterm})
+            ) > 0
+            OR STRPOS(
+              LOWER(
+                l."certificaatnummer"
+              ),
+              LOWER(${zoekterm})
+            ) > 0
+            OR STRPOS(
+              LOWER(
+                COALESCE(
+                  l."bedrijf",
+                  ''
+                )
+              ),
+              LOWER(${zoekterm})
+            ) > 0
+            OR STRPOS(
+              LOWER(
+                COALESCE(
+                  l."aansluiting",
+                  ''
+                )
+              ),
+              LOWER(${zoekterm})
+            ) > 0
           )
         `
       : Prisma.empty;
