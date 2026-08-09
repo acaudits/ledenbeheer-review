@@ -8,6 +8,8 @@ const MAXIMALE_PUBLIEKE_POST_GROOTTE =
 function isPubliekeRoute(pathname: string) {
   return (
     pathname === "/inloggen" ||
+    pathname === "/manifest.webmanifest" ||
+    pathname === "/sw.js" ||
     pathname === "/wachtwoord-vergeten" ||
     pathname === "/wachtwoord-instellen" ||
     pathname === "/aanmelden-laattijdige-plaatsbezoeken" ||

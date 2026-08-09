@@ -12,6 +12,9 @@ import { prisma } from "@/lib/prisma";
 import {
   controleerPubliekeRateLimit,
 } from "@/lib/publieke-rate-limit";
+import {
+  verwerkPushVoorNieuweLaattijdigeMelding,
+} from "@/lib/push-meldingen";
 
 export type LaattijdigeMeldingState = {
   fout?: string;
@@ -202,6 +205,7 @@ async function zoekActiefLid(
       id: true,
       naamPersoon: true,
       bedrijf: true,
+      ovamId: true,
     },
   });
 }
@@ -478,7 +482,8 @@ export async function meldLaattijdigePlaatsbezoeken(
     };
   }
 
-  await prisma
+  const aangemaakteMelding =
+    await prisma
       .laattijdigePlaatsbezoekMelding
       .create({
         data: {
@@ -527,8 +532,36 @@ export async function meldLaattijdigePlaatsbezoeken(
         },
         select: {
           id: true,
+          bezoeken: {
+            select: {
+              id: true,
+              inspectielocatie:
+                true,
+              datumPlaatsbezoek:
+                true,
+              tijdstip: true,
+              reden: true,
+            },
+          },
         },
       });
+
+  try {
+    await verwerkPushVoorNieuweLaattijdigeMelding({
+      ovamId: lid.ovamId,
+      naamAdi: lid.naamPersoon,
+      bedrijfsnaam: lid.bedrijf,
+      bezoeken:
+        aangemaakteMelding.bezoeken,
+    });
+  } catch (fout) {
+    console.error(
+      "Automatische pushmelding kon niet worden verwerkt.",
+      fout instanceof Error
+        ? fout.message
+        : "Onbekende fout",
+    );
+  }
 
   return {
     geslaagd: true,

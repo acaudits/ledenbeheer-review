@@ -9,6 +9,12 @@ export const metadata: Metadata = {
   },
   description:
     "Beheer van persoonscertificaten en procescertificaten.",
+  manifest: "/manifest.webmanifest",
+  appleWebApp: {
+    capable: true,
+    title: "SKH CRM",
+    statusBarStyle: "default",
+  },
 };
 
 export default function RootLayout({

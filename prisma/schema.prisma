@@ -291,6 +291,7 @@ model ToegestaneGebruiker {
   meldingen                    Melding[]
   auditlogs                    Auditlog[]
   terreincontroleReserveringen TerreincontroleReservering[]
+  pushAbonnementen             PushAbonnement[]
 
   @@index([email])
   @@index([actief])
@@ -518,10 +519,53 @@ model LaattijdigPlaatsbezoek {
 
   aangemaaktOp DateTime @default(now()) @map("aangemaakt_op")
 
-  melding LaattijdigePlaatsbezoekMelding @relation(fields: [meldingId], references: [id], onDelete: Cascade)
+  melding          LaattijdigePlaatsbezoekMelding @relation(fields: [meldingId], references: [id], onDelete: Cascade)
+  pushVerzendingen PushVerzending[]
 
   @@index([meldingId])
   @@index([datumPlaatsbezoek])
   @@index([aangemaaktOp])
   @@map("laattijdige_plaatsbezoeken")
+}
+
+model PushAbonnement {
+  id Int @id @default(autoincrement())
+
+  gebruikerId Int                 @map("gebruiker_id")
+  gebruiker   ToegestaneGebruiker @relation(fields: [gebruikerId], references: [id], onDelete: Cascade)
+
+  endpoint  String  @unique @db.VarChar(2048)
+  p256dh    String  @db.VarChar(255)
+  auth      String  @db.VarChar(255)
+  userAgent String? @map("user_agent") @db.VarChar(500)
+
+  aangemaaktOp DateTime @default(now()) @map("aangemaakt_op")
+  bijgewerktOp DateTime @updatedAt @map("bijgewerkt_op")
+
+  verzendingen PushVerzending[]
+
+  @@index([gebruikerId])
+  @@map("push_abonnementen")
+}
+
+model PushVerzending {
+  id Int @id @default(autoincrement())
+
+  plaatsbezoekId Int                    @map("plaatsbezoek_id")
+  plaatsbezoek   LaattijdigPlaatsbezoek @relation(fields: [plaatsbezoekId], references: [id], onDelete: Cascade)
+
+  abonnementId Int            @map("abonnement_id")
+  abonnement   PushAbonnement @relation(fields: [abonnementId], references: [id], onDelete: Cascade)
+
+  status       String    @default("WACHTEND") @db.VarChar(20)
+  pogingen     Int       @default(0)
+  verzondenOp  DateTime? @map("verzonden_op")
+  laatsteFout  String?   @map("laatste_fout") @db.Text
+  aangemaaktOp DateTime  @default(now()) @map("aangemaakt_op")
+  bijgewerktOp DateTime  @updatedAt @map("bijgewerkt_op")
+
+  @@unique([plaatsbezoekId, abonnementId])
+  @@index([status])
+  @@index([aangemaaktOp])
+  @@map("push_verzendingen")
 }

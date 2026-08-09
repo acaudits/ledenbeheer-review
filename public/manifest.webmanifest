@@ -1,0 +1,20 @@
+{
+  "id": "/",
+  "name": "SKH Certificaten CRM",
+  "short_name": "SKH CRM",
+  "description": "Beheer van persoonscertificaten en procescertificaten.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#f8fafc",
+  "theme_color": "#047857",
+  "lang": "nl-BE",
+  "icons": [
+    {
+      "src": "/skh-logo.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

@@ -48,7 +48,9 @@ export function ProfielFormulier({
     }
 
     if (eersteInstelling) {
-      router.replace("/");
+      router.replace(
+        "/mijn-profiel?push=instellen",
+      );
     } else {
       router.refresh();
     }
