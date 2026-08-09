@@ -274,26 +274,29 @@ async function verstuurNaarAbonnement({
 
   const inhoud = {
     title:
-      "Rode laattijdige plaatsbezoekmelding",
-    body: [
-      `ADI: ${normaliseerMeldingstekst(
+      `Rood plaatsbezoek: ${normaliseerMeldingstekst(
         naamAdi,
-        120,
+        70,
       )}`,
+    body: [
       `Bedrijf: ${normaliseerMeldingstekst(
         bedrijfsnaam,
-        160,
+        100,
       )}`,
-      `Adres: ${normaliseerMeldingstekst(
-        bezoek.inspectielocatie,
-        220,
-      )}`,
-      `Datum en tijd: ${formatteerDatum(
+      `${formatteerDatum(
         bezoek.datumPlaatsbezoek,
       )} om ${formatteerTijd(
         bezoek.tijdstip,
       )}`,
-      `Reden: ${reden}`,
+      `Adres: ${normaliseerMeldingstekst(
+        bezoek.inspectielocatie,
+        120,
+      )}`,
+      `Reden: ${normaliseerMeldingstekst(
+        reden,
+        80,
+      )}`,
+      "Klik voor alle details.",
     ].join("\n"),
     url:
       "/laattijdige-plaatsbezoeken",
