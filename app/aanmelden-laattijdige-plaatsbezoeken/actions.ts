@@ -475,10 +475,8 @@ export async function meldLaattijdigePlaatsbezoeken(
 
   if (!lid || !lid.bedrijf) {
     return {
-      geslaagd: true,
-      referentie:
-        maakPubliekeReferentie(),
-      aantal: geldigeBezoeken.length,
+      fout:
+        "De ingevoerde naam en bedrijfsnaam komen niet overeen met onze gegevens. Controleer beide velden en probeer opnieuw.",
     };
   }
 
