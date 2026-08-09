@@ -34,7 +34,7 @@ export function MeldingenLink({
         try {
           const antwoord =
             await fetch(
-              "/api/meldingen",
+              "/api/meldingen/aantal",
               {
                 credentials:
                   "include",
@@ -72,7 +72,13 @@ export function MeldingenLink({
     );
 
   useEffect(() => {
-    void laadAantal();
+    const eersteLaadId =
+      window.setTimeout(
+        () => {
+          void laadAantal();
+        },
+        0,
+      );
 
     const intervalId =
       window.setInterval(
@@ -115,6 +121,10 @@ export function MeldingenLink({
     );
 
     return () => {
+      window.clearTimeout(
+        eersteLaadId,
+      );
+
       window.clearInterval(
         intervalId,
       );
@@ -136,7 +146,6 @@ export function MeldingenLink({
     };
   }, [
     laadAantal,
-    pathname,
   ]);
 
   const actief =
