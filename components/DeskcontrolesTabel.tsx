@@ -16,6 +16,12 @@ import {
 } from "@/components/DeskcontroleSnelleVelden";
 import { useRouter } from "next/navigation";
 import { DeskcontroleAfgerondSelectievak } from "@/components/DeskcontroleAfgerondSelectievak";
+import {
+  DESKCONTROLE_SERVERGEGEVENS_EVENT,
+  useDeskcontrolesQuery,
+  type DeskcontroleDashboardFilter,
+  type DeskcontroleServergegevens,
+} from "@/hooks/useDeskcontrolesQuery";
 
 export type DeskcontroleKolom = {
   sleutel: string;
@@ -39,6 +45,7 @@ type DeskcontrolesTabelProps = {
   kolommen: DeskcontroleKolom[];
   modus?: "actief" | "verwijderd";
   magBeheren: boolean;
+  serverModus?: boolean;
 };
 
 type Sortering = {
@@ -51,7 +58,7 @@ type DatumFilter = {
   maand: string;
 };
 type DashboardFilter = {
-  sleutel: string;
+  sleutel: DeskcontroleDashboardFilter;
   label: string;
   ids: number[];
 };
@@ -211,69 +218,84 @@ function bepaalDeadlineInformatie(
   };
 }
 
+type BeheerLinkProps =
+  ComponentProps<typeof NextLink> & {
+    magBeheren: boolean;
+  };
+
+function BeheerLink({
+  magBeheren,
+  ...props
+}: BeheerLinkProps) {
+  const bestemming =
+    typeof props.href === "string"
+      ? props.href
+      : "";
+
+  const isWijziglink =
+    bestemming === "/deskcontroles/nieuw" ||
+    /^\/deskcontroles\/\d+\/bewerken$/.test(
+      bestemming,
+    );
+
+  if (!magBeheren && isWijziglink) {
+    return null;
+  }
+
+  return <NextLink {...props} />;
+}
+
+type BeheerVerwijderButtonProps =
+  ComponentProps<
+    typeof BasisDeskcontroleVerwijderButton
+  > & {
+    magBeheren: boolean;
+  };
+
+function BeheerVerwijderButton({
+  magBeheren,
+  ...props
+}: BeheerVerwijderButtonProps) {
+  if (!magBeheren) {
+    return null;
+  }
+
+  return (
+    <BasisDeskcontroleVerwijderButton
+      {...props}
+    />
+  );
+}
+
+type BeheerHerstelButtonProps =
+  ComponentProps<
+    typeof BasisDeskcontroleHerstelButton
+  > & {
+    magBeheren: boolean;
+  };
+
+function BeheerHerstelButton({
+  magBeheren,
+  ...props
+}: BeheerHerstelButtonProps) {
+  if (!magBeheren) {
+    return null;
+  }
+
+  return (
+    <BasisDeskcontroleHerstelButton
+      {...props}
+    />
+  );
+}
+
 export function DeskcontrolesTabel({
   rijen,
   kolommen,
   modus = "actief",
   magBeheren,
+  serverModus = false,
 }: DeskcontrolesTabelProps) {
-  function Link(
-    props: ComponentProps<typeof NextLink>,
-  ) {
-    const bestemming =
-      typeof props.href === "string"
-        ? props.href
-        : "";
-
-    const isWijziglink =
-      bestemming ===
-        "/deskcontroles/nieuw" ||
-      /^\/deskcontroles\/\d+\/bewerken$/.test(
-        bestemming,
-      );
-
-    if (
-      !magBeheren &&
-      isWijziglink
-    ) {
-      return null;
-    }
-
-    return <NextLink {...props} />;
-  }
-
-  function DeskcontroleVerwijderButton(
-    props: ComponentProps<
-      typeof BasisDeskcontroleVerwijderButton
-    >,
-  ) {
-    if (!magBeheren) {
-      return null;
-    }
-
-    return (
-      <BasisDeskcontroleVerwijderButton
-        {...props}
-      />
-    );
-  }
-
-  function DeskcontroleHerstelButton(
-    props: ComponentProps<
-      typeof BasisDeskcontroleHerstelButton
-    >,
-  ) {
-    if (!magBeheren) {
-      return null;
-    }
-
-    return (
-      <BasisDeskcontroleHerstelButton
-        {...props}
-      />
-    );
-  }
-
   const router = useRouter();
 
   const [zoekterm, setZoekterm] = useState("");
@@ -299,6 +321,70 @@ export function DeskcontrolesTabel({
   ] = useState<
     DashboardFilter | null
   >(null);
+  const serverQuery =
+    useDeskcontrolesQuery({
+      ingeschakeld: serverModus,
+      zoekterm,
+      filters,
+      datumFilters,
+      sortering,
+      dashboardFilter:
+        dashboardFilter?.sleutel ?? null,
+    });
+
+  const bronRijen =
+    serverModus
+      ? serverQuery.rijen
+      : rijen;
+
+  const totaalAantal =
+    serverModus
+      ? (
+          serverQuery.aantalTotaal ??
+          bronRijen.length
+        )
+      : rijen.length;
+
+  const serverFout =
+    serverModus
+      ? serverQuery.fout
+      : null;
+
+  const toontEersteServerlading =
+    serverModus &&
+    serverQuery.isEersteKeerLaden &&
+    bronRijen.length === 0;
+
+  const toontServerFoutZonderRijen =
+    serverModus &&
+    Boolean(serverFout) &&
+    bronRijen.length === 0;
+
+  useEffect(() => {
+    if (!serverModus) {
+      return;
+    }
+
+    const detail:
+      DeskcontroleServergegevens = {
+      aantalTotaal:
+        serverQuery.aantalTotaal,
+      dashboard:
+        serverQuery.dashboard,
+    };
+
+    window.dispatchEvent(
+      new CustomEvent(
+        DESKCONTROLE_SERVERGEGEVENS_EVENT,
+        { detail },
+      ),
+    );
+  }, [
+    serverModus,
+    serverQuery.aantalTotaal,
+    serverQuery.dashboard,
+  ]);
+
   useEffect(() => {
     function verwerkDashboardFilter(
       event: Event,
@@ -352,6 +438,10 @@ export function DeskcontrolesTabel({
       return [];
     }
 
+    if (serverModus) {
+      return ["2025", "2026", "2027"];
+    }
+
     const jaren = new Set<string>();
 
     for (const rij of rijen) {
@@ -367,9 +457,17 @@ export function DeskcontrolesTabel({
     return Array.from(jaren).sort(
       (a, b) => Number(b) - Number(a),
     );
-  }, [actieveKolom, rijen]);
+  }, [
+    actieveKolom,
+    rijen,
+    serverModus,
+  ]);
 
   const zichtbareRijen = useMemo(() => {
+    if (serverModus) {
+      return bronRijen;
+    }
+
     const algemeneZoekterm = zoekterm
       .trim()
       .toLocaleLowerCase("nl-BE");
@@ -519,7 +617,9 @@ export function DeskcontrolesTabel({
       },
     );
   }, [
+    bronRijen,
     rijen,
+    serverModus,
     kolommen,
     zoekterm,
     filters,
@@ -625,7 +725,7 @@ export function DeskcontrolesTabel({
           </h2>
 
           <p className="mt-0.5 text-xs text-slate-500">
-            {zichtbareRijen.length} van {rijen.length}{" "}
+            {zichtbareRijen.length} van {totaalAantal}{" "}
             deskcontroles
           </p>
 
@@ -791,7 +891,45 @@ export function DeskcontrolesTabel({
         </div>
       )}
 
-      {zichtbareRijen.length === 0 ? (
+      {toontEersteServerlading ? (
+        <div
+          className="px-6 py-16 text-center"
+          role="status"
+        >
+          <div className="mx-auto size-8 animate-spin rounded-full border-4 border-emerald-100 border-t-emerald-700" />
+
+          <h3 className="mt-4 text-lg font-bold text-slate-950">
+            Deskcontroles laden
+          </h3>
+
+          <p className="mt-2 text-sm text-slate-500">
+            De eerste resultaten worden opgehaald.
+          </p>
+        </div>
+      ) : toontServerFoutZonderRijen ? (
+        <div
+          className="px-6 py-16 text-center"
+          role="alert"
+        >
+          <h3 className="text-lg font-bold text-red-800">
+            Deskcontroles konden niet worden geladen
+          </h3>
+
+          <p className="mt-2 text-sm text-red-700">
+            {serverFout}
+          </p>
+
+          <button
+            type="button"
+            onClick={() => {
+              void serverQuery.opnieuwLaden();
+            }}
+            className="mt-5 inline-flex rounded-xl bg-emerald-700 px-5 py-3 text-sm font-semibold text-white hover:bg-emerald-600"
+          >
+            Opnieuw proberen
+          </button>
+        </div>
+      ) : zichtbareRijen.length === 0 ? (
         <div className="px-6 py-16 text-center">
           <h3 className="text-lg font-bold text-slate-950">
             {modus === "verwijderd"
@@ -805,7 +943,8 @@ export function DeskcontrolesTabel({
               : "Pas de filters aan of voeg een nieuwe deskcontrole toe."}
           </p>
 
-          <Link
+          <BeheerLink
+                magBeheren={magBeheren}
             href={
               modus === "verwijderd"
                 ? "/deskcontroles"
@@ -816,7 +955,7 @@ export function DeskcontrolesTabel({
             {modus === "verwijderd"
               ? "Terug naar actieve deskcontroles"
               : "Nieuwe deskcontrole"}
-          </Link>
+          </BeheerLink>
         </div>
       ) : (
         <>
@@ -1117,19 +1256,22 @@ export function DeskcontrolesTabel({
 
                     <td className="sticky right-0 z-10 whitespace-nowrap bg-white px-3 py-3 align-top group-hover:bg-[#f7fcfa]">
                       {modus === "verwijderd" ? (
-                        <DeskcontroleHerstelButton
+                        <BeheerHerstelButton
+                          magBeheren={magBeheren}
                           id={Number(rij.id)}
                         />
                       ) : (
                         <div className="flex items-center gap-2">
-                          <Link
+                          <BeheerLink
+                magBeheren={magBeheren}
                             href={`/deskcontroles/${rij.id}/bewerken`}
                             className="inline-flex items-center rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-700 transition hover:bg-slate-50"
                           >
                             Bewerken
-                          </Link>
+                          </BeheerLink>
 
-                          <DeskcontroleVerwijderButton
+                          <BeheerVerwijderButton
+                            magBeheren={magBeheren}
                             id={Number(rij.id)}
                           />
                         </div>
@@ -1141,12 +1283,57 @@ export function DeskcontrolesTabel({
             </table>
           </div>
 
-          <footer className="border-t border-slate-200 bg-slate-50 px-4 py-2.5 text-xs text-slate-500">
+          <footer className="border-t border-slate-200 bg-slate-50 px-4 py-3">
+            {serverModus &&
+            serverFout &&
+            bronRijen.length > 0 ? (
+              <div
+                role="alert"
+                className="mb-3 flex flex-col gap-2 rounded-xl border border-red-200 bg-red-50 p-3 text-xs text-red-800 sm:flex-row sm:items-center sm:justify-between"
+              >
+                <span>
+                  {serverFout} De reeds geladen resultaten blijven zichtbaar.
+                </span>
 
-            Klik op een rij om de deskcontrole
-            en non-conformiteiten te bekijken. Klik
-            op een kolomnaam om te sorteren en
-            op het filtericoon om te filteren.
+                <button
+                  type="button"
+                  onClick={() => {
+                    void serverQuery.opnieuwLaden();
+                  }}
+                  className="w-fit rounded-lg border border-red-300 bg-white px-3 py-1.5 font-semibold hover:bg-red-100"
+                >
+                  Opnieuw proberen
+                </button>
+              </div>
+            ) : null}
+
+            <div className="flex flex-col gap-3 text-xs text-slate-500 sm:flex-row sm:items-center sm:justify-between">
+              <span>
+                Klik op een rij om de deskcontrole
+                en non-conformiteiten te bekijken. Klik
+                op een kolomnaam om te sorteren en
+                op het filtericoon om te filteren.
+              </span>
+
+              {serverModus &&
+              serverQuery.heeftVolgendePagina ? (
+                <button
+                  type="button"
+                  disabled={
+                    serverQuery.isVolgendePaginaLaden
+                  }
+                  onClick={() => {
+                    void serverQuery
+                      .laadVolgendePagina();
+                  }}
+                  className="inline-flex h-9 shrink-0 items-center justify-center rounded-xl border border-emerald-300 bg-white px-4 font-semibold text-emerald-800 hover:bg-emerald-50 disabled:cursor-wait disabled:opacity-60"
+                >
+                  {serverQuery.isVolgendePaginaLaden
+                    ? "Resultaten laden..."
+                    : "Meer resultaten laden"}
+                </button>
+              ) : null}
+            </div>
           </footer>
 
         </>

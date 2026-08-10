@@ -241,6 +241,7 @@ model Deskcontrole {
   @@index([deadlineCorrectie])
   @@index([finalisatieDatum])
   @@index([verwijderdOp])
+  @@index([verwijderdOp, datumControle, id])
   @@map("deskcontroles")
 }
 

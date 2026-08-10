@@ -7,6 +7,10 @@ import {
   useTransition,
 } from "react";
 import { useRouter } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
+import {
+  DESKCONTROLES_QUERY_SLEUTEL,
+} from "@/hooks/useDeskcontrolesQuery";
 import { wijzigDeskcontroleOpmerkingen } from "@/app/deskcontroles/opmerkingen-actions";
 
 type DeskcontroleOpmerkingenDialogProps = {
@@ -19,6 +23,8 @@ export function DeskcontroleOpmerkingenDialog({
   tekst,
 }: DeskcontroleOpmerkingenDialogProps) {
   const router = useRouter();
+  const queryClient =
+    useQueryClient();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const oorspronkelijkeTekst = tekst ?? "";
@@ -31,11 +37,6 @@ export function DeskcontroleOpmerkingenDialog({
   const [melding, setMelding] = useState("");
   const [foutmelding, setFoutmelding] = useState("");
   const [isBezig, startTransition] = useTransition();
-
-  useEffect(() => {
-    setOpmerkingen(oorspronkelijkeTekst);
-    setOpgeslagenTekst(oorspronkelijkeTekst);
-  }, [oorspronkelijkeTekst]);
 
   useEffect(() => {
     if (!open) {
@@ -128,6 +129,11 @@ export function DeskcontroleOpmerkingenDialog({
         setMelding(
           resultaat.melding ?? "De opmerkingen zijn opgeslagen.",
         );
+
+        await queryClient.invalidateQueries({
+          queryKey:
+            DESKCONTROLES_QUERY_SLEUTEL,
+        });
 
         router.refresh();
       } catch (fout) {

@@ -1,12 +1,23 @@
+"use client";
+
 import Link from "next/link";
+import {
+  useEffect,
+  useState,
+} from "react";
 
 import { DeskcontroleMeerMenu } from "@/components/DeskcontroleMeerMenu";
+import {
+  DESKCONTROLE_SERVERGEGEVENS_EVENT,
+  type DeskcontroleServergegevens,
+} from "@/hooks/useDeskcontrolesQuery";
 
 type DeskcontroleOverzichtHeaderProps = {
-  aantal: number;
+  aantal: number | null;
   magBeheren: boolean;
   magExporteren: boolean;
   magStatussenImporteren: boolean;
+  serverModus?: boolean;
 };
 
 export function DeskcontroleOverzichtHeader({
@@ -14,7 +25,49 @@ export function DeskcontroleOverzichtHeader({
   magBeheren,
   magExporteren,
   magStatussenImporteren,
+  serverModus = false,
 }: DeskcontroleOverzichtHeaderProps) {
+  const [
+    serverAantal,
+    setServerAantal,
+  ] = useState<number | null>(aantal);
+
+  useEffect(() => {
+    if (!serverModus) {
+      return;
+    }
+
+    function verwerkServergegevens(
+      event: Event,
+    ) {
+      const customEvent =
+        event as CustomEvent<
+          DeskcontroleServergegevens
+        >;
+
+      setServerAantal(
+        customEvent.detail.aantalTotaal,
+      );
+    }
+
+    window.addEventListener(
+      DESKCONTROLE_SERVERGEGEVENS_EVENT,
+      verwerkServergegevens,
+    );
+
+    return () => {
+      window.removeEventListener(
+        DESKCONTROLE_SERVERGEGEVENS_EVENT,
+        verwerkServergegevens,
+      );
+    };
+  }, [serverModus]);
+
+  const getoondAantal =
+    serverModus
+      ? serverAantal
+      : aantal;
+
   return (
     <header className="relative rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
       <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
@@ -28,10 +81,16 @@ export function DeskcontroleOverzichtHeader({
           </h1>
 
           <p className="mt-1.5 text-sm text-slate-500">
-            {aantal} actieve{" "}
-            {aantal === 1
-              ? "deskcontrole"
-              : "deskcontroles"}
+            {getoondAantal === null
+              ? "Actieve deskcontroles laden..."
+              : (
+                  <>
+                    {getoondAantal} actieve{" "}
+                    {getoondAantal === 1
+                      ? "deskcontrole"
+                      : "deskcontroles"}
+                  </>
+                )}
           </p>
         </div>
 
@@ -60,7 +119,7 @@ export function DeskcontroleOverzichtHeader({
           ) : null}
 
           {magExporteren ? (
-            <a
+            <Link
               href="/deskcontroles/export"
               className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-emerald-300 bg-emerald-50 px-5 text-sm font-bold text-emerald-800 shadow-sm transition hover:bg-emerald-100"
             >
@@ -80,7 +139,7 @@ export function DeskcontroleOverzichtHeader({
               </svg>
 
               Exporteren naar Excel
-            </a>
+            </Link>
           ) : null}
 
           <DeskcontroleMeerMenu
