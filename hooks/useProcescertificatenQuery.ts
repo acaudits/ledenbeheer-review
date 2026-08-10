@@ -27,7 +27,7 @@ type DatumFilter = {
   maand: string;
 };
 
-type PersoonscertificatenQueryInvoer = {
+type ProcescertificatenQueryInvoer = {
   ingeschakeld?: boolean;
   zoekterm: string;
   kolomFilters:
@@ -37,42 +37,35 @@ type PersoonscertificatenQueryInvoer = {
   sortering: Sortering;
 };
 
-type PersoonscertificatenPagina = {
+type ProcescertificatenPagina = {
   rijen: CertificaatRij[];
   volgendeCursor: string | null;
   heeftVolgendePagina: boolean;
   aantalTotaal: number | null;
 };
 
-export const PERSOONSCERTIFICATEN_QUERY_SLEUTEL = [
-  "persoonscertificaten",
+export const PROCESCERTIFICATEN_QUERY_SLEUTEL = [
+  "procescertificaten",
 ] as const;
 
 const FILTERPARAMETERS:
   Record<string, string> = {
-    naamPersoon:
-      "filterNaamPersoon",
-    telefoonnummer:
-      "filterTelefoonnummer",
-    mailadres:
-      "filterMailadres",
-    ovamId:
-      "filterOvamId",
+    bedrijf: "filterBedrijf",
+    kboNummer:
+      "filterKboNummer",
     certificaatnummer:
       "filterCertificaatnummer",
-    bedrijf:
-      "filterBedrijf",
-    aansluiting:
-      "filterAansluiting",
+    oneDrive:
+      "filterOneDrive",
     opmerking:
       "filterOpmerking",
-    certificatiePlatform:
-      "filterCertificatiePlatform",
+    ondernemingstype:
+      "filterOndernemingstype",
   };
 
 function isPagina(
   waarde: unknown,
-): waarde is PersoonscertificatenPagina {
+): waarde is ProcescertificatenPagina {
   if (
     typeof waarde !== "object" ||
     waarde === null
@@ -123,16 +116,16 @@ async function leesFoutmelding(
     // Gebruik de veilige algemene foutmelding.
   }
 
-  return "De persoonscertificaten konden niet worden geladen.";
+  return "De procescertificaten konden niet worden geladen.";
 }
 
-export function usePersoonscertificatenQuery({
+export function useProcescertificatenQuery({
   ingeschakeld = true,
   zoekterm,
   kolomFilters,
   datumFilters,
   sortering,
-}: PersoonscertificatenQueryInvoer) {
+}: ProcescertificatenQueryInvoer) {
   const [
     uitgesteldeZoekterm,
     setUitgesteldeZoekterm,
@@ -202,7 +195,7 @@ export function usePersoonscertificatenQuery({
       enabled:
         ingeschakeld,
       queryKey: [
-        ...PERSOONSCERTIFICATEN_QUERY_SLEUTEL,
+        ...PROCESCERTIFICATEN_QUERY_SLEUTEL,
         aanvraagSleutel,
       ],
       initialPageParam:
@@ -227,19 +220,6 @@ export function usePersoonscertificatenQuery({
             "q",
             aanvraagSleutel
               .zoekterm,
-          );
-        }
-
-        const targetStatus =
-          aanvraagSleutel
-            .kolomFilters
-            .controleTargetStatus
-            ?.trim();
-
-        if (targetStatus) {
-          parameters.set(
-            "targetStatus",
-            targetStatus,
           );
         }
 
@@ -293,6 +273,7 @@ export function usePersoonscertificatenQuery({
             "sortering",
             sortering.sleutel,
           );
+
           parameters.set(
             "richting",
             sortering.richting ===
@@ -311,7 +292,7 @@ export function usePersoonscertificatenQuery({
 
         const antwoord =
           await fetch(
-            `/api/persoonscertificaten/lijst?${parameters.toString()}`,
+            `/api/procescertificaten/lijst?${parameters.toString()}`,
             {
               method: "GET",
               credentials:
