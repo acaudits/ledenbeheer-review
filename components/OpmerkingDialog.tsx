@@ -1,7 +1,11 @@
 "use client";
 
-import { wijzigCertificaatOpmerking } from "@/app/certificaten/opmerking-actions";
+import { useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
+
+import { wijzigCertificaatOpmerking } from "@/app/certificaten/opmerking-actions";
+import { PERSOONSCERTIFICATEN_QUERY_SLEUTEL } from "@/hooks/usePersoonscertificatenQuery";
+import { PROCESCERTIFICATEN_QUERY_SLEUTEL } from "@/hooks/useProcescertificatenQuery";
 import {
   useId,
   useRef,
@@ -20,6 +24,7 @@ export function OpmerkingDialog({
   tekst,
 }: OpmerkingDialogProps) {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const dialogRef =
     useRef<HTMLDialogElement>(null);
 
@@ -96,6 +101,13 @@ export function OpmerkingDialog({
       setConcept(opgeslagenTekst);
       setBewerken(false);
       setMelding(resultaat.melding);
+
+      await queryClient.invalidateQueries({
+        queryKey:
+          soort === "proces"
+            ? PROCESCERTIFICATEN_QUERY_SLEUTEL
+            : PERSOONSCERTIFICATEN_QUERY_SLEUTEL,
+      });
 
       router.refresh();
     } catch (error) {

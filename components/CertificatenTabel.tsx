@@ -4,6 +4,7 @@ import { VerwijderButton as BasisVerwijderButton } from "@/components/Certificaa
 import { CopyButton } from "@/components/CopyButton";
 import { OpmerkingDialog } from "@/components/OpmerkingDialog";
 import { usePersoonscertificatenQuery } from "@/hooks/usePersoonscertificatenQuery";
+import { useProcescertificatenQuery } from "@/hooks/useProcescertificatenQuery";
 import NextLink from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState, type ComponentProps } from "react";
@@ -287,15 +288,32 @@ export function CertificatenTabel({
   const [sortering, setSortering] =
     useState<Sortering>(null);
 
-  const serverQuery =
+  const persoonscertificatenQuery =
     usePersoonscertificatenQuery({
       ingeschakeld:
-        serverModus,
+        serverModus &&
+        soort === "persoon",
       zoekterm,
       kolomFilters,
       datumFilters,
       sortering,
     });
+
+  const procescertificatenQuery =
+    useProcescertificatenQuery({
+      ingeschakeld:
+        serverModus &&
+        soort === "proces",
+      zoekterm,
+      kolomFilters,
+      datumFilters,
+      sortering,
+    });
+
+  const serverQuery =
+    soort === "proces"
+      ? procescertificatenQuery
+      : persoonscertificatenQuery;
 
   const bronRijen =
     serverModus
@@ -403,6 +421,13 @@ export function CertificatenTabel({
       return [];
     }
 
+    if (
+      serverModus &&
+      soort === "proces"
+    ) {
+      return ["2025", "2026", "2027"];
+    }
+
     const jaren = new Set<string>();
 
     for (const rij of bronRijen) {
@@ -419,7 +444,12 @@ export function CertificatenTabel({
       (eerste, tweede) =>
         Number(tweede) - Number(eerste),
     );
-  }, [bronRijen, actieveFilterKolom]);
+  }, [
+    bronRijen,
+    actieveFilterKolom,
+    serverModus,
+    soort,
+  ]);
 
   const gefilterdeEnGesorteerdeRijen =
     useMemo(() => {

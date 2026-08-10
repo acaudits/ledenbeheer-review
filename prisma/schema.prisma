@@ -52,6 +52,7 @@ model Procescertificaat {
   terreincontroleDossiers TerreincontroleDossier[]
 
   @@index([verwijderdOp])
+  @@index([verwijderdOp, naamBedrijf, id])
   @@map("procescertificaten")
 }
 

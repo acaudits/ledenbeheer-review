@@ -1,7 +1,11 @@
 "use client";
 
+import { useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+
+import { PERSOONSCERTIFICATEN_QUERY_SLEUTEL } from "@/hooks/usePersoonscertificatenQuery";
+import { PROCESCERTIFICATEN_QUERY_SLEUTEL } from "@/hooks/useProcescertificatenQuery";
 
 type CertificaatSoort = "persoon" | "proces";
 
@@ -53,6 +57,7 @@ export function VerwijderButton({
   naam,
 }: StatusButtonProps) {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const [bezig, setBezig] = useState(false);
   const [fout, setFout] = useState<string | null>(null);
 
@@ -76,12 +81,14 @@ export function VerwijderButton({
     try {
       await wijzigStatus(id, soort, "verwijder");
 
-      router.refresh();
+      await queryClient.invalidateQueries({
+        queryKey:
+          soort === "proces"
+            ? PROCESCERTIFICATEN_QUERY_SLEUTEL
+            : PERSOONSCERTIFICATEN_QUERY_SLEUTEL,
+      });
 
-      // Zorgt ervoor dat de rij onmiddellijk uit de actieve lijst verdwijnt.
-      window.setTimeout(() => {
-        window.location.reload();
-      }, 150);
+      router.refresh();
     } catch (error) {
       const melding =
         error instanceof Error
@@ -165,6 +172,7 @@ export function HerstelButton({
   naam,
 }: StatusButtonProps) {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const [bezig, setBezig] = useState(false);
   const [fout, setFout] = useState<string | null>(null);
 
@@ -188,11 +196,14 @@ export function HerstelButton({
     try {
       await wijzigStatus(id, soort, "herstel");
 
-      router.refresh();
+      await queryClient.invalidateQueries({
+        queryKey:
+          soort === "proces"
+            ? PROCESCERTIFICATEN_QUERY_SLEUTEL
+            : PERSOONSCERTIFICATEN_QUERY_SLEUTEL,
+      });
 
-      window.setTimeout(() => {
-        window.location.reload();
-      }, 150);
+      router.refresh();
     } catch (error) {
       const melding =
         error instanceof Error
