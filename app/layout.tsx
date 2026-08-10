@@ -3,6 +3,7 @@ import type {
   Viewport,
 } from "next";
 import { AppChrome } from "@/components/AppChrome";
+import { QueryProvider } from "@/components/QueryProvider";
 import "./globals.css";
 
 export const viewport: Viewport = {
@@ -32,7 +33,11 @@ export default function RootLayout({
   return (
     <html lang="nl">
       <body>
-        <AppChrome>{children}</AppChrome>
+        <QueryProvider>
+          <AppChrome>
+            {children}
+          </AppChrome>
+        </QueryProvider>
       </body>
     </html>
   );

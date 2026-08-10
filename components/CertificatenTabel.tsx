@@ -3,6 +3,7 @@
 import { VerwijderButton as BasisVerwijderButton } from "@/components/CertificaatStatusButton";
 import { CopyButton } from "@/components/CopyButton";
 import { OpmerkingDialog } from "@/components/OpmerkingDialog";
+import { usePersoonscertificatenQuery } from "@/hooks/usePersoonscertificatenQuery";
 import NextLink from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState, type ComponentProps } from "react";
@@ -30,6 +31,7 @@ type CertificatenTabelProps = {
   detailBasisHref?: string;
   soort: "persoon" | "proces";
   magBeheren: boolean;
+  serverModus?: boolean;
 };
 
 type Sorteerrichting =
@@ -206,6 +208,53 @@ function naamVanMaand(maand: string) {
   );
 }
 
+type BeheerLinkProps =
+  ComponentProps<typeof NextLink> & {
+    magBeheren: boolean;
+    nieuwHref: string;
+    bewerkBasisHref: string;
+  };
+
+function BeheerLink({
+  magBeheren,
+  nieuwHref,
+  bewerkBasisHref,
+  ...props
+}: BeheerLinkProps) {
+  const bestemming =
+    typeof props.href === "string"
+      ? props.href
+      : "";
+
+  const isBeheerlink =
+    bestemming === nieuwHref ||
+    bestemming.startsWith(
+      `${bewerkBasisHref}/`,
+    );
+
+  if (!magBeheren && isBeheerlink) {
+    return null;
+  }
+
+  return <NextLink {...props} />;
+}
+
+type BeheerVerwijderButtonProps =
+  ComponentProps<typeof BasisVerwijderButton> & {
+    magBeheren: boolean;
+  };
+
+function BeheerVerwijderButton({
+  magBeheren,
+  ...props
+}: BeheerVerwijderButtonProps) {
+  if (!magBeheren) {
+    return null;
+  }
+
+  return <BasisVerwijderButton {...props} />;
+}
+
 export function CertificatenTabel({
   rijen,
   kolommen,
@@ -218,40 +267,9 @@ export function CertificatenTabel({
   detailBasisHref,
   soort,
   magBeheren,
+  serverModus = false,
 }: CertificatenTabelProps) {
   const router = useRouter();
-  function Link(
-    props: ComponentProps<typeof NextLink>,
-  ) {
-    const bestemming =
-      typeof props.href === "string"
-        ? props.href
-        : "";
-
-    const isBeheerlink =
-      bestemming === nieuwHref ||
-      bestemming.startsWith(
-        `${bewerkBasisHref}/`,
-      );
-
-    if (!magBeheren && isBeheerlink) {
-      return null;
-    }
-
-    return <NextLink {...props} />;
-  }
-
-  function VerwijderButton(
-    props: ComponentProps<
-      typeof BasisVerwijderButton
-    >,
-  ) {
-    if (!magBeheren) {
-      return null;
-    }
-
-    return <BasisVerwijderButton {...props} />;
-  }
 
   const [zoekterm, setZoekterm] = useState("");
 
@@ -268,6 +286,44 @@ export function CertificatenTabel({
 
   const [sortering, setSortering] =
     useState<Sortering>(null);
+
+  const serverQuery =
+    usePersoonscertificatenQuery({
+      ingeschakeld:
+        serverModus,
+      zoekterm,
+      kolomFilters,
+      datumFilters,
+      sortering,
+    });
+
+  const bronRijen =
+    serverModus
+      ? serverQuery.rijen
+      : rijen;
+
+  const totaalAantal =
+    serverModus
+      ? (
+          serverQuery
+            .aantalTotaal ??
+          bronRijen.length
+        )
+      : rijen.length;
+
+  const serverFout =
+    serverModus
+      ? serverQuery.fout
+      : null;
+
+  const toontEersteServerlading =
+    serverModus &&
+    serverQuery.isEersteKeerLaden &&
+    bronRijen.length === 0;
+
+  const toontServerFoutZonderRijen =
+    Boolean(serverFout) &&
+    bronRijen.length === 0;
 
   const actieveFilterKolom =
     kolommen.find(
@@ -319,7 +375,7 @@ export function CertificatenTabel({
 
     const waarden = new Set<string>();
 
-    for (const rij of rijen) {
+    for (const rij of bronRijen) {
       const waarde = String(
         rij[actieveFilterKolom.sleutel] ?? "",
       ).trim();
@@ -337,7 +393,7 @@ export function CertificatenTabel({
         }),
       )
       .slice(0, 250);
-  }, [rijen, actieveFilterKolom]);
+  }, [bronRijen, actieveFilterKolom]);
 
   const beschikbareJaren = useMemo(() => {
     if (
@@ -349,7 +405,7 @@ export function CertificatenTabel({
 
     const jaren = new Set<string>();
 
-    for (const rij of rijen) {
+    for (const rij of bronRijen) {
       const datum = ontleedDatum(
         rij[actieveFilterKolom.sleutel],
       );
@@ -363,15 +419,19 @@ export function CertificatenTabel({
       (eerste, tweede) =>
         Number(tweede) - Number(eerste),
     );
-  }, [rijen, actieveFilterKolom]);
+  }, [bronRijen, actieveFilterKolom]);
 
   const gefilterdeEnGesorteerdeRijen =
     useMemo(() => {
+      if (serverModus) {
+        return bronRijen;
+      }
+
       const algemeneZoekwaarde = zoekterm
         .trim()
         .toLocaleLowerCase("nl-BE");
 
-      const gefilterd = rijen.filter((rij) => {
+      const gefilterd = bronRijen.filter((rij) => {
         const voldoetAanAlgemeneZoekterm =
           !algemeneZoekwaarde ||
           kolommen.some((kolom) => {
@@ -519,7 +579,8 @@ export function CertificatenTabel({
 
       return gesorteerd;
     }, [
-      rijen,
+      serverModus,
+      bronRijen,
       kolommen,
       zoekterm,
       kolomFilters,
@@ -634,11 +695,11 @@ export function CertificatenTabel({
             </h2>
 
             <p className="mt-1 text-sm text-slate-500">
-              {rijen.length} geregistreerd ·{" "}
+              {totaalAantal} geregistreerd ·{" "}
               {
                 gefilterdeEnGesorteerdeRijen.length
               }{" "}
-              getoond
+              {serverModus ? "geladen" : "getoond"}
             </p>
           </div>
 
@@ -960,7 +1021,50 @@ export function CertificatenTabel({
         </div>
       )}
 
-      {gefilterdeEnGesorteerdeRijen.length ===
+      {toontEersteServerlading ? (
+        <div
+          className="flex flex-col items-center justify-center px-6 py-16 text-center"
+          role="status"
+          aria-live="polite"
+        >
+          <div className="size-9 animate-spin rounded-full border-4 border-emerald-100 border-t-emerald-700" />
+
+          <h3 className="mt-5 text-lg font-bold text-slate-950">
+            Persoonscertificaten laden
+          </h3>
+
+          <p className="mt-2 text-sm text-slate-500">
+            De eerste resultaten worden opgehaald.
+          </p>
+        </div>
+      ) : toontServerFoutZonderRijen ? (
+        <div
+          className="flex flex-col items-center justify-center px-6 py-16 text-center"
+          role="alert"
+        >
+          <div className="flex size-16 items-center justify-center rounded-3xl bg-red-100 text-2xl text-red-700">
+            !
+          </div>
+
+          <h3 className="mt-5 text-xl font-bold text-slate-950">
+            Persoonscertificaten konden niet worden geladen
+          </h3>
+
+          <p className="mt-2 max-w-md text-sm leading-6 text-slate-500">
+            {serverFout}
+          </p>
+
+          <button
+            type="button"
+            onClick={() => {
+              void serverQuery.opnieuwLaden();
+            }}
+            className="mt-6 rounded-xl border border-slate-300 bg-white px-5 py-3 text-sm font-semibold text-slate-700 hover:bg-slate-100"
+          >
+            Opnieuw proberen
+          </button>
+        </div>
+      ) : gefilterdeEnGesorteerdeRijen.length ===
       0 ? (
         <div className="flex flex-col items-center justify-center px-6 py-16 text-center">
           <div className="flex size-16 items-center justify-center rounded-3xl bg-emerald-100 text-emerald-700">
@@ -1000,12 +1104,15 @@ export function CertificatenTabel({
               Alle filters wissen
             </button>
           ) : (
-            <Link
+            <BeheerLink
+              magBeheren={magBeheren}
+              nieuwHref={nieuwHref}
+              bewerkBasisHref={bewerkBasisHref}
               href={nieuwHref}
               className="mt-6 rounded-xl bg-emerald-700 px-5 py-3 text-sm font-semibold text-white hover:bg-emerald-600"
             >
               + {nieuwTekst}
-            </Link>
+            </BeheerLink>
           )}
         </div>
       ) : (
@@ -1361,7 +1468,10 @@ export function CertificatenTabel({
 
                       <td className="sticky right-0 z-10 bg-inherit px-5 py-3 text-right">
                         <div className="flex min-w-max items-center justify-end gap-2">
-                          <Link
+                          <BeheerLink
+                            magBeheren={magBeheren}
+                            nieuwHref={nieuwHref}
+                            bewerkBasisHref={bewerkBasisHref}
                             href={`${bewerkBasisHref}/${rij.id}/bewerken`}
                             className="inline-flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-bold text-slate-700 shadow-sm hover:border-emerald-300 hover:bg-emerald-50 hover:text-emerald-800"
                           >
@@ -1381,9 +1491,10 @@ export function CertificatenTabel({
                             </svg>
 
                             Bewerken
-                          </Link>
+                          </BeheerLink>
 
-                          <VerwijderButton
+                          <BeheerVerwijderButton
+                            magBeheren={magBeheren}
                             id={rij.id}
                             soort={soort}
                             naam={String(
@@ -1410,15 +1521,54 @@ export function CertificatenTabel({
               </strong>{" "}
               van{" "}
               <strong className="text-slate-700">
-                {rijen.length}
+                {totaalAantal}
               </strong>{" "}
               resultaten
             </p>
 
-            <p className="text-xs">
-              Klik op een kolomnaam om te sorteren en
-              op het filtericoon om te filteren.
-            </p>
+            <div className="flex flex-col items-start gap-2 sm:items-end">
+              {serverFout && (
+                <div
+                  className="flex flex-wrap items-center gap-2 text-xs text-red-700"
+                  role="alert"
+                >
+                  <span>{serverFout}</span>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      void serverQuery.opnieuwLaden();
+                    }}
+                    className="font-bold underline underline-offset-2"
+                  >
+                    Opnieuw proberen
+                  </button>
+                </div>
+              )}
+
+              {serverModus &&
+              serverQuery.heeftVolgendePagina ? (
+                <button
+                  type="button"
+                  disabled={
+                    serverQuery.isVolgendePaginaLaden
+                  }
+                  onClick={() => {
+                    void serverQuery.laadVolgendePagina();
+                  }}
+                  className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-xs font-bold text-slate-700 shadow-sm hover:border-emerald-300 hover:bg-emerald-50 hover:text-emerald-800 disabled:cursor-wait disabled:opacity-60"
+                >
+                  {serverQuery.isVolgendePaginaLaden
+                    ? "Meer laden…"
+                    : "Meer resultaten laden"}
+                </button>
+              ) : (
+                <p className="text-xs">
+                  Klik op een kolomnaam om te sorteren en
+                  op het filtericoon om te filteren.
+                </p>
+              )}
+            </div>
           </div>
         </>
       )}

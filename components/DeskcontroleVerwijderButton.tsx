@@ -2,6 +2,10 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
+import {
+  DESKCONTROLES_QUERY_SLEUTEL,
+} from "@/hooks/useDeskcontrolesQuery";
 import { verwijderDeskcontrole } from "@/app/deskcontroles/status-actions";
 
 type DeskcontroleVerwijderButtonProps = {
@@ -12,6 +16,8 @@ export function DeskcontroleVerwijderButton({
   id,
 }: DeskcontroleVerwijderButtonProps) {
   const router = useRouter();
+  const queryClient =
+    useQueryClient();
   const [isBezig, startTransition] = useTransition();
   const [foutmelding, setFoutmelding] = useState("");
 
@@ -29,6 +35,12 @@ export function DeskcontroleVerwijderButton({
     startTransition(async () => {
       try {
         await verwijderDeskcontrole(id);
+
+        await queryClient.invalidateQueries({
+          queryKey:
+            DESKCONTROLES_QUERY_SLEUTEL,
+        });
+
         router.refresh();
       } catch (fout) {
         setFoutmelding(

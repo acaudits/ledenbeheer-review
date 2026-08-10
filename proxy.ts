@@ -123,8 +123,29 @@ export async function proxy(request: NextRequest) {
    * de authenticatiecookies.
    */
   const {
-    data: { user },
-  } = await supabase.auth.getUser();
+    data: claimsData,
+    error: claimsFout,
+  } =
+    await supabase.auth.getClaims();
+
+  const claims =
+    claimsFout
+      ? null
+      : claimsData?.claims;
+
+  const emailClaim =
+    typeof claims?.email ===
+    "string"
+      ? claims.email
+          .trim()
+          .toLowerCase()
+      : "";
+
+  const authUserId =
+    typeof claims?.sub ===
+    "string"
+      ? claims.sub
+      : "";
 
   /*
    * Login, wachtwoordherstel en callbacks moeten ook zonder
@@ -137,7 +158,10 @@ export async function proxy(request: NextRequest) {
   /*
    * Alle overige pagina's en API-routes vereisen een sessie.
    */
-  if (!user?.email) {
+  if (
+    !emailClaim ||
+    !authUserId
+  ) {
     if (request.nextUrl.pathname.startsWith("/api/")) {
       return NextResponse.json(
         {
@@ -152,7 +176,8 @@ export async function proxy(request: NextRequest) {
     );
   }
 
-  const email = user.email.trim().toLowerCase();
+  const email =
+    emailClaim;
 
   try {
     const toegestaneGebruiker =
@@ -294,14 +319,14 @@ export async function proxy(request: NextRequest) {
      */
     if (
       !toegestaneGebruiker.authUserId ||
-      toegestaneGebruiker.authUserId !== user.id
+      toegestaneGebruiker.authUserId !== authUserId
     ) {
       await prisma.toegestaneGebruiker.update({
         where: {
           id: toegestaneGebruiker.id,
         },
         data: {
-          authUserId: user.id,
+          authUserId,
         },
       });
     }

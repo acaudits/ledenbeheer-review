@@ -1,11 +1,14 @@
 "use client";
 
 import {
-  useEffect,
   useState,
   useTransition,
 } from "react";
 import { useRouter } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
+import {
+  DESKCONTROLES_QUERY_SLEUTEL,
+} from "@/hooks/useDeskcontrolesQuery";
 import {
   wijzigDeskcontroleSelectievak,
   wijzigDeskcontroleStatus,
@@ -101,6 +104,8 @@ export function DeskcontroleStatusSelect({
   waarde,
 }: DeskcontroleStatusSelectProps) {
   const router = useRouter();
+  const queryClient =
+    useQueryClient();
 
   const genormaliseerdeWaarde =
     normaliseerStatus(waarde);
@@ -114,10 +119,6 @@ export function DeskcontroleStatusSelect({
 
   const [isBezig, startTransition] =
     useTransition();
-
-  useEffect(() => {
-    setStatus(normaliseerStatus(waarde));
-  }, [waarde]);
 
   function wijzigStatus(
     nieuweStatus: string,
@@ -143,6 +144,11 @@ export function DeskcontroleStatusSelect({
           );
           return;
         }
+
+        await queryClient.invalidateQueries({
+          queryKey:
+            DESKCONTROLES_QUERY_SLEUTEL,
+        });
 
         router.refresh();
       } catch (fout) {
@@ -202,6 +208,8 @@ export function DeskcontroleSelectievak({
   label,
 }: DeskcontroleSelectievakProps) {
   const router = useRouter();
+  const queryClient =
+    useQueryClient();
 
   const [aangevinkt, setAangevinkt] =
     useState(normaliseerBoolean(waarde));
@@ -211,10 +219,6 @@ export function DeskcontroleSelectievak({
 
   const [isBezig, startTransition] =
     useTransition();
-
-  useEffect(() => {
-    setAangevinkt(normaliseerBoolean(waarde));
-  }, [waarde]);
 
   function wijzigSelectievak() {
     const vorigeWaarde = aangevinkt;
@@ -240,6 +244,11 @@ export function DeskcontroleSelectievak({
           );
           return;
         }
+
+        await queryClient.invalidateQueries({
+          queryKey:
+            DESKCONTROLES_QUERY_SLEUTEL,
+        });
 
         router.refresh();
       } catch (fout) {

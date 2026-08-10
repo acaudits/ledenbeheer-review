@@ -1,11 +1,14 @@
 "use client";
 
 import {
-  useEffect,
   useState,
   useTransition,
 } from "react";
 import { useRouter } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
+import {
+  DESKCONTROLES_QUERY_SLEUTEL,
+} from "@/hooks/useDeskcontrolesQuery";
 
 import { wijzigDeskcontroleStatus } from "@/app/deskcontroles/snelle-acties";
 
@@ -21,6 +24,8 @@ export function DeskcontroleAfgerondSelectievak({
   label,
 }: DeskcontroleAfgerondSelectievakProps) {
   const router = useRouter();
+  const queryClient =
+    useQueryClient();
 
   const [
     aangevinkt,
@@ -36,10 +41,6 @@ export function DeskcontroleAfgerondSelectievak({
     isBezig,
     startTransition,
   ] = useTransition();
-
-  useEffect(() => {
-    setAangevinkt(afgerond);
-  }, [afgerond]);
 
   function wijzigAfgerond() {
     const vorigeWaarde =
@@ -76,6 +77,11 @@ export function DeskcontroleAfgerondSelectievak({
 
           return;
         }
+
+        await queryClient.invalidateQueries({
+          queryKey:
+            DESKCONTROLES_QUERY_SLEUTEL,
+        });
 
         router.refresh();
       } catch (fout) {

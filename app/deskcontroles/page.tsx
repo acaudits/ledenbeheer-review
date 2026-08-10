@@ -6,29 +6,9 @@ import {
 } from "@/components/DeskcontrolesTabel";
 import { vereisMachtiging } from "@/lib/auth";
 import { heeftMachtiging } from "@/lib/autorisatie";
-import { formatteerOndernemingsnummer } from "@/lib/ondernemingsnummer";
-import { prisma } from "@/lib/prisma";
 
 
 export const dynamic = "force-dynamic";
-
-function formatteerDatum(
-  datum: Date | null,
-) {
-  if (!datum) {
-    return "";
-  }
-
-  return new Intl.DateTimeFormat(
-    "nl-BE",
-    {
-      day: "2-digit",
-      month: "2-digit",
-      year: "numeric",
-      timeZone: "UTC",
-    },
-  ).format(datum);
-}
 
 const kolommen: DeskcontroleKolom[] = [
   {
@@ -163,191 +143,30 @@ export default async function DeskcontrolesPage() {
     "DESKCONTROLES_STATUS_IMPORTEREN",
   );
 
-  const deskcontroles =
-    await prisma.deskcontrole.findMany({
-      where: {
-        verwijderdOp: null,
-      },
-      include: {
-        lid: {
-          select: {
-            naamPersoon: true,
-            ovamId: true,
-            certificaatnummer: true,
-            certificatiePlatform: true,
-          },
-        },
-        procescertificaat: {
-          select: {
-            naamBedrijf: true,
-            kboNummer: true,
-            certificaatnummer: true,
-          },
-        },
-      },
-      orderBy: {
-        datumControle: "desc",
-      },
-    });
+  return (
+    <div className="space-y-4">
+      <DeskcontroleOverzichtHeader
+        aantal={null}
+        magBeheren={magBeheren}
+        magExporteren={magExporteren}
+        magStatussenImporteren={
+          magStatussenImporteren
+        }
+        serverModus
+      />
 
-    const rijen = deskcontroles.map(
-      (deskcontrole) => ({
-        id: deskcontrole.id,
-  
-        auditeur:
-          deskcontrole.auditeur,
-  
-        naamAdi:
-          deskcontrole.lid
-            ?.naamPersoon ??
-          "Niet gekoppeld",
-  
-        linkAttest:
-          deskcontrole.linkAttest,
-  
-        attestnummer:
-          deskcontrole.attestnummer,
-  
-        status:
-          deskcontrole.status ===
-          "AFGEROND"
-            ? "Afgerond"
-            : deskcontrole.status ===
-                "IN_OPMAAK"
-              ? "In opmaak"
-              : deskcontrole.status ===
-                  "GEACTUALISEERD"
-                ? "Geactualiseerd"
-                : "Geen",
-  
-        afgerond:
-          deskcontrole.status ===
-          "AFGEROND"
-            ? "Ja"
-            : "Nee",
-  
-  
-        deadlineSanctie:
-          formatteerDatum(
-            deskcontrole.deadlineSanctie,
-          ),
-  
-        mailSanctieVerzonden:
-          deskcontrole
-            .mailSanctieVerzonden
-            ? "Ja"
-            : "Nee",
-  
-        typeControle:
-          deskcontrole.typeControle ===
-          "NIEUWE_CONTROLE"
-            ? "Nieuwe controle"
-            : "Opvolging",
-  
-        deadlineCorrectie:
-          formatteerDatum(
-            deskcontrole.deadlineCorrectie,
-          ),
-  
-        mailCorrectieVerzonden:
-          deskcontrole
-            .mailCorrectieVerzonden
-            ? "Ja"
-            : "Nee",
-  
-        oneDrive:
-          deskcontrole.oneDrive,
-  
-        voorwaardelijkeOpheffing:
-          deskcontrole
-            .voorwaardelijkeOpheffing
-            ? "Ja"
-            : "Nee",
-  
-        certificatiePlatform:
-          deskcontrole.lid
-            ?.certificatiePlatform ??
-          "",
-  
-        opmerkingen:
-          deskcontrole.opmerkingen,
-  
-        datumControle:
-          formatteerDatum(
-            deskcontrole.datumControle,
-          ),
-  
-        adres:
-          deskcontrole.adres,
-  
-        persoonsId:
-          deskcontrole.lid
-            ?.ovamId ??
-          "Niet gekoppeld",
-  
-        bedrijfsnaam:
-          deskcontrole
-            .procescertificaat
-            ?.naamBedrijf ??
-          "Niet gekoppeld",
-  
-        ondernemingsnummer:
-          deskcontrole
-            .procescertificaat
-            ?.kboNummer
-            ? formatteerOndernemingsnummer(
-                deskcontrole
-                  .procescertificaat
-                  .kboNummer,
-              )
-            : "Niet gekoppeld",
-  
-        persoonscertificaat:
-          deskcontrole.lid
-            ?.certificaatnummer ??
-          "Niet gekoppeld",
-  
-        procescertificaat:
-          deskcontrole
-            .procescertificaat
-            ?.certificaatnummer ??
-          "Niet gekoppeld",
-  
-        finalisatieDatum:
-          formatteerDatum(
-            deskcontrole.finalisatieDatum,
-          ),
-  
-        attestId:
-          deskcontrole.attestId,
-      }),
-    );
-  
+      <DeskcontroleDashboard
+        rijen={[]}
+        serverModus
+      />
 
-    return (
-      <div className="space-y-4">
-        <DeskcontroleOverzichtHeader
-          aantal={
-            deskcontroles.length
-          }
-          magBeheren={magBeheren}
-          magExporteren={magExporteren}
-          magStatussenImporteren={
-            magStatussenImporteren
-          }
-        />
-  
-        <DeskcontroleDashboard
-          rijen={rijen}
-        />
-  
-        <DeskcontrolesTabel
-          rijen={rijen}
-          kolommen={kolommen}
-          modus="actief"
-          magBeheren={magBeheren}
-        />
-      </div>
-    );
-  }
-  
+      <DeskcontrolesTabel
+        rijen={[]}
+        kolommen={kolommen}
+        modus="actief"
+        magBeheren={magBeheren}
+        serverModus
+      />
+    </div>
+  );
+}

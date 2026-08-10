@@ -16,6 +16,12 @@ export const prisma =
   new PrismaClient({
     adapter: new PrismaPg({
       connectionString,
+      max: 1,
+      connectionTimeoutMillis:
+        10_000,
+      idleTimeoutMillis:
+        30_000,
+      allowExitOnIdle: true,
     }),
   });
 

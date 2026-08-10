@@ -22,20 +22,34 @@ export async function haalIngelogdeGebruikerOp() {
     await createClient();
 
   const {
-    data: {
-      user,
-    },
+    data: claimsData,
+    error: claimsFout,
   } =
-    await supabase.auth.getUser();
+    await supabase.auth.getClaims();
 
-  if (!user?.email) {
+  if (claimsFout) {
+    return null;
+  }
+
+  const emailClaim =
+    claimsData?.claims
+      ?.email;
+
+  if (
+    typeof emailClaim !==
+    "string"
+  ) {
     return null;
   }
 
   const email =
-    user.email
+    emailClaim
       .trim()
       .toLowerCase();
+
+  if (!email) {
+    return null;
+  }
 
   return prisma
     .toegestaneGebruiker

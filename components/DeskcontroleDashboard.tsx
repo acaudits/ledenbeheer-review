@@ -5,6 +5,11 @@ import {
   useMemo,
   useState,
 } from "react";
+import {
+  DESKCONTROLE_SERVERGEGEVENS_EVENT,
+  type DeskcontroleDashboardTellingen,
+  type DeskcontroleServergegevens,
+} from "@/hooks/useDeskcontrolesQuery";
 
 type DashboardRij = {
   id: number;
@@ -21,6 +26,7 @@ type DashboardRij = {
 
 type DeskcontroleDashboardProps = {
   rijen: DashboardRij[];
+  serverModus?: boolean;
 };
 
 type DashboardFilter = {
@@ -277,6 +283,7 @@ function DashboardKaart({
 
 export function DeskcontroleDashboard({
   rijen,
+  serverModus = false,
 }: DeskcontroleDashboardProps) {
   const [
     actieveFilter,
@@ -284,6 +291,44 @@ export function DeskcontroleDashboard({
   ] = useState<
     string | null
   >(null);
+
+  const [
+    serverTellingen,
+    setServerTellingen,
+  ] = useState<
+    DeskcontroleDashboardTellingen | null
+  >(null);
+
+  useEffect(() => {
+    if (!serverModus) {
+      return;
+    }
+
+    function verwerkServergegevens(
+      event: Event,
+    ) {
+      const customEvent =
+        event as CustomEvent<
+          DeskcontroleServergegevens
+        >;
+
+      setServerTellingen(
+        customEvent.detail.dashboard,
+      );
+    }
+
+    window.addEventListener(
+      DESKCONTROLE_SERVERGEGEVENS_EVENT,
+      verwerkServergegevens,
+    );
+
+    return () => {
+      window.removeEventListener(
+        DESKCONTROLE_SERVERGEGEVENS_EVENT,
+        verwerkServergegevens,
+      );
+    };
+  }, [serverModus]);
 
   const filters =
     useMemo(() => {
@@ -338,6 +383,10 @@ export function DeskcontroleDashboard({
           kleur:
             "emerald" as const,
           rijen: afgerond,
+          aantal:
+            serverModus
+              ? serverTellingen?.afgerond ?? 0
+              : afgerond.length,
         },
         {
           sleutel: "in-opmaak",
@@ -346,6 +395,10 @@ export function DeskcontroleDashboard({
           kleur:
             "amber" as const,
           rijen: inOpmaak,
+          aantal:
+            serverModus
+              ? serverTellingen?.inOpmaak ?? 0
+              : inOpmaak.length,
         },
         {
           sleutel:
@@ -356,6 +409,10 @@ export function DeskcontroleDashboard({
             "sky" as const,
           rijen:
             geactualiseerd,
+          aantal:
+            serverModus
+              ? serverTellingen?.geactualiseerd ?? 0
+              : geactualiseerd.length,
         },
         {
           sleutel:
@@ -365,6 +422,10 @@ export function DeskcontroleDashboard({
           kleur:
             "slate" as const,
           rijen: openstaand,
+          aantal:
+            serverModus
+              ? serverTellingen?.openstaand ?? 0
+              : openstaand.length,
         },
         {
           sleutel:
@@ -375,6 +436,10 @@ export function DeskcontroleDashboard({
             "orange" as const,
           rijen:
             binnenZevenDagen,
+          aantal:
+            serverModus
+              ? serverTellingen?.binnenZevenDagen ?? 0
+              : binnenZevenDagen.length,
         },
         {
           sleutel:
@@ -382,9 +447,17 @@ export function DeskcontroleDashboard({
           label: "Verstreken",
           kleur: "red" as const,
           rijen: verstreken,
+          aantal:
+            serverModus
+              ? serverTellingen?.verstreken ?? 0
+              : verstreken.length,
         },
       ];
-    }, [rijen]);
+    }, [
+      rijen,
+      serverModus,
+      serverTellingen,
+    ]);
 
   useEffect(() => {
     function verwerkReset(
@@ -447,9 +520,11 @@ export function DeskcontroleDashboard({
       sleutel:
         filter.sleutel,
       label: filter.label,
-      ids: filter.rijen.map(
-        (rij) => Number(rij.id),
-      ),
+      ids: serverModus
+        ? []
+        : filter.rijen.map(
+            (rij) => Number(rij.id),
+          ),
     };
 
     setActieveFilter(
@@ -477,7 +552,7 @@ export function DeskcontroleDashboard({
               }
               titel={filter.label}
               aantal={
-                filter.rijen.length
+                filter.aantal
               }
               actief={
                 actieveFilter ===
