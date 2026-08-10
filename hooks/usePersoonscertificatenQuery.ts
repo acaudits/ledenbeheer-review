@@ -28,6 +28,7 @@ type DatumFilter = {
 };
 
 type PersoonscertificatenQueryInvoer = {
+  ingeschakeld?: boolean;
   zoekterm: string;
   kolomFilters:
     Record<string, string>;
@@ -122,6 +123,7 @@ async function leesFoutmelding(
 }
 
 export function usePersoonscertificatenQuery({
+  ingeschakeld = true,
   zoekterm,
   kolomFilters,
   datumFilters,
@@ -193,6 +195,8 @@ export function usePersoonscertificatenQuery({
 
   const query =
     useInfiniteQuery({
+      enabled:
+        ingeschakeld,
       queryKey: [
         "persoonscertificaten",
         aanvraagSleutel,
@@ -399,10 +403,13 @@ export function usePersoonscertificatenQuery({
         ? query.error.message
         : null,
     isEersteKeerLaden:
+      ingeschakeld &&
       query.isPending,
     isVolgendePaginaLaden:
+      ingeschakeld &&
       query.isFetchingNextPage,
     heeftVolgendePagina:
+      ingeschakeld &&
       Boolean(
         query.hasNextPage,
       ),
