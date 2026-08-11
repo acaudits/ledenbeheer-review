@@ -112,6 +112,7 @@ model Terreincontrole {
   @@index([auditeurGebruikerId])
   @@index([datumPlaatsbezoek])
   @@index([verwijderdOp])
+  @@index([verwijderdOp, datumPlaatsbezoek(sort: Desc), id(sort: Desc)])
   @@index([postcode])
   @@index([gemeente])
   @@map("terreincontroles")

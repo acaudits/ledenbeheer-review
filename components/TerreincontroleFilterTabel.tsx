@@ -18,6 +18,9 @@ import {
 } from "@/components/TerreincontroleSnelleVelden";
 import TerreincontroleVerwijderKnop from "@/components/TerreincontroleVerwijderKnop";
 import {
+  useIngeplandeTerreincontrolesQuery,
+} from "@/hooks/useIngeplandeTerreincontrolesQuery";
+import {
   useTerreincontrolesQuery,
 } from "@/hooks/useTerreincontrolesQuery";
 
@@ -256,20 +259,44 @@ export function TerreincontroleFilterTabel({
     null,
   );
 
-  const gebruiktServer =
+  const gebruiktDossierServer =
     serverModus &&
     modus === "terreincontrole";
 
-  const serverQuery =
+  const gebruiktPlanningServer =
+    serverModus &&
+    modus === "planning";
+
+  const gebruiktServer =
+    gebruiktDossierServer ||
+    gebruiktPlanningServer;
+
+  const dossierServerQuery =
     useTerreincontrolesQuery({
       ingeschakeld:
-        gebruiktServer,
+        gebruiktDossierServer,
       zoekterm,
       filters,
       datumJaar,
       datumMaand,
       sortering,
     });
+
+  const planningServerQuery =
+    useIngeplandeTerreincontrolesQuery({
+      ingeschakeld:
+        gebruiktPlanningServer,
+      zoekterm,
+      filters,
+      datumJaar,
+      datumMaand,
+      sortering,
+    });
+
+  const serverQuery =
+    gebruiktPlanningServer
+      ? planningServerQuery
+      : dossierServerQuery;
 
   const bronRijen =
     gebruiktServer

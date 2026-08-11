@@ -1,6 +1,9 @@
 "use client";
 
 import {
+  useQueryClient,
+} from "@tanstack/react-query";
+import {
   useActionState,
   useEffect,
   useRef,
@@ -12,6 +15,9 @@ import {
   importeerIngeplandeTerreincontroleStatussen,
   type StatusExcelImportState,
 } from "@/app/terreincontroles-inplannen/status-import-actions";
+import {
+  INGEPLANDE_TERREINCONTROLES_QUERY_SLEUTEL,
+} from "@/hooks/useIngeplandeTerreincontrolesQuery";
 
 const beginstatus:
   StatusExcelImportState = {};
@@ -36,6 +42,9 @@ function ImportKnop() {
 export function IngeplandeTerreincontroleStatusExcelImport() {
   const router = useRouter();
 
+  const queryClient =
+    useQueryClient();
+
   const formulierRef =
     useRef<HTMLFormElement>(
       null,
@@ -55,11 +64,19 @@ export function IngeplandeTerreincontroleStatusExcelImport() {
     }
 
     formulierRef.current?.reset();
+
+    void queryClient
+      .invalidateQueries({
+        queryKey:
+          INGEPLANDE_TERREINCONTROLES_QUERY_SLEUTEL,
+      });
+
     router.refresh();
   }, [
     state.succes,
     state.message,
     router,
+    queryClient,
   ]);
 
   return (
