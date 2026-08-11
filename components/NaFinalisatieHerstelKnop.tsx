@@ -1,6 +1,9 @@
 "use client";
 
 import {
+  useQueryClient,
+} from "@tanstack/react-query";
+import {
   useRouter,
 } from "next/navigation";
 import {
@@ -11,6 +14,9 @@ import {
 import {
   herstelNaFinalisatie,
 } from "@/app/na-finalisatie/actions";
+import {
+  NA_FINALISATIE_QUERY_SLEUTEL,
+} from "@/hooks/useNaFinalisatieQuery";
 
 export function NaFinalisatieHerstelKnop({
   id,
@@ -19,6 +25,9 @@ export function NaFinalisatieHerstelKnop({
 }) {
   const router =
     useRouter();
+
+  const queryClient =
+    useQueryClient();
 
   const [
     isBezig,
@@ -58,6 +67,11 @@ export function NaFinalisatieHerstelKnop({
 
           return;
         }
+
+        await queryClient.invalidateQueries({
+          queryKey:
+            NA_FINALISATIE_QUERY_SLEUTEL,
+        });
 
         router.refresh();
       },

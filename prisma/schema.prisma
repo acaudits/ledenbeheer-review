@@ -477,6 +477,7 @@ model NaFinalisatie {
   verwijderdOp     DateTime? @map("verwijderd_op")
 
   @@index([verwijderdOp])
+  @@index([verwijderdOp, datumNaFinalisatie(sort: Desc), id(sort: Desc)])
   @@index([geregistreerd])
   @@index([datumNaFinalisatie])
   @@index([auditeur])

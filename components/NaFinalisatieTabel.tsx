@@ -15,6 +15,9 @@ import {
 import {
   NaFinalisatieVerwijderKnop,
 } from "@/components/NaFinalisatieVerwijderKnop";
+import {
+  useNaFinalisatieQuery,
+} from "@/hooks/useNaFinalisatieQuery";
 
 export type NaFinalisatieRij = {
   id: number;
@@ -290,12 +293,14 @@ type Props = {
     NaFinalisatieRij[];
   magBeheren: boolean;
   verwijderd?: boolean;
+  serverModus?: boolean;
 };
 
 export function NaFinalisatieTabel({
   rijen,
   magBeheren,
   verwijderd = false,
+  serverModus = false,
 }: Props) {
   const router =
     useRouter();
@@ -334,6 +339,33 @@ export function NaFinalisatieTabel({
     setAflopend,
   ] = useState(true);
 
+  const gebruiktServer =
+    serverModus &&
+    !verwijderd;
+
+  const serverQuery =
+    useNaFinalisatieQuery({
+      ingeschakeld:
+        gebruiktServer,
+      zoekterm:
+        zoeken,
+      filters,
+      datumJaar:
+        jaar,
+      datumMaand:
+        maand,
+      sortering: {
+        sleutel:
+          String(
+            sorteerSleutel,
+          ),
+        richting:
+          aflopend
+            ? "aflopend"
+            : "oplopend",
+      },
+    });
+
   const kolommen =
     useMemo(
       () =>
@@ -356,24 +388,37 @@ export function NaFinalisatieTabel({
   const jaren =
     useMemo(
       () =>
-        Array.from(
-          new Set(
-            rijen.map((rij) =>
-              rij.datumNaFinalisatie.slice(
-                0,
-                4,
+        gebruiktServer
+          ? [
+              "2027",
+              "2026",
+              "2025",
+            ]
+          : Array.from(
+              new Set(
+                rijen.map((rij) =>
+                  rij.datumNaFinalisatie.slice(
+                    0,
+                    4,
+                  ),
+                ),
               ),
-            ),
-          ),
-        )
-          .filter(Boolean)
-          .sort()
-          .reverse(),
-      [rijen],
+            )
+              .filter(Boolean)
+              .sort()
+              .reverse(),
+      [
+        gebruiktServer,
+        rijen,
+      ],
     );
 
   const zichtbareRijen =
     useMemo(() => {
+      if (gebruiktServer) {
+        return serverQuery.rijen;
+      }
+
       const algemeneZoekterm =
         zoeken
           .trim()
@@ -502,7 +547,19 @@ export function NaFinalisatieTabel({
       kolommen,
       sorteerSleutel,
       aflopend,
+      gebruiktServer,
+      serverQuery.rijen,
     ]);
+
+  const aantalBronRijen =
+    gebruiktServer
+      ? (
+          serverQuery
+            .aantalTotaal ??
+          serverQuery.rijen
+            .length
+        )
+      : rijen.length;
 
   function sorteer(
     sleutel:
@@ -637,7 +694,7 @@ export function NaFinalisatieTabel({
 
             <h2 className="mt-1 text-xl font-black text-slate-950">
               {zichtbareRijen.length} van{" "}
-              {rijen.length}{" "}
+              {aantalBronRijen}{" "}
               {rijen.length === 1
                 ? "registratie"
                 : "registraties"}
@@ -721,7 +778,7 @@ export function NaFinalisatieTabel({
         </div>
       </div>
 
-      {rijen.length === 0 ? (
+      {zichtbareRijen.length === 0 ? (
         <div className="px-6 py-14 text-center text-sm font-medium text-slate-500">
           Geen registraties gevonden.
         </div>
@@ -900,6 +957,59 @@ export function NaFinalisatieTabel({
           </table>
         </div>
       )}
+
+      {gebruiktServer ? (
+        <div className="flex flex-col gap-3 border-t border-slate-200 bg-white px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="text-sm text-slate-600">
+            {serverQuery.isEersteKeerLaden ? (
+              <span>
+                Registraties laden...
+              </span>
+            ) : serverQuery.fout ? (
+              <span className="font-semibold text-red-700">
+                {serverQuery.fout}
+              </span>
+            ) : (
+              <span>
+                {zichtbareRijen.length} van{" "}
+                {serverQuery.aantalTotaal ??
+                  zichtbareRijen.length}{" "}
+                resultaten geladen
+              </span>
+            )}
+          </div>
+
+          {serverQuery.fout ? (
+            <button
+              type="button"
+              onClick={() => {
+                void serverQuery.opnieuwLaden();
+              }}
+              className="inline-flex h-10 items-center justify-center rounded-xl border border-red-300 bg-red-50 px-4 text-sm font-semibold text-red-800 transition hover:bg-red-100"
+            >
+              Opnieuw proberen
+            </button>
+          ) : serverQuery.heeftVolgendePagina ? (
+            <button
+              type="button"
+              disabled={
+                serverQuery
+                  .isVolgendePaginaLaden
+              }
+              onClick={() => {
+                void serverQuery
+                  .laadVolgendePagina();
+              }}
+              className="inline-flex h-10 items-center justify-center rounded-xl border border-emerald-300 bg-emerald-50 px-4 text-sm font-bold text-emerald-800 transition hover:bg-emerald-100 disabled:cursor-wait disabled:opacity-60"
+            >
+              {serverQuery
+                .isVolgendePaginaLaden
+                ? "Resultaten laden..."
+                : "Meer resultaten laden"}
+            </button>
+          ) : null}
+        </div>
+      ) : null}
 
       <footer className="border-t border-slate-200 bg-slate-50 px-4 py-2.5 text-xs text-slate-500">
         {verwijderd

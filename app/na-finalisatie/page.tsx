@@ -1,8 +1,11 @@
 import Link from "next/link";
 
 import {
+  NaFinalisatieAantalTekst,
+  NaFinalisatieDashboard,
+} from "@/components/NaFinalisatieDashboard";
+import {
   NaFinalisatieTabel,
-  type NaFinalisatieRij,
 } from "@/components/NaFinalisatieTabel";
 import {
   vereisMachtiging,
@@ -10,9 +13,6 @@ import {
 import {
   heeftMachtiging,
 } from "@/lib/autorisatie";
-import {
-  prisma,
-} from "@/lib/prisma";
 
 export const dynamic =
   "force-dynamic";
@@ -29,78 +29,6 @@ export default async function NaFinalisatiePage() {
       "TERREINCONTROLES_BEHEREN",
     );
 
-  const registraties =
-    await prisma.naFinalisatie.findMany({
-      where: {
-        verwijderdOp: null,
-      },
-      orderBy: [
-        {
-          datumNaFinalisatie:
-            "desc",
-        },
-        {
-          id: "desc",
-        },
-      ],
-    });
-
-  const geregistreerd =
-    registraties.filter(
-      (registratie) =>
-        registratie.geregistreerd,
-    ).length;
-
-  const spontaan =
-    registraties.filter(
-      (registratie) =>
-        registratie.plaatsbezoek ===
-        "SPONTAAN",
-    ).length;
-
-  const afspraakOfKlacht =
-    registraties.filter(
-      (registratie) =>
-        registratie.plaatsbezoek !==
-        "SPONTAAN",
-    ).length;
-
-  const rijen:
-    NaFinalisatieRij[] =
-    registraties.map(
-      (registratie) => ({
-        id: registratie.id,
-        auditeur:
-          registratie.auditeur,
-        naamAdi:
-          registratie.naamAdi,
-        geregistreerd:
-          registratie.geregistreerd,
-        linkAttest:
-          registratie.linkAttest,
-        attestnummer:
-          registratie.attestnummer,
-        datumNaFinalisatie:
-          registratie.datumNaFinalisatie.toISOString(),
-        plaatsbezoek:
-          registratie.plaatsbezoek,
-        typeControle:
-          registratie.typeControle,
-        reden:
-          registratie.reden,
-        opmerking:
-          registratie.opmerking,
-        inspectielocatie:
-          registratie.inspectielocatie,
-        naamBedrijf:
-          registratie.naamBedrijf,
-        persoonsId:
-          registratie.persoonsId,
-        attestId:
-          registratie.attestId,
-      }),
-    );
-
   return (
     <div className="space-y-4">
       <header className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
@@ -115,11 +43,7 @@ export default async function NaFinalisatiePage() {
             </h1>
 
             <p className="mt-1.5 text-sm text-slate-500">
-              {registraties.length} actieve{" "}
-              {registraties.length ===
-              1
-                ? "registratie"
-                : "registraties"}
+              <NaFinalisatieAantalTekst />
             </p>
           </div>
 
@@ -143,57 +67,12 @@ export default async function NaFinalisatiePage() {
         </div>
       </header>
 
-      <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
-        <article className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-emerald-950 shadow-sm">
-          <p className="text-xs font-bold uppercase tracking-wide opacity-70">
-            Aantal registraties
-          </p>
-          <p className="mt-2 text-3xl font-black">
-            {registraties.length}
-          </p>
-        </article>
-
-        <article className="rounded-2xl border border-sky-200 bg-sky-50 p-4 text-sky-950 shadow-sm">
-          <p className="text-xs font-bold uppercase tracking-wide opacity-70">
-            Geregistreerd
-          </p>
-          <p className="mt-2 text-3xl font-black">
-            {geregistreerd}
-          </p>
-        </article>
-
-        <article className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-slate-950 shadow-sm">
-          <p className="text-xs font-bold uppercase tracking-wide opacity-70">
-            Niet geregistreerd
-          </p>
-          <p className="mt-2 text-3xl font-black">
-            {registraties.length -
-              geregistreerd}
-          </p>
-        </article>
-
-        <article className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-amber-950 shadow-sm">
-          <p className="text-xs font-bold uppercase tracking-wide opacity-70">
-            Spontaan
-          </p>
-          <p className="mt-2 text-3xl font-black">
-            {spontaan}
-          </p>
-        </article>
-
-        <article className="rounded-2xl border border-violet-200 bg-violet-50 p-4 text-violet-950 shadow-sm">
-          <p className="text-xs font-bold uppercase tracking-wide opacity-70">
-            Afspraak of klacht
-          </p>
-          <p className="mt-2 text-3xl font-black">
-            {afspraakOfKlacht}
-          </p>
-        </article>
-      </section>
+      <NaFinalisatieDashboard />
 
       <NaFinalisatieTabel
-        rijen={rijen}
+        rijen={[]}
         magBeheren={magBeheren}
+        serverModus
       />
     </div>
   );

@@ -1,5 +1,8 @@
 "use client";
 
+import {
+  useQueryClient,
+} from "@tanstack/react-query";
 import Link from "next/link";
 import {
   useState,
@@ -11,11 +14,17 @@ import {
   importeerNaFinalisatieBatch,
   type NaFinalisatieBulkResultaat,
 } from "@/app/na-finalisatie/bulk-import-actions";
+import {
+  NA_FINALISATIE_QUERY_SLEUTEL,
+} from "@/hooks/useNaFinalisatieQuery";
 
 const bestandStijl =
   "mt-1 block w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm file:mr-3 file:rounded-lg file:border-0 file:bg-slate-100 file:px-3 file:py-2 file:text-sm file:font-semibold";
 
 export function NaFinalisatieBulkImport() {
+  const queryClient =
+    useQueryClient();
+
   const [
     referentie,
     setReferentie,
@@ -114,6 +123,13 @@ export function NaFinalisatieBulkImport() {
         setPreviewBevestigd(
           false,
         );
+
+        if (antwoord.succes) {
+          await queryClient.invalidateQueries({
+            queryKey:
+              NA_FINALISATIE_QUERY_SLEUTEL,
+          });
+        }
       },
     );
   }
