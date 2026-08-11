@@ -1,6 +1,9 @@
 "use client";
 
 import {
+  useQueryClient,
+} from "@tanstack/react-query";
+import {
   useRouter,
 } from "next/navigation";
 import {
@@ -11,6 +14,9 @@ import {
 import {
   verwijderTerreincontrole,
 } from "@/app/terreincontroles/dossier-actions";
+import {
+  TERREINCONTROLES_QUERY_SLEUTEL,
+} from "@/hooks/useTerreincontrolesQuery";
 
 type Props = {
   id: number;
@@ -21,6 +27,9 @@ export function TerreincontroleDossierVerwijderKnop({
 }: Props) {
   const router =
     useRouter();
+
+  const queryClient =
+    useQueryClient();
 
   const [
     isBezig,
@@ -50,6 +59,12 @@ export function TerreincontroleDossierVerwijderKnop({
           await verwijderTerreincontrole(
             id,
           );
+
+          await queryClient
+            .invalidateQueries({
+              queryKey:
+                TERREINCONTROLES_QUERY_SLEUTEL,
+            });
 
           router.refresh();
         } catch (fout) {

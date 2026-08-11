@@ -29,6 +29,7 @@ type Props = {
   rijen:
     TerreincontroleDossierRij[];
   magBeheren: boolean;
+  serverModus?: boolean;
 };
 
 const kolommen:
@@ -110,6 +111,7 @@ const kolommen:
 export function TerreincontroleDossiersTabel({
   rijen,
   magBeheren,
+  serverModus = false,
 }: Props) {
   return (
     <TerreincontroleFilterTabel
@@ -117,6 +119,7 @@ export function TerreincontroleDossiersTabel({
       kolommen={kolommen}
       modus="terreincontrole"
       magBeheren={magBeheren}
+      serverModus={serverModus}
     />
   );
 }

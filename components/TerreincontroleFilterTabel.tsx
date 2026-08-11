@@ -17,6 +17,9 @@ import {
   TerreincontroleStatusSelect,
 } from "@/components/TerreincontroleSnelleVelden";
 import TerreincontroleVerwijderKnop from "@/components/TerreincontroleVerwijderKnop";
+import {
+  useTerreincontrolesQuery,
+} from "@/hooks/useTerreincontrolesQuery";
 
 export type FilterTabelRij = {
   id: number;
@@ -43,6 +46,7 @@ type Props = {
     | "terreincontrole"
     | "planning";
   magBeheren: boolean;
+  serverModus?: boolean;
 };
 
 type Sortering = {
@@ -218,6 +222,7 @@ export function TerreincontroleFilterTabel({
   kolommen,
   modus,
   magBeheren,
+  serverModus = false,
 }: Props) {
   const router =
     useRouter();
@@ -251,40 +256,74 @@ export function TerreincontroleFilterTabel({
     null,
   );
 
+  const gebruiktServer =
+    serverModus &&
+    modus === "terreincontrole";
+
+  const serverQuery =
+    useTerreincontrolesQuery({
+      ingeschakeld:
+        gebruiktServer,
+      zoekterm,
+      filters,
+      datumJaar,
+      datumMaand,
+      sortering,
+    });
+
+  const bronRijen =
+    gebruiktServer
+      ? serverQuery.rijen
+      : rijen;
+
   const datumSleutel =
     modus === "planning"
       ? "datumPlaatsbezoek"
       : "datumControle";
 
   const beschikbareJaren =
-    useMemo(
-      () =>
-        Array.from(
-          new Set(
-            rijen
-              .map((rij) =>
-                datumOnderdelen(
-                  rij[datumSleutel],
-                )?.jaar,
-              )
-              .filter(
-                (
-                  jaar,
-                ): jaar is string =>
-                  Boolean(jaar),
-              ),
-          ),
-        ).sort(
-          (eerste, tweede) =>
-            tweede.localeCompare(
-              eerste,
+    useMemo(() => {
+      if (gebruiktServer) {
+        return [
+          "2025",
+          "2026",
+          "2027",
+        ];
+      }
+
+      return Array.from(
+        new Set(
+          bronRijen
+            .map((rij) =>
+              datumOnderdelen(
+                rij[datumSleutel],
+              )?.jaar,
+            )
+            .filter(
+              (
+                jaar,
+              ): jaar is string =>
+                Boolean(jaar),
             ),
         ),
-      [rijen, datumSleutel],
-    );
+      ).sort(
+        (eerste, tweede) =>
+          tweede.localeCompare(
+            eerste,
+          ),
+      );
+    }, [
+      bronRijen,
+      datumSleutel,
+      gebruiktServer,
+    ]);
 
   const zichtbareRijen =
     useMemo(() => {
+      if (gebruiktServer) {
+        return bronRijen;
+      }
+
       const algemeneTerm =
         zoekterm
           .trim()
@@ -293,7 +332,7 @@ export function TerreincontroleFilterTabel({
           );
 
       const resultaat =
-        rijen.filter((rij) => {
+        bronRijen.filter((rij) => {
           if (algemeneTerm) {
             const volledigeTekst =
               Object.values(rij)
@@ -448,7 +487,7 @@ export function TerreincontroleFilterTabel({
         },
       );
     }, [
-      rijen,
+      bronRijen,
       kolommen,
       zoekterm,
       filters,
@@ -456,6 +495,7 @@ export function TerreincontroleFilterTabel({
       datumMaand,
       datumSleutel,
       sortering,
+      gebruiktServer,
     ]);
 
   const heeftFilters =
@@ -719,7 +759,14 @@ export function TerreincontroleFilterTabel({
 
             <p className="mt-0.5 text-xs text-slate-500">
               {zichtbareRijen.length} van{" "}
-              {rijen.length} terreincontroles
+              {gebruiktServer
+                ? (
+                    serverQuery
+                      .aantalTotaal ??
+                    "…"
+                  )
+                : rijen.length}{" "}
+              terreincontroles
             </p>
           </div>
 
@@ -849,8 +896,32 @@ export function TerreincontroleFilterTabel({
         </p>
       </div>
 
-      {zichtbareRijen.length ===
-      0 ? (
+      {gebruiktServer &&
+      serverQuery
+        .isEersteKeerLaden ? (
+        <div className="p-12 text-center text-sm font-semibold text-slate-500">
+          Terreincontroles laden...
+        </div>
+      ) : gebruiktServer &&
+        serverQuery.fout ? (
+        <div className="space-y-3 p-12 text-center">
+          <p className="text-sm font-semibold text-red-700">
+            {serverQuery.fout}
+          </p>
+
+          <button
+            type="button"
+            onClick={() => {
+              void serverQuery
+                .opnieuwLaden();
+            }}
+            className="rounded-xl border border-red-300 bg-white px-4 py-2 text-sm font-semibold text-red-700 hover:bg-red-50"
+          >
+            Opnieuw proberen
+          </button>
+        </div>
+      ) : zichtbareRijen.length ===
+        0 ? (
         <div className="p-12 text-center text-sm text-slate-500">
           Geen terreincontroles gevonden.
         </div>
@@ -1009,8 +1080,32 @@ export function TerreincontroleFilterTabel({
         </div>
       )}
 
-      <footer className="border-t border-slate-200 bg-slate-50 px-4 py-2.5 text-xs text-slate-500">
-        Klik op een rij om de terreincontrole te bekijken. Klik op een kolomnaam om te sorteren en gebruik de filters om de lijst te verfijnen.
+      <footer className="flex flex-col gap-3 border-t border-slate-200 bg-slate-50 px-4 py-2.5 text-xs text-slate-500 sm:flex-row sm:items-center sm:justify-between">
+        <span>
+          Klik op een rij om de terreincontrole te bekijken. Klik op een kolomnaam om te sorteren en gebruik de filters om de lijst te verfijnen.
+        </span>
+
+        {gebruiktServer &&
+        serverQuery
+          .heeftVolgendePagina ? (
+          <button
+            type="button"
+            disabled={
+              serverQuery
+                .isVolgendePaginaLaden
+            }
+            onClick={() => {
+              void serverQuery
+                .laadVolgendePagina();
+            }}
+            className="inline-flex h-9 shrink-0 items-center justify-center rounded-xl border border-emerald-300 bg-white px-4 font-semibold text-emerald-800 hover:bg-emerald-50 disabled:cursor-wait disabled:opacity-60"
+          >
+            {serverQuery
+              .isVolgendePaginaLaden
+              ? "Resultaten laden..."
+              : "Meer resultaten laden"}
+          </button>
+        ) : null}
       </footer>
     </section>
   );
