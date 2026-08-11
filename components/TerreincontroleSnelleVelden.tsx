@@ -1,6 +1,9 @@
 "use client";
 
 import {
+  useQueryClient,
+} from "@tanstack/react-query";
+import {
   useState,
   useTransition,
 } from "react";
@@ -9,6 +12,9 @@ import {
   wijzigTerreincontroleFactuur,
   wijzigTerreincontroleStatus,
 } from "@/app/terreincontroles-inplannen/snelle-acties";
+import {
+  INGEPLANDE_TERREINCONTROLES_QUERY_SLEUTEL,
+} from "@/hooks/useIngeplandeTerreincontrolesQuery";
 
 type TerreincontroleStatus =
   | "GEARCHIVEERD_ATTEST"
@@ -31,6 +37,9 @@ export function TerreincontroleStatusSelect({
   id,
   beginwaarde,
 }: StatusSelectProps) {
+  const queryClient =
+    useQueryClient();
+
   const [
     status,
     setStatus,
@@ -86,7 +95,15 @@ export function TerreincontroleStatusSelect({
             resultaat.message ??
               "Opslaan mislukt.",
           );
+
+          return;
         }
+
+        await queryClient
+          .invalidateQueries({
+            queryKey:
+              INGEPLANDE_TERREINCONTROLES_QUERY_SLEUTEL,
+          });
       },
     );
   }
@@ -142,6 +159,9 @@ export function TerreincontroleFactuurSelect({
   id,
   beginwaarde,
 }: FactuurSelectProps) {
+  const queryClient =
+    useQueryClient();
+
   const [
     factuurVerzonden,
     setFactuurVerzonden,
@@ -191,7 +211,15 @@ export function TerreincontroleFactuurSelect({
             resultaat.message ??
               "Opslaan mislukt.",
           );
+
+          return;
         }
+
+        await queryClient
+          .invalidateQueries({
+            queryKey:
+              INGEPLANDE_TERREINCONTROLES_QUERY_SLEUTEL,
+          });
       },
     );
   }
