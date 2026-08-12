@@ -2,14 +2,22 @@
 
 import {
   useActionState,
+  useEffect,
   useRef,
   useState,
 } from "react";
 
 import {
+  useQueryClient,
+} from "@tanstack/react-query";
+
+import {
   meldLaattijdigePlaatsbezoeken,
   type LaattijdigeMeldingState,
 } from "@/app/aanmelden-laattijdige-plaatsbezoeken/actions";
+import {
+  LAATTIJDIGE_PLAATSBEZOEKEN_QUERY_SLEUTEL,
+} from "@/hooks/useLaattijdigePlaatsbezoekenQuery";
 
 type Optie = {
   waarde: string;
@@ -100,6 +108,23 @@ export function LaattijdigePlaatsbezoekenFormulier() {
     meldLaattijdigePlaatsbezoeken,
     beginstatus,
   );
+
+  const queryClient =
+    useQueryClient();
+
+  useEffect(() => {
+    if (!state.geslaagd) {
+      return;
+    }
+
+    void queryClient.invalidateQueries({
+      queryKey:
+        LAATTIJDIGE_PLAATSBEZOEKEN_QUERY_SLEUTEL,
+    });
+  }, [
+    queryClient,
+    state.geslaagd,
+  ]);
 
   const [naamAdi, setNaamAdi] =
     useState("");
