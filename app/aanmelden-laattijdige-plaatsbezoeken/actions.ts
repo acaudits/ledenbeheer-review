@@ -2,6 +2,7 @@
 
 import { randomUUID } from "node:crypto";
 
+import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
 
 import {
@@ -543,6 +544,10 @@ export async function meldLaattijdigePlaatsbezoeken(
           },
         },
       });
+
+  revalidatePath(
+    "/laattijdige-plaatsbezoeken",
+  );
 
   try {
     await verwerkPushVoorNieuweLaattijdigeMelding({

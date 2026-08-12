@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  type ReactNode,
   useEffect,
   useMemo,
   useState,
@@ -10,6 +11,10 @@ import {
   LaattijdigePlaatsbezoekenKaart,
   type LaattijdigKaartbezoek,
 } from "@/components/LaattijdigePlaatsbezoekenKaart";
+import {
+  useLaattijdigePlaatsbezoekenKaartQuery,
+  useLaattijdigePlaatsbezoekenQuery,
+} from "@/hooks/useLaattijdigePlaatsbezoekenQuery";
 
 export type LaattijdigPlaatsbezoekRij = {
   id: number;
@@ -32,48 +37,156 @@ export type LaattijdigPlaatsbezoekRij = {
   aangemeldOp: string;
 };
 
+type KolomSleutel =
+  | "timer"
+  | "naamAdi"
+  | "bedrijfsnaam"
+  | "aantalAttesten"
+  | "laatsteTerreincontrole"
+  | "aantalTerreincontroles"
+  | "inspectielocatie"
+  | "datum"
+  | "tijdstip"
+  | "gemeenschappelijkeDelen"
+  | "extraAdresdetails"
+  | "reden"
+  | "aangemeldOp";
+
+type Sorteerrichting =
+  | "oplopend"
+  | "aflopend";
+
 type TimerStatus = {
   soort:
     | "TOEKOMSTIG"
     | "BEGONNEN"
     | "VERLOPEN";
-  rijStijl: string;
   label: string;
-  toegankelijkLabel: string;
-  uren?: string;
-  minuten?: string;
+  detail: string;
+};
+
+type Props = {
+  rijen?: LaattijdigPlaatsbezoekRij[];
+  referentieTijd?: number;
+  serverModus?: boolean;
 };
 
 const EEN_UUR_MS =
   60 * 60 * 1000;
 
-function formatteerGetal(
-  waarde: number,
-) {
-  return String(waarde).padStart(
-    2,
-    "0",
-  );
-}
+const kolommen: Array<{
+  sleutel: KolomSleutel;
+  label: string;
+  breedte?: string;
+}> = [
+  {
+    sleutel: "timer",
+    label: "Timer",
+    breedte: "min-w-48",
+  },
+  {
+    sleutel: "naamAdi",
+    label: "ADI",
+    breedte: "min-w-48",
+  },
+  {
+    sleutel: "bedrijfsnaam",
+    label: "Bedrijf",
+    breedte: "min-w-52",
+  },
+  {
+    sleutel: "aantalAttesten",
+    label: "Aantal attesten",
+    breedte: "min-w-40",
+  },
+  {
+    sleutel:
+      "laatsteTerreincontrole",
+    label:
+      "Datum laatste terreincontrole",
+    breedte: "min-w-52",
+  },
+  {
+    sleutel:
+      "aantalTerreincontroles",
+    label:
+      "Aantal terreincontroles",
+    breedte: "min-w-48",
+  },
+  {
+    sleutel: "inspectielocatie",
+    label: "Inspectielocatie",
+    breedte: "min-w-72",
+  },
+  {
+    sleutel: "datum",
+    label: "Datum",
+    breedte: "min-w-48",
+  },
+  {
+    sleutel: "tijdstip",
+    label: "Tijdstip",
+    breedte: "min-w-36",
+  },
+  {
+    sleutel:
+      "gemeenschappelijkeDelen",
+    label:
+      "Gemeenschappelijke delen",
+    breedte: "min-w-48",
+  },
+  {
+    sleutel:
+      "extraAdresdetails",
+    label: "Extra adresdetails",
+    breedte: "min-w-56",
+  },
+  {
+    sleutel: "reden",
+    label: "Reden",
+    breedte: "min-w-64",
+  },
+  {
+    sleutel: "aangemeldOp",
+    label: "Aangemeld op",
+    breedte: "min-w-48",
+  },
+];
+
+const maanden = [
+  ["01", "Januari"],
+  ["02", "Februari"],
+  ["03", "Maart"],
+  ["04", "April"],
+  ["05", "Mei"],
+  ["06", "Juni"],
+  ["07", "Juli"],
+  ["08", "Augustus"],
+  ["09", "September"],
+  ["10", "Oktober"],
+  ["11", "November"],
+  ["12", "December"],
+] as const;
 
 function bepaalTimerStatus(
   startMomentIso: string,
   nu: number,
 ): TimerStatus {
   const startMoment =
-    new Date(startMomentIso)
-      .getTime();
+    new Date(
+      startMomentIso,
+    ).getTime();
 
   if (
-    !Number.isFinite(startMoment)
+    !Number.isFinite(
+      startMoment,
+    )
   ) {
     return {
       soort: "VERLOPEN",
-      rijStijl:
-        "bg-red-50 hover:bg-red-100/80",
-      label: "Ongeldig tijdstip",
-      toegankelijkLabel:
+      label:
         "Ongeldig tijdstip",
+      detail: "",
     };
   }
 
@@ -89,26 +202,22 @@ function bepaalTimerStatus(
         ),
       );
 
-    const uren = Math.floor(
-      resterendeMinuten / 60,
-    );
+    const uren =
+      Math.floor(
+        resterendeMinuten /
+          60,
+      );
 
     const minuten =
-      resterendeMinuten % 60;
+      resterendeMinuten %
+      60;
 
     return {
       soort: "TOEKOMSTIG",
-      rijStijl:
-        "bg-emerald-50 hover:bg-emerald-100/80",
-      label: "Tot plaatsbezoek",
-      toegankelijkLabel:
-        `Nog ${uren} uur en ${minuten} minuten tot het plaatsbezoek`,
-      uren:
-        formatteerGetal(uren),
-      minuten:
-        formatteerGetal(
-          minuten,
-        ),
+      label:
+        "Tot plaatsbezoek",
+      detail:
+        `${String(uren).padStart(2, "0")}:${String(minuten).padStart(2, "0")}`,
     };
   }
 
@@ -116,43 +225,84 @@ function bepaalTimerStatus(
     Math.abs(verschil);
 
   if (
-    verstreken < EEN_UUR_MS
+    verstreken <
+    EEN_UUR_MS
   ) {
-    const verstrekenMinuten =
+    const minuten =
       Math.min(
         59,
         Math.floor(
-          verstreken / 60_000,
+          verstreken /
+            60_000,
         ),
       );
 
     return {
       soort: "BEGONNEN",
-      rijStijl:
-        "bg-amber-50 hover:bg-amber-100/80",
       label: "Begonnen",
-      toegankelijkLabel:
-        `Het plaatsbezoek is begonnen. ${verstrekenMinuten} minuten van 1 uur verstreken`,
-      uren: "00",
-      minuten:
-        formatteerGetal(
-          verstrekenMinuten,
-        ),
+      detail:
+        `00:${String(minuten).padStart(2, "0")}`,
     };
   }
 
   return {
     soort: "VERLOPEN",
-    rijStijl:
-      "bg-red-50 hover:bg-red-100/80",
     label: "Verlopen",
-    toegankelijkLabel:
-      "Het plaatsbezoek is langer dan één uur geleden begonnen en is verlopen",
+    detail: "",
   };
 }
 
+function Timer({
+  rij,
+  nu,
+}: {
+  rij:
+    LaattijdigPlaatsbezoekRij;
+  nu: number;
+}) {
+  const status =
+    bepaalTimerStatus(
+      rij.startMomentIso,
+      nu,
+    );
+
+  const stijl =
+    rij.waarschuwingTerreincontrole
+      ? "border-red-300 bg-red-100 text-red-950"
+      : status.soort ===
+          "BEGONNEN"
+        ? "border-amber-300 bg-amber-100 text-amber-950"
+        : status.soort ===
+            "TOEKOMSTIG"
+          ? "border-emerald-300 bg-emerald-100 text-emerald-950"
+          : "border-slate-300 bg-slate-100 text-slate-700";
+
+  return (
+    <div
+      className={`inline-flex min-w-36 flex-col rounded-xl border px-3 py-2 ${stijl}`}
+    >
+      <span className="text-xs font-black uppercase tracking-wide">
+        {status.label}
+      </span>
+
+      {status.detail ? (
+        <span className="mt-1 font-mono text-lg font-black">
+          {status.detail}
+        </span>
+      ) : null}
+
+      {rij.waarschuwingTerreincontrole ? (
+        <span className="mt-1 text-xs font-bold">
+          Terreincontrole nodig
+        </span>
+      ) : null}
+    </div>
+  );
+}
+
 function googleMapsUrl(
-  rij: LaattijdigPlaatsbezoekRij,
+  rij:
+    LaattijdigPlaatsbezoekRij,
 ) {
   const heeftCoordinaten =
     typeof rij.latitude ===
@@ -179,125 +329,177 @@ function googleMapsUrl(
   );
 }
 
-function Timer({
-  startMomentIso,
-  nu,
-  waarschuwingTerreincontrole,
-}: {
-  startMomentIso: string;
-  nu: number;
-  waarschuwingTerreincontrole: boolean;
-}) {
-  const status =
-    bepaalTimerStatus(
-      startMomentIso,
-      nu,
-    );
-
-  const timerStijl =
-    waarschuwingTerreincontrole
-      ? {
-          hoofd:
-            "border-red-300 bg-red-100 text-red-950",
-          label:
-            "text-red-800",
-        }
-      : {
-          hoofd:
-            "border-emerald-300 bg-emerald-100 text-emerald-950",
-          label:
-            "text-emerald-800",
-        };
-
+function celInhoud(
+  rij:
+    LaattijdigPlaatsbezoekRij,
+  sleutel:
+    KolomSleutel,
+  nu: number,
+): ReactNode {
   if (
-    status.soort ===
-    "VERLOPEN"
+    sleutel === "timer"
   ) {
     return (
-      <div
-        className={`inline-flex min-w-28 items-center justify-center rounded-xl border px-3 py-2 text-sm font-black ${timerStijl.hoofd}`}
-        aria-label={
-          status.toegankelijkLabel
-        }
-      >
-        Verlopen
-      </div>
+      <Timer
+        rij={rij}
+        nu={nu}
+      />
     );
   }
 
+  if (
+    sleutel ===
+    "inspectielocatie"
+  ) {
+    return (
+      <a
+        href={googleMapsUrl(
+          rij,
+        )}
+        target="_blank"
+        rel="noreferrer"
+        className="font-semibold text-blue-700 underline decoration-blue-300 underline-offset-2 hover:text-blue-900"
+      >
+        {
+          rij.inspectielocatie
+        }
+      </a>
+    );
+  }
+
+  if (
+    sleutel ===
+      "aantalAttesten" ||
+    sleutel ===
+      "aantalTerreincontroles"
+  ) {
+    return rij[sleutel];
+  }
+
+  const waarde =
+    rij[sleutel];
+
   return (
-    <div
-      className={`inline-flex min-w-40 flex-col items-center rounded-xl border px-3 py-2 ${timerStijl.hoofd}`}
-      aria-label={
-        status.toegankelijkLabel
-      }
-    >
-      <span
-        className="font-mono text-lg font-black tabular-nums"
-        aria-hidden="true"
-      >
-        {status.uren}
-        <span className="timer-knipper">
-          :
-        </span>
-        {status.minuten}
-
-        {status.soort ===
-        "BEGONNEN" ? (
-          <>
-            <span className="mx-1.5">
-              /
-            </span>
-            01
-            <span className="timer-knipper">
-              :
-            </span>
-            00
-          </>
-        ) : null}
-      </span>
-
-      <span
-        className={`mt-0.5 text-[10px] font-black uppercase tracking-wide ${timerStijl.label}`}
-      >
-        {status.label}
-      </span>
-    </div>
+    waarde || "—"
   );
 }
 
 export function LaattijdigePlaatsbezoekenTabel({
-  rijen,
-  referentieTijd,
-}: {
-  rijen:
-    LaattijdigPlaatsbezoekRij[];
-  referentieTijd: number;
-}) {
-  const [nu, setNu] =
-    useState(referentieTijd);
+  rijen = [],
+  referentieTijd = 0,
+  serverModus = false,
+}: Props) {
+  const [
+    zoeken,
+    setZoeken,
+  ] = useState("");
+
+  const [
+    filters,
+    setFilters,
+  ] = useState<
+    Record<string, string>
+  >({});
+
+  const [
+    datumJaar,
+    setDatumJaar,
+  ] = useState("");
+
+  const [
+    datumMaand,
+    setDatumMaand,
+  ] = useState("");
+
+  const [
+    sorteerSleutel,
+    setSorteerSleutel,
+  ] = useState<KolomSleutel>(
+    "aangemeldOp",
+  );
+
+  const [
+    sorteerRichting,
+    setSorteerRichting,
+  ] = useState<Sorteerrichting>(
+    "aflopend",
+  );
+
+  const [
+    nu,
+    setNu,
+  ] = useState(
+    referentieTijd,
+  );
 
   useEffect(() => {
-    const interval =
-      window.setInterval(() => {
-        setNu(Date.now());
-      }, 1_000);
+    const timer =
+      window.setInterval(
+        () => {
+          setNu(
+            Date.now(),
+          );
+        },
+        60_000,
+      );
 
     return () => {
       window.clearInterval(
-        interval,
+        timer,
       );
     };
   }, []);
 
-  const huidigeMinuut =
-    Math.floor(nu / 60_000);
+  const serverQuery =
+    useLaattijdigePlaatsbezoekenQuery(
+      {
+        ingeschakeld:
+          serverModus,
+        zoekterm:
+          zoeken,
+        filters,
+        datumJaar,
+        datumMaand,
+        sortering: {
+          sleutel:
+            sorteerSleutel,
+          richting:
+            sorteerRichting,
+        },
+      },
+    );
 
-  const kaartRijen =
+  const kaartQuery =
+    useLaattijdigePlaatsbezoekenKaartQuery(
+      {
+        ingeschakeld:
+          serverModus,
+      },
+    );
+
+  const serverReferentieTijd =
+    Date.parse(
+      serverQuery.overzicht
+        ?.referentieTijdIso ??
+        "",
+    );
+
+  const effectieveNu =
+    nu > 0
+      ? nu
+      : Number.isFinite(
+            serverReferentieTijd,
+          )
+        ? serverReferentieTijd
+        : 0;
+
+  const zichtbareRijen =
+    serverModus
+      ? serverQuery.rijen
+      : rijen;
+
+  const lokaleKaartRijen =
     useMemo(() => {
-      const kaartNu =
-        huidigeMinuut * 60_000;
-
       return rijen.flatMap(
         (
           rij,
@@ -305,7 +507,7 @@ export function LaattijdigePlaatsbezoekenTabel({
           const status =
             bepaalTimerStatus(
               rij.startMomentIso,
-              kaartNu,
+              effectieveNu,
             );
 
           if (
@@ -352,7 +554,88 @@ export function LaattijdigePlaatsbezoekenTabel({
           ];
         },
       );
-    }, [rijen, huidigeMinuut]);
+    }, [
+      rijen,
+      effectieveNu,
+    ]);
+
+  const kaartRijen =
+    serverModus
+      ? kaartQuery.rijen
+      : lokaleKaartRijen;
+
+  const aantalTotaal =
+    serverModus
+      ? serverQuery
+          .aantalTotaal ??
+        serverQuery
+          .rijen.length
+      : rijen.length;
+
+  const wijzigFilter = (
+    sleutel:
+      KolomSleutel,
+    waarde: string,
+  ) => {
+    setFilters(
+      (huidige) => ({
+        ...huidige,
+        [sleutel]:
+          waarde,
+      }),
+    );
+  };
+
+  const sorteerOp = (
+    sleutel:
+      KolomSleutel,
+  ) => {
+    if (
+      sleutel ===
+      sorteerSleutel
+    ) {
+      setSorteerRichting(
+        (huidige) =>
+          huidige ===
+          "oplopend"
+            ? "aflopend"
+            : "oplopend",
+      );
+
+      return;
+    }
+
+    setSorteerSleutel(
+      sleutel,
+    );
+    setSorteerRichting(
+      "oplopend",
+    );
+  };
+
+  const wisFilters = () => {
+    setZoeken("");
+    setFilters({});
+    setDatumJaar("");
+    setDatumMaand("");
+    setSorteerSleutel(
+      "aangemeldOp",
+    );
+    setSorteerRichting(
+      "aflopend",
+    );
+  };
+
+  const heeftFilters =
+    zoeken.trim() !== "" ||
+    datumJaar !== "" ||
+    datumMaand !== "" ||
+    Object.values(
+      filters,
+    ).some(
+      (waarde) =>
+        waarde.trim() !== "",
+    );
 
   return (
     <div className="space-y-4">
@@ -360,203 +643,353 @@ export function LaattijdigePlaatsbezoekenTabel({
         rijen={kaartRijen}
       />
 
+      {serverModus &&
+      kaartQuery.fout ? (
+        <div className="rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-950">
+          <p className="font-bold">
+            De kaart kon niet worden bijgewerkt.
+          </p>
+
+          <button
+            type="button"
+            onClick={() => {
+              void kaartQuery
+                .opnieuwLaden();
+            }}
+            className="mt-2 font-bold underline"
+          >
+            Opnieuw proberen
+          </button>
+        </div>
+      ) : null}
+
+      <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+          <label className="block flex-1">
+            <span className="sr-only">
+              Zoeken
+            </span>
+
+            <input
+              type="search"
+              value={zoeken}
+              onChange={(
+                gebeurtenis,
+              ) => {
+                setZoeken(
+                  gebeurtenis
+                    .target.value,
+                );
+              }}
+              placeholder="Zoeken in laattijdige plaatsbezoeken..."
+              className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+            />
+          </label>
+
+          <div className="flex items-center gap-3">
+            <span className="text-sm font-semibold text-slate-600">
+              {
+                zichtbareRijen.length
+              } van{" "}
+              {aantalTotaal}
+            </span>
+
+            {heeftFilters ? (
+              <button
+                type="button"
+                onClick={
+                  wisFilters
+                }
+                className="rounded-xl border border-slate-300 px-4 py-2 text-sm font-bold text-slate-700 hover:bg-slate-50"
+              >
+                Filters wissen
+              </button>
+            ) : null}
+          </div>
+        </div>
+      </div>
+
       <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-        {rijen.length === 0 ? (
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[2350px] text-left text-sm">
+            <thead className="bg-slate-100 text-xs uppercase tracking-wide text-slate-600">
+              <tr>
+                {kolommen.map(
+                  (kolom) => (
+                    <th
+                      key={
+                        kolom.sleutel
+                      }
+                      className={`px-3 py-3 align-top ${kolom.breedte ?? ""}`}
+                    >
+                      <button
+                        type="button"
+                        onClick={() => {
+                          sorteerOp(
+                            kolom.sleutel,
+                          );
+                        }}
+                        className="flex min-h-10 w-full items-start justify-between gap-2 text-left font-black hover:text-blue-700"
+                      >
+                        <span>
+                          {
+                            kolom.label
+                          }
+                        </span>
+
+                        <span aria-hidden="true">
+                          {sorteerSleutel ===
+                          kolom.sleutel
+                            ? sorteerRichting ===
+                                "oplopend"
+                              ? "↑"
+                              : "↓"
+                            : "↕"}
+                        </span>
+                      </button>
+
+                      {kolom.sleutel ===
+                      "datum" ? (
+                        <div className="mt-2 grid grid-cols-2 gap-2 normal-case tracking-normal">
+                          <select
+                            value={
+                              datumJaar
+                            }
+                            onChange={(
+                              gebeurtenis,
+                            ) => {
+                              setDatumJaar(
+                                gebeurtenis
+                                  .target
+                                  .value,
+                              );
+                            }}
+                            aria-label="Filterjaar datum plaatsbezoek"
+                            className="min-w-0 rounded-lg border border-slate-300 bg-white px-2 py-2 text-xs font-medium text-slate-700"
+                          >
+                            <option value="">
+                              Jaar
+                            </option>
+                            <option value="2027">
+                              2027
+                            </option>
+                            <option value="2026">
+                              2026
+                            </option>
+                            <option value="2025">
+                              2025
+                            </option>
+                          </select>
+
+                          <select
+                            value={
+                              datumMaand
+                            }
+                            onChange={(
+                              gebeurtenis,
+                            ) => {
+                              setDatumMaand(
+                                gebeurtenis
+                                  .target
+                                  .value,
+                              );
+                            }}
+                            aria-label="Filtermaand datum plaatsbezoek"
+                            className="min-w-0 rounded-lg border border-slate-300 bg-white px-2 py-2 text-xs font-medium text-slate-700"
+                          >
+                            <option value="">
+                              Maand
+                            </option>
+
+                            {maanden.map(
+                              ([
+                                waarde,
+                                label,
+                              ]) => (
+                                <option
+                                  key={
+                                    waarde
+                                  }
+                                  value={
+                                    waarde
+                                  }
+                                >
+                                  {
+                                    label
+                                  }
+                                </option>
+                              ),
+                            )}
+                          </select>
+                        </div>
+                      ) : (
+                        <input
+                          type="search"
+                          value={
+                            filters[
+                              kolom
+                                .sleutel
+                            ] ?? ""
+                          }
+                          onChange={(
+                            gebeurtenis,
+                          ) => {
+                            wijzigFilter(
+                              kolom.sleutel,
+                              gebeurtenis
+                                .target
+                                .value,
+                            );
+                          }}
+                          onClick={(
+                            gebeurtenis,
+                          ) => {
+                            gebeurtenis
+                              .stopPropagation();
+                          }}
+                          placeholder="Filter..."
+                          aria-label={`Filter ${kolom.label}`}
+                          className="mt-2 w-full rounded-lg border border-slate-300 bg-white px-2 py-2 text-xs font-medium normal-case tracking-normal text-slate-700 outline-none focus:border-blue-500"
+                        />
+                      )}
+                    </th>
+                  ),
+                )}
+              </tr>
+            </thead>
+
+            <tbody className="divide-y divide-slate-200">
+              {zichtbareRijen.map(
+                (rij) => {
+                  const status =
+                    bepaalTimerStatus(
+                      rij.startMomentIso,
+                      effectieveNu,
+                    );
+
+                  return (
+                    <tr
+                      key={rij.id}
+                      className={`align-top transition-colors ${
+                        rij.waarschuwingTerreincontrole
+                          ? "bg-red-50 hover:bg-red-100/80"
+                          : "bg-emerald-50 hover:bg-emerald-100/80"
+                      } ${
+                        status.soort ===
+                        "BEGONNEN"
+                          ? "plaatsbezoek-rij-knipper"
+                          : ""
+                      }`}
+                      title={
+                        rij.waarschuwingTerreincontrole
+                          ? "Terreincontrole nodig en laatste terreincontrole is langer dan 14 dagen geleden of werd nooit uitgevoerd."
+                          : rij.terreincontroleNodig
+                            ? "Terreincontrole nodig, maar de laatste terreincontrole is minder dan 14 dagen geleden."
+                            : "Terreincontroletarget behaald of geen terreincontrole vereist."
+                      }
+                    >
+                      {kolommen.map(
+                        (
+                          kolom,
+                        ) => (
+                          <td
+                            key={
+                              kolom
+                                .sleutel
+                            }
+                            className="whitespace-pre-wrap px-3 py-4 text-slate-700"
+                          >
+                            {celInhoud(
+                              rij,
+                              kolom.sleutel,
+                              effectieveNu,
+                            )}
+                          </td>
+                        ),
+                      )}
+                    </tr>
+                  );
+                },
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        {serverModus &&
+        serverQuery
+          .isEersteKeerLaden ? (
+          <div className="px-6 py-16 text-center text-sm font-semibold text-slate-600">
+            Laattijdige plaatsbezoeken laden...
+          </div>
+        ) : null}
+
+        {!serverQuery
+          .isEersteKeerLaden &&
+        zichtbareRijen.length ===
+          0 ? (
           <div className="px-6 py-16 text-center">
             <h2 className="text-lg font-black text-slate-900">
-              Nog geen meldingen
+              Geen plaatsbezoeken gevonden
             </h2>
 
             <p className="mt-2 text-sm text-slate-500">
-              Er werden nog geen
-              laattijdige
-              plaatsbezoeken
-              aangemeld.
+              Pas de zoekterm of filters aan.
             </p>
           </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[1880px] text-left text-sm">
-              <thead className="bg-slate-100 text-xs uppercase tracking-wide text-slate-600">
-                <tr>
-                  <th className="px-4 py-3">
-                    Timer
-                  </th>
-                  <th className="px-4 py-3">
-                    ADI
-                  </th>
-                  <th className="px-4 py-3">
-                    Bedrijf
-                  </th>
-                  <th className="px-4 py-3">
-                    Aantal attesten
-                  </th>
-                  <th className="px-4 py-3">
-                    Datum laatste terreincontrole
-                  </th>
-                  <th className="px-4 py-3">
-                    Aantal terreincontroles
-                  </th>
-                  <th className="px-4 py-3">
-                    Inspectielocatie
-                  </th>
-                  <th className="px-4 py-3">
-                    Datum
-                  </th>
-                  <th className="px-4 py-3">
-                    Tijdstip
-                  </th>
-                  <th className="px-4 py-3">
-                    Gemeenschappelijke delen
-                  </th>
-                  <th className="px-4 py-3">
-                    Extra adresdetails
-                  </th>
-                  <th className="px-4 py-3">
-                    Reden
-                  </th>
-                  <th className="px-4 py-3">
-                    Aangemeld op
-                  </th>
-                </tr>
-              </thead>
+        ) : null}
 
-              <tbody className="divide-y divide-slate-200">
-                {rijen.map(
-                  (rij) => {
-                    const status =
-                      bepaalTimerStatus(
-                        rij.startMomentIso,
-                        nu,
-                      );
+        {serverModus &&
+        serverQuery.fout ? (
+          <div className="border-t border-red-200 bg-red-50 px-6 py-4 text-sm text-red-900">
+            <p className="font-bold">
+              {
+                serverQuery.fout
+              }
+            </p>
 
-                    return (
-                      <tr
-                        key={rij.id}
-                        className={`align-top transition-colors ${
-                          rij.waarschuwingTerreincontrole
-                            ? "bg-red-50 hover:bg-red-100/80"
-                            : "bg-emerald-50 hover:bg-emerald-100/80"
-                        } ${
-                          status.soort ===
-                          "BEGONNEN"
-                            ? "plaatsbezoek-rij-knipper"
-                            : ""
-                        }`}
-                        title={
-                          rij.waarschuwingTerreincontrole
-                            ? "Terreincontrole nodig en laatste terreincontrole is langer dan 14 dagen geleden of werd nooit uitgevoerd."
-                            : rij.terreincontroleNodig
-                              ? "Terreincontrole nodig, maar de laatste terreincontrole is minder dan 14 dagen geleden."
-                              : "Terreincontroletarget behaald of geen terreincontrole vereist."
-                        }
-                      >
-                        <td className="whitespace-nowrap px-4 py-4">
-                          <div className="flex items-center gap-2">
-                            <Timer
-                              startMomentIso={
-                                rij.startMomentIso
-                              }
-                              nu={nu}
-                              waarschuwingTerreincontrole={
-                                rij.waarschuwingTerreincontrole
-                              }
-                            />
-
-                            <a
-                              href={googleMapsUrl(
-                                rij,
-                              )}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="inline-flex h-10 items-center justify-center rounded-lg border border-blue-300 bg-white px-3 text-xs font-black text-blue-700 shadow-sm transition hover:border-blue-400 hover:bg-blue-50 hover:text-blue-900"
-                              aria-label={`Open ${rij.inspectielocatie} in Google Maps`}
-                            >
-                              Google Maps
-                            </a>
-                          </div>
-                        </td>
-
-                        <td className="px-4 py-4 font-semibold text-slate-900">
-                          {rij.naamAdi}
-                        </td>
-
-                        <td className="px-4 py-4 text-slate-700">
-                          {
-                            rij.bedrijfsnaam
-                          }
-                        </td>
-
-                        <td className="whitespace-nowrap px-4 py-4">
-                          <span className="inline-flex min-w-12 justify-center rounded-lg border border-slate-200 bg-white/80 px-2.5 py-1.5 font-black text-slate-900">
-                            {
-                              rij.aantalAttesten
-                            }
-                          </span>
-                        </td>
-
-                        <td className="whitespace-nowrap px-4 py-4 text-slate-700">
-                          {
-                            rij.laatsteTerreincontrole
-                          }
-                        </td>
-
-                        <td className="whitespace-nowrap px-4 py-4">
-                          <span
-                            className={
-                              rij.terreincontroleNodig
-                                ? "inline-flex min-w-12 justify-center rounded-lg border border-red-200 bg-red-100 px-2.5 py-1.5 font-black text-red-900"
-                                : "inline-flex min-w-12 justify-center rounded-lg border border-emerald-200 bg-emerald-100 px-2.5 py-1.5 font-black text-emerald-900"
-                            }
-                          >
-                            {
-                              rij.aantalTerreincontroles
-                            }
-                          </span>
-                        </td>
-
-                        <td className="px-4 py-4 text-slate-700">
-                          {
-                            rij.inspectielocatie
-                          }
-                        </td>
-
-                        <td className="whitespace-nowrap px-4 py-4 text-slate-700">
-                          {rij.datum}
-                        </td>
-
-                        <td className="whitespace-nowrap px-4 py-4 text-slate-700">
-                          {rij.tijdstip}
-                        </td>
-
-                        <td className="whitespace-nowrap px-4 py-4 text-slate-700">
-                          {
-                            rij.gemeenschappelijkeDelen
-                          }
-                        </td>
-
-                        <td className="max-w-xs whitespace-pre-wrap px-4 py-4 text-slate-700">
-                          {rij.extraAdresdetails ||
-                            "—"}
-                        </td>
-
-                        <td className="max-w-md whitespace-pre-wrap px-4 py-4 text-slate-700">
-                          {rij.reden}
-                        </td>
-
-                        <td className="whitespace-nowrap px-4 py-4 text-slate-600">
-                          {
-                            rij.aangemeldOp
-                          }
-                        </td>
-                      </tr>
-                    );
-                  },
-                )}
-              </tbody>
-            </table>
+            <button
+              type="button"
+              onClick={() => {
+                void serverQuery
+                  .opnieuwLaden();
+              }}
+              className="mt-2 font-bold underline"
+            >
+              Opnieuw proberen
+            </button>
           </div>
-        )}
+        ) : null}
+
+        <div className="flex flex-col gap-3 border-t border-slate-200 bg-slate-50 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-sm font-semibold text-slate-600">
+            {
+              zichtbareRijen.length
+            } van{" "}
+            {aantalTotaal} resultaten
+          </p>
+
+          {serverModus &&
+          serverQuery
+            .heeftVolgendePagina ? (
+            <button
+              type="button"
+              disabled={
+                serverQuery
+                  .isVolgendePaginaLaden
+              }
+              onClick={() => {
+                void serverQuery
+                  .laadVolgendePagina();
+              }}
+              className="rounded-xl bg-blue-700 px-5 py-2.5 text-sm font-black text-white hover:bg-blue-800 disabled:cursor-wait disabled:opacity-60"
+            >
+              {serverQuery
+                .isVolgendePaginaLaden
+                ? "Resultaten laden..."
+                : "Meer resultaten laden"}
+            </button>
+          ) : null}
+        </div>
       </div>
     </div>
   );

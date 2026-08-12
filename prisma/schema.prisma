@@ -501,6 +501,7 @@ model LaattijdigePlaatsbezoekMelding {
 
   @@index([lidId])
   @@index([aangemeldOp])
+  @@index([aangemeldOp(sort: Desc), id(sort: Desc)])
   @@map("laattijdige_plaatsbezoek_meldingen")
 }
 
@@ -533,6 +534,7 @@ model LaattijdigPlaatsbezoek {
   @@index([meldingId])
   @@index([datumPlaatsbezoek])
   @@index([aangemaaktOp])
+  @@index([aangemaaktOp(sort: Desc), id(sort: Desc)])
   @@map("laattijdige_plaatsbezoeken")
 }
 
