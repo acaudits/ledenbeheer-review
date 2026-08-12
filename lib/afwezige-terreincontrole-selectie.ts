@@ -5,10 +5,10 @@ import {
 } from "../generated/prisma/client";
 
 import {
-  type IngeplandeTerreincontroleLijstcontract,
-  type IngeplandeTerreincontroleSortering,
-  type IngeplandeTerreincontroleTekstfilters,
-} from "@/lib/ingeplande-terreincontrole-lijstcontract";
+  type AfwezigeTerreincontroleLijstcontract,
+  type AfwezigeTerreincontroleSortering,
+  type AfwezigeTerreincontroleTekstfilters,
+} from "@/lib/afwezige-terreincontrole-lijstcontract";
 import {
   prisma,
 } from "@/lib/prisma";
@@ -17,7 +17,7 @@ import {
   type Sorteerrichting,
 } from "@/lib/server-paginering";
 
-export type IngeplandeTerreincontroleSelectieRij = {
+export type AfwezigeTerreincontroleSelectieRij = {
   id: number;
   auditeur: string | null;
   factuurVerzonden: boolean;
@@ -52,24 +52,24 @@ export type IngeplandeTerreincontroleSelectieRij = {
     string | null;
   attestId: string;
   opmerkingen: string | null;
+  afwezigReden: string | null;
+  ovamIdRood: boolean;
   aantalTotaal: number;
 };
 
-export type IngeplandeTerreincontroleDashboardTellingen = {
-  plaatsbezoeken: number;
-  inOpmaak: number;
-  gearchiveerd: number;
-  actueelAttest: number;
-  nietVerzondenFacturen:
+export type AfwezigeTerreincontroleDashboardTellingen = {
+  aantalAfwezigen: number;
+  facturenVerzonden: number;
+  aantalRodePersoonsIds:
     number;
 };
 
 type SelectieInvoer = {
   zoekterm: string;
   contract:
-    IngeplandeTerreincontroleLijstcontract;
+    AfwezigeTerreincontroleLijstcontract;
   sortering:
-    IngeplandeTerreincontroleSortering;
+    AfwezigeTerreincontroleSortering;
   richting:
     Sorteerrichting;
   limiet: number;
@@ -113,7 +113,7 @@ const uurExpressie =
   `;
 
 const tekstExpressies: Record<
-  keyof IngeplandeTerreincontroleTekstfilters,
+  keyof AfwezigeTerreincontroleTekstfilters,
   Prisma.Sql
 > = {
   status:
@@ -158,6 +158,8 @@ const tekstExpressies: Record<
     Prisma.sql`t."attest_id"::text`,
   opmerkingen:
     Prisma.sql`t."opmerkingen"`,
+  afwezigReden:
+    Prisma.sql`t."afwezig_reden"`,
 };
 
 function bevat(
@@ -179,7 +181,7 @@ function bevat(
 
 function sorteerExpressie(
   sortering:
-    IngeplandeTerreincontroleSortering,
+    AfwezigeTerreincontroleSortering,
 ) {
   if (
     sortering ===
@@ -199,13 +201,13 @@ function maakFiltervoorwaarden({
 }: {
   zoekterm: string;
   contract:
-    IngeplandeTerreincontroleLijstcontract;
+    AfwezigeTerreincontroleLijstcontract;
 }) {
   const voorwaarden:
     Prisma.Sql[] = [
       Prisma.sql`
         t."verwijderd_op" IS NULL
-        AND t."afwezig_op" IS NULL
+        AND t."afwezig_op" IS NOT NULL
       `,
     ];
 
@@ -242,7 +244,8 @@ function maakFiltervoorwaarden({
           t."perceel_afdelingscode",
           t."perceel_sectie_code",
           t."attest_id"::text,
-          t."opmerkingen"
+          t."opmerkingen",
+          t."afwezig_reden"
         )
       `;
 
@@ -261,7 +264,7 @@ function maakFiltervoorwaarden({
     ] of Object.entries(
       contract.tekstfilters,
     ) as [
-      keyof IngeplandeTerreincontroleTekstfilters,
+      keyof AfwezigeTerreincontroleTekstfilters,
       string,
     ][]
   ) {
@@ -276,6 +279,42 @@ function maakFiltervoorwaarden({
         ],
         waarde,
       ),
+    );
+  }
+
+  if (contract.alleenRood) {
+    voorwaarden.push(
+      Prisma.sql`
+        NULLIF(
+          BTRIM(
+            COALESCE(
+              t."ovam_id",
+              ''
+            )
+          ),
+          ''
+        ) IS NOT NULL
+        AND (
+          SELECT
+            COUNT(*)
+          FROM
+            "terreincontroles" herhaling
+          WHERE
+            herhaling."verwijderd_op"
+              IS NULL
+            AND herhaling."afwezig_op"
+              IS NOT NULL
+            AND UPPER(
+              BTRIM(
+                herhaling."ovam_id"
+              )
+            ) = UPPER(
+              BTRIM(
+                t."ovam_id"
+              )
+            )
+        ) >= 2
+      `,
     );
   }
 
@@ -330,7 +369,7 @@ function valideerInvoer({
     limiet > 50
   ) {
     throw new OngeldigePagineringFout(
-      "De paginalimiet voor ingeplande terreincontroles is ongeldig.",
+      "De paginalimiet voor afwezige terreincontroles is ongeldig.",
     );
   }
 
@@ -344,12 +383,12 @@ function valideerInvoer({
     )
   ) {
     throw new OngeldigePagineringFout(
-      "De cursor voor ingeplande terreincontroles is ongeldig.",
+      "De cursor voor afwezige terreincontroles is ongeldig.",
     );
   }
 }
 
-export function laadIngeplandeTerreincontroleSelectie({
+export function laadAfwezigeTerreincontroleSelectie({
   zoekterm,
   contract,
   sortering,
@@ -441,7 +480,7 @@ export function laadIngeplandeTerreincontroleSelectie({
         `;
 
   return prisma.$queryRaw<
-    IngeplandeTerreincontroleSelectieRij[]
+    AfwezigeTerreincontroleSelectieRij[]
   >(Prisma.sql`
     WITH "gefilterd" AS (
       SELECT
@@ -495,6 +534,40 @@ export function laadIngeplandeTerreincontroleSelectie({
         t."attest_id"::text
           AS "attestId",
         t."opmerkingen",
+        t."afwezig_reden"
+          AS "afwezigReden",
+        CASE
+          WHEN NULLIF(
+            BTRIM(
+              COALESCE(
+                t."ovam_id",
+                ''
+              )
+            ),
+            ''
+          ) IS NULL
+          THEN FALSE
+          ELSE (
+            SELECT
+              COUNT(*) >= 2
+            FROM
+              "terreincontroles" herhaling
+            WHERE
+              herhaling."verwijderd_op"
+                IS NULL
+              AND herhaling."afwezig_op"
+                IS NOT NULL
+              AND UPPER(
+                BTRIM(
+                  herhaling."ovam_id"
+                )
+              ) = UPPER(
+                BTRIM(
+                  t."ovam_id"
+                )
+              )
+          )
+        END AS "ovamIdRood",
         COUNT(*) OVER()::integer
           AS "aantalTotaal",
         CASE
@@ -553,6 +626,8 @@ export function laadIngeplandeTerreincontroleSelectie({
       g."perceelSectieCode",
       g."attestId",
       g."opmerkingen",
+      g."afwezigReden",
+      g."ovamIdRood",
       g."aantalTotaal"
     FROM
       "gefilterd" g
@@ -568,53 +643,71 @@ export function laadIngeplandeTerreincontroleSelectie({
   `);
 }
 
-export async function laadIngeplandeTerreincontroleDashboardTellingen() {
+export async function laadAfwezigeTerreincontroleDashboardTellingen() {
   const [tellingen] =
     await prisma.$queryRaw<
-      IngeplandeTerreincontroleDashboardTellingen[]
+      AfwezigeTerreincontroleDashboardTellingen[]
     >(Prisma.sql`
       SELECT
         COUNT(*)::integer
-          AS "plaatsbezoeken",
-        COUNT(*) FILTER (
-          WHERE
-            t."status"::text =
-              'IN_OPMAAK'
-        )::integer
-          AS "inOpmaak",
-        COUNT(*) FILTER (
-          WHERE
-            t."status"::text =
-              'GEARCHIVEERD_ATTEST'
-        )::integer
-          AS "gearchiveerd",
-        COUNT(*) FILTER (
-          WHERE
-            t."status"::text =
-              'ACTUEEL_ATTEST'
-        )::integer
-          AS "actueelAttest",
+          AS "aantalAfwezigen",
         COUNT(*) FILTER (
           WHERE
             COALESCE(
               t."factuur_verzonden",
               FALSE
-            ) = FALSE
+            ) = TRUE
         )::integer
-          AS "nietVerzondenFacturen"
+          AS "facturenVerzonden",
+        (
+          SELECT
+            COUNT(*)::integer
+          FROM (
+            SELECT
+              UPPER(
+                BTRIM(
+                  herhaling."ovam_id"
+                )
+              )
+                AS "genormaliseerdOvamId"
+            FROM
+              "terreincontroles"
+                herhaling
+            WHERE
+              herhaling."verwijderd_op"
+                IS NULL
+              AND herhaling."afwezig_op"
+                IS NOT NULL
+              AND NULLIF(
+                BTRIM(
+                  COALESCE(
+                    herhaling."ovam_id",
+                    ''
+                  )
+                ),
+                ''
+              ) IS NOT NULL
+            GROUP BY
+              UPPER(
+                BTRIM(
+                  herhaling."ovam_id"
+                )
+              )
+            HAVING
+              COUNT(*) >= 2
+          ) rode_ids
+        ) AS "aantalRodePersoonsIds"
       FROM
         "terreincontroles" t
       WHERE
         t."verwijderd_op" IS NULL
-        AND t."afwezig_op" IS NULL
+        AND t."afwezig_op" IS NOT NULL
     `);
 
   return tellingen ?? {
-    plaatsbezoeken: 0,
-    inOpmaak: 0,
-    gearchiveerd: 0,
-    actueelAttest: 0,
-    nietVerzondenFacturen:
+    aantalAfwezigen: 0,
+    facturenVerzonden: 0,
+    aantalRodePersoonsIds:
       0,
   };
 }

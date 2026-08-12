@@ -86,6 +86,7 @@ export async function wijzigTerreincontroleStatus(
       where: {
         id,
         verwijderdOp: null,
+        afwezigOp: null,
       },
 
       select: {
@@ -143,6 +144,7 @@ export async function wijzigTerreincontroleFactuur(
       where: {
         id,
         verwijderdOp: null,
+        afwezigOp: null,
       },
 
       select: {

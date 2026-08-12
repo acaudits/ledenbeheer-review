@@ -53,6 +53,7 @@ export default async function TerreincontroleBewerkenPage({
         where: {
           id,
           verwijderdOp: null,
+          afwezigOp: null,
         },
         select: {
           id: true,

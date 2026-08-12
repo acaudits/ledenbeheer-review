@@ -310,6 +310,7 @@ export default async function MijnOverzichtPage({
         "insensitive" as const,
     },
     verwijderdOp: null,
+    afwezigOp: null,
   };
 
   const terreinFilter = {

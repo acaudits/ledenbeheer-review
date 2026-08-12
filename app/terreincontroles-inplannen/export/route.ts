@@ -77,6 +77,7 @@ export async function GET() {
       {
         where: {
           verwijderdOp: null,
+          afwezigOp: null,
         },
 
         orderBy: [

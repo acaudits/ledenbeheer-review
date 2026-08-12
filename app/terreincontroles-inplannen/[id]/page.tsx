@@ -1,5 +1,4 @@
 import NextLink from "next/link";
-import type { ComponentProps } from "react";
 import { notFound } from "next/navigation";
 
 import { vereisMachtiging } from "@/lib/auth";
@@ -9,7 +8,8 @@ import {
   formatteerDatabaseTijd,
   maakGoogleMapsUrl,
 } from "@/lib/terreincontrole";
-import BasisTerreincontroleVerwijderKnop from "@/components/TerreincontroleVerwijderKnop";
+import AfwezigeTerreincontroleHerstelKnop from "@/components/AfwezigeTerreincontroleHerstelKnop";
+import TerreincontroleMeerMenu from "@/components/TerreincontroleMeerMenu";
 
 export const dynamic =
   "force-dynamic";
@@ -130,39 +130,7 @@ export default async function TerreincontroleDetailPage({
       "TERREINCONTROLES_BEHEREN",
     );
 
-  function Link(
-    props: ComponentProps<typeof NextLink>,
-  ) {
-    const href =
-      typeof props.href === "string"
-        ? props.href
-        : "";
 
-    if (
-      !magBeheren &&
-      href.endsWith("/bewerken")
-    ) {
-      return null;
-    }
-
-    return <NextLink {...props} />;
-  }
-
-  function TerreincontroleVerwijderKnop(
-    props: ComponentProps<
-      typeof BasisTerreincontroleVerwijderKnop
-    >,
-  ) {
-    if (!magBeheren) {
-      return null;
-    }
-
-    return (
-      <BasisTerreincontroleVerwijderKnop
-        {...props}
-      />
-    );
-  }
 
   const { id: idTekst } =
     await params;
@@ -220,6 +188,8 @@ export default async function TerreincontroleDetailPage({
 
           aangemaaktOp: true,
           bijgewerktOp: true,
+          afwezigOp: true,
+          afwezigReden: true,
         },
       },
     );
@@ -244,12 +214,20 @@ export default async function TerreincontroleDetailPage({
       <div className="mx-auto max-w-6xl">
         <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div>
-            <Link
-              href="/terreincontroles-inplannen"
+            <NextLink
+              href={
+                terreincontrole
+                  .afwezigOp
+                  ? "/terreincontroles-inplannen/afwezigen"
+                  : "/terreincontroles-inplannen"
+              }
               className="text-sm font-semibold text-emerald-700 hover:text-emerald-900"
             >
-              ← Terug naar terreincontroles
-            </Link>
+              {terreincontrole
+                .afwezigOp
+                ? "← Terug naar afwezigen"
+                : "← Terug naar terreincontroles"}
+            </NextLink>
 
             <h1 className="mt-3 text-3xl font-bold tracking-tight text-slate-950">
               Terreincontrole #
@@ -263,12 +241,18 @@ export default async function TerreincontroleDetailPage({
           </div>
 
           <div className="flex flex-wrap gap-2">
-            <Link
-              href={`/terreincontroles-inplannen/${terreincontrole.id}/bewerken`}
-              className="inline-flex h-10 items-center justify-center rounded-lg border border-emerald-300 bg-white px-4 text-sm font-semibold text-emerald-800 hover:bg-emerald-50"
-            >
-              Bewerken
-            </Link>
+            {magBeheren ? (
+              terreincontrole
+                .afwezigOp ? (
+                <AfwezigeTerreincontroleHerstelKnop
+                  id={terreincontrole.id}
+                />
+              ) : (
+                <TerreincontroleMeerMenu
+                  id={terreincontrole.id}
+                />
+              )
+            ) : null}
 
             {googleMapsUrl ? (
               <a
@@ -294,11 +278,57 @@ export default async function TerreincontroleDetailPage({
               </a>
             ) : null}
 
-            <TerreincontroleVerwijderKnop
-              id={terreincontrole.id}
-            />
           </div>
         </div>
+
+        {terreincontrole
+          .afwezigOp ? (
+          <section className="mb-6 rounded-2xl border border-amber-300 bg-amber-50 p-5 text-amber-950 shadow-sm">
+            <p className="text-xs font-black uppercase tracking-[0.14em]">
+              Afwezig
+            </p>
+
+            <h2 className="mt-1 text-lg font-black">
+              Deze terreincontrole staat in de afwezigenlijst
+            </h2>
+
+            <dl className="mt-4 grid gap-4 sm:grid-cols-2">
+              <div>
+                <dt className="text-xs font-bold uppercase tracking-wide opacity-70">
+                  Reden
+                </dt>
+
+                <dd className="mt-1 whitespace-pre-wrap text-sm font-semibold">
+                  {terreincontrole
+                    .afwezigReden ??
+                    "Geen reden geregistreerd"}
+                </dd>
+              </div>
+
+              <div>
+                <dt className="text-xs font-bold uppercase tracking-wide opacity-70">
+                  Geregistreerd op
+                </dt>
+
+                <dd className="mt-1 text-sm font-semibold">
+                  {new Intl.DateTimeFormat(
+                    "nl-BE",
+                    {
+                      day: "2-digit",
+                      month: "2-digit",
+                      year: "numeric",
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    },
+                  ).format(
+                    terreincontrole
+                      .afwezigOp,
+                  )}
+                </dd>
+              </div>
+            </dl>
+          </section>
+        ) : null}
 
         <section className="mb-6 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
           <h2 className="text-lg font-bold text-slate-950">

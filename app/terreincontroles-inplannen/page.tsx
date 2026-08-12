@@ -63,6 +63,13 @@ export default async function TerreincontrolesPage() {
           </div>
 
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+            <Link
+              href="/terreincontroles-inplannen/afwezigen"
+              className="inline-flex h-11 items-center justify-center rounded-xl border border-amber-300 bg-amber-50 px-5 text-sm font-bold text-amber-800 shadow-sm transition hover:bg-amber-100"
+            >
+              Afwezigen
+            </Link>
+
             {magBeheren ? (
               <Link
                 href="/terreincontroles-inplannen/verwijderd"

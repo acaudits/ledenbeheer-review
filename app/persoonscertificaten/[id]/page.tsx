@@ -264,6 +264,7 @@ export default async function PersoonscertificaatDetailPage({
     await prisma.terreincontrole.findMany({
       where: {
         verwijderdOp: null,
+        afwezigOp: null,
         ovamId: {
           equals: persoon.ovamId,
           mode: "insensitive",

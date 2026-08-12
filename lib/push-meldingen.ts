@@ -131,6 +131,7 @@ async function isRodeTerreincontrole(
     prisma.terreincontrole.aggregate({
       where: {
         verwijderdOp: null,
+        afwezigOp: null,
         ovamId: {
           equals: ovamId,
           mode: "insensitive",

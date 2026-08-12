@@ -5,18 +5,25 @@ import {
   useRouter,
 } from "next/navigation";
 import {
+  useEffect,
   useMemo,
   useState,
 } from "react";
 
+import AfwezigeTerreincontroleHerstelKnop from "@/components/AfwezigeTerreincontroleHerstelKnop";
 import {
   TerreincontroleDossierVerwijderKnop,
 } from "@/components/TerreincontroleDossierVerwijderKnop";
+import TerreincontroleMeerMenu from "@/components/TerreincontroleMeerMenu";
 import {
   TerreincontroleFactuurSelect,
   TerreincontroleStatusSelect,
 } from "@/components/TerreincontroleSnelleVelden";
-import TerreincontroleVerwijderKnop from "@/components/TerreincontroleVerwijderKnop";
+import {
+  AFWEZIGE_TERREINCONTROLE_DASHBOARDFILTER_EVENT,
+  type AfwezigeTerreincontroleDashboardfilter,
+  useAfwezigeTerreincontrolesQuery,
+} from "@/hooks/useAfwezigeTerreincontrolesQuery";
 import {
   useIngeplandeTerreincontrolesQuery,
 } from "@/hooks/useIngeplandeTerreincontrolesQuery";
@@ -47,7 +54,8 @@ type Props = {
   kolommen: FilterTabelKolom[];
   modus:
     | "terreincontrole"
-    | "planning";
+    | "planning"
+    | "afwezig";
   magBeheren: boolean;
   serverModus?: boolean;
 };
@@ -267,9 +275,72 @@ export function TerreincontroleFilterTabel({
     serverModus &&
     modus === "planning";
 
+  const gebruiktAfwezigServer =
+    serverModus &&
+    modus === "afwezig";
+
+  useEffect(() => {
+    if (!gebruiktAfwezigServer) {
+      return;
+    }
+
+    function ontvangDashboardfilter(
+      event: Event,
+    ) {
+      const filterEvent =
+        event as CustomEvent<
+          AfwezigeTerreincontroleDashboardfilter
+        >;
+
+      const filter =
+        filterEvent.detail;
+
+      setZoekterm("");
+      setDatumJaar("");
+      setDatumMaand("");
+      setSortering(null);
+
+      if (
+        filter ===
+        "factuurVerzonden"
+      ) {
+        setFilters({
+          factuurVerzonden:
+            "Ja",
+        });
+
+        return;
+      }
+
+      if (filter === "rood") {
+        setFilters({
+          ovamIdRood:
+            "true",
+        });
+
+        return;
+      }
+
+      setFilters({});
+    }
+
+    window.addEventListener(
+      AFWEZIGE_TERREINCONTROLE_DASHBOARDFILTER_EVENT,
+      ontvangDashboardfilter,
+    );
+
+    return () => {
+      window.removeEventListener(
+        AFWEZIGE_TERREINCONTROLE_DASHBOARDFILTER_EVENT,
+        ontvangDashboardfilter,
+      );
+    };
+  }, [gebruiktAfwezigServer]);
+
   const gebruiktServer =
     gebruiktDossierServer ||
-    gebruiktPlanningServer;
+    gebruiktPlanningServer ||
+    gebruiktAfwezigServer;
 
   const dossierServerQuery =
     useTerreincontrolesQuery({
@@ -293,10 +364,23 @@ export function TerreincontroleFilterTabel({
       sortering,
     });
 
+  const afwezigServerQuery =
+    useAfwezigeTerreincontrolesQuery({
+      ingeschakeld:
+        gebruiktAfwezigServer,
+      zoekterm,
+      filters,
+      datumJaar,
+      datumMaand,
+      sortering,
+    });
+
   const serverQuery =
-    gebruiktPlanningServer
-      ? planningServerQuery
-      : dossierServerQuery;
+    gebruiktAfwezigServer
+      ? afwezigServerQuery
+      : gebruiktPlanningServer
+        ? planningServerQuery
+        : dossierServerQuery;
 
   const bronRijen =
     gebruiktServer
@@ -304,9 +388,9 @@ export function TerreincontroleFilterTabel({
       : rijen;
 
   const datumSleutel =
-    modus === "planning"
-      ? "datumPlaatsbezoek"
-      : "datumControle";
+    modus === "terreincontrole"
+      ? "datumControle"
+      : "datumPlaatsbezoek";
 
   const beschikbareJaren =
     useMemo(() => {
@@ -578,33 +662,38 @@ export function TerreincontroleFilterTabel({
   function renderActies(
     rij: FilterTabelRij,
   ) {
-    const basis =
-      modus === "planning"
-        ? "/terreincontroles-inplannen"
-        : "/terreincontroles";
+    if (!magBeheren) {
+      return null;
+    }
+
+    if (modus === "afwezig") {
+      return (
+        <AfwezigeTerreincontroleHerstelKnop
+          id={rij.id}
+        />
+      );
+    }
+
+    if (modus === "planning") {
+      return (
+        <TerreincontroleMeerMenu
+          id={rij.id}
+        />
+      );
+    }
 
     return (
       <div className="flex min-w-max flex-wrap gap-2">
-        {magBeheren ? (
-          <Link
-            href={`${basis}/${rij.id}/bewerken`}
-            className="inline-flex h-8 items-center rounded-lg border border-slate-300 bg-white px-3 text-xs font-bold text-slate-700 hover:bg-slate-50"
-          >
-            Bewerken
-          </Link>
-        ) : null}
+        <Link
+          href={`/terreincontroles/${rij.id}/bewerken`}
+          className="inline-flex h-8 items-center rounded-lg border border-slate-300 bg-white px-3 text-xs font-bold text-slate-700 hover:bg-slate-50"
+        >
+          Bewerken
+        </Link>
 
-        {magBeheren ? (
-          modus === "planning" ? (
-            <TerreincontroleVerwijderKnop
-              id={rij.id}
-            />
-          ) : (
-            <TerreincontroleDossierVerwijderKnop
-              id={rij.id}
-            />
-          )
-        ) : null}
+        <TerreincontroleDossierVerwijderKnop
+          id={rij.id}
+        />
       </div>
     );
   }
@@ -635,9 +724,9 @@ export function TerreincontroleFilterTabel({
     }
 
     const basis =
-      modus === "planning"
-        ? "/terreincontroles-inplannen"
-        : "/terreincontroles";
+      modus === "terreincontrole"
+        ? "/terreincontroles"
+        : "/terreincontroles-inplannen";
 
     router.push(
       `${basis}/${id}`,
@@ -766,6 +855,21 @@ export function TerreincontroleFilterTabel({
       return verzonden
         ? "Ja"
         : "Nee";
+    }
+
+    if (
+      modus === "afwezig" &&
+      kolom.sleutel ===
+        "ovamId" &&
+      rij.ovamIdRood === true
+    ) {
+      return (
+        <span className="inline-flex rounded-lg border border-red-300 bg-red-100 px-2.5 py-1 font-black text-red-800">
+          {tekstWaarde(
+            waarde,
+          ) || "—"}
+        </span>
+      );
     }
 
     return (
@@ -1077,7 +1181,14 @@ export function TerreincontroleFilterTabel({
                         rij.id,
                       )
                     }
-                    className="group cursor-pointer bg-white align-top outline-none transition hover:bg-emerald-50/40 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-emerald-600"
+                    className={`group cursor-pointer align-top outline-none transition focus-visible:ring-2 focus-visible:ring-inset ${
+                      modus ===
+                        "afwezig" &&
+                      rij.ovamIdRood ===
+                        true
+                        ? "bg-red-50 text-red-950 hover:bg-red-100/80 focus-visible:ring-red-600"
+                        : "bg-white hover:bg-emerald-50/40 focus-visible:ring-emerald-600"
+                    }`}
                   >
                     {kolommen.map(
                       (kolom) => (
@@ -1088,8 +1199,22 @@ export function TerreincontroleFilterTabel({
                           className={
                             kolom.type ===
                             "acties"
-                              ? "sticky right-0 z-10 min-w-56 whitespace-nowrap border-l border-slate-200 bg-white px-3 py-3 align-top group-hover:bg-[#f7fcfa]"
-                              : "max-w-72 whitespace-pre-wrap break-words px-3 py-2 text-xs text-slate-700"
+                              ? `sticky right-0 z-10 min-w-56 whitespace-nowrap border-l border-slate-200 px-3 py-3 align-top has-[details[open]]:z-[70] ${
+                                  modus ===
+                                    "afwezig" &&
+                                  rij.ovamIdRood ===
+                                    true
+                                    ? "bg-red-50 group-hover:bg-red-100/80"
+                                    : "bg-white group-hover:bg-[#f7fcfa]"
+                                }`
+                              : `max-w-72 whitespace-pre-wrap break-words px-3 py-2 text-xs ${
+                                  modus ===
+                                    "afwezig" &&
+                                  rij.ovamIdRood ===
+                                    true
+                                    ? "text-red-950"
+                                    : "text-slate-700"
+                                }`
                           }
                         >
                           {renderCel(

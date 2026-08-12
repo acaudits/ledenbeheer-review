@@ -156,6 +156,7 @@ export async function wijzigTerreincontrole(
         where: {
           id,
           verwijderdOp: null,
+          afwezigOp: null,
         },
         select: {
           id: true,

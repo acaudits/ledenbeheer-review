@@ -93,6 +93,8 @@ model Terreincontrole {
   aangemaaktOp         DateTime               @default(now()) @map("aangemaakt_op")
   bijgewerktOp         DateTime               @updatedAt @map("bijgewerkt_op")
   verwijderdOp         DateTime?              @map("verwijderd_op")
+  afwezigOp            DateTime?              @map("afwezig_op")
+  afwezigReden         String?                @map("afwezig_reden")
   bouwjaar             Int?
   extraAdresDetails    String?                @map("extra_adres_details")
   gemeente             String?
@@ -113,6 +115,8 @@ model Terreincontrole {
   @@index([datumPlaatsbezoek])
   @@index([verwijderdOp])
   @@index([verwijderdOp, datumPlaatsbezoek(sort: Desc), id(sort: Desc)])
+  @@index([verwijderdOp, afwezigOp, datumPlaatsbezoek(sort: Desc), id(sort: Desc)], map: "terreincontroles_afwezig_lijst_idx")
+  @@index([verwijderdOp, afwezigOp, ovamId], map: "terreincontroles_afwezig_ovam_idx")
   @@index([postcode])
   @@index([gemeente])
   @@map("terreincontroles")

@@ -35,6 +35,10 @@ function vernieuwPaden(
   );
 
   revalidatePath(
+    "/terreincontroles-inplannen/afwezigen",
+  );
+
+  revalidatePath(
     `/terreincontroles-inplannen/${id}`,
   );
 }
@@ -59,6 +63,7 @@ export async function verwijderTerreincontrole(
           where: {
             id,
             verwijderdOp: null,
+            afwezigOp: null,
           },
           data: {
             verwijderdOp:
@@ -121,6 +126,8 @@ export async function herstelTerreincontrole(
           },
           data: {
             verwijderdOp: null,
+            afwezigOp: null,
+            afwezigReden: null,
           },
         },
       );
