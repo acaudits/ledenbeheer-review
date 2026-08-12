@@ -263,31 +263,6 @@ export default async function BewerkTerreincontrolePage({
           </label>
 
           <label className="text-sm font-semibold text-slate-700">
-            Status
-            <select
-              name="status"
-              required
-              defaultValue={
-                dossier.status
-              }
-              className={invoer}
-            >
-              <option value="GEEN">
-                Geen
-              </option>
-              <option value="IN_OPMAAK">
-                In opmaak
-              </option>
-              <option value="GEACTUALISEERD">
-                Geactualiseerd
-              </option>
-              <option value="AFGEROND">
-                Afgerond
-              </option>
-            </select>
-          </label>
-
-          <label className="text-sm font-semibold text-slate-700">
             Datum controle
             <input
               name="datumControle"

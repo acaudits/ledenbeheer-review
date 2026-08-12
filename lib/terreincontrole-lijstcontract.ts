@@ -12,7 +12,6 @@ export const TERREINCONTROLE_SORTERINGEN = [
   "naamAdi",
   "linkAttest",
   "attestnummer",
-  "status",
   "certificatiePlatform",
   "opmerkingen",
   "datumControle",
@@ -33,7 +32,6 @@ export const TERREINCONTROLE_TEKSTFILTERPARAMETERS = {
   naamAdi: "filterNaamAdi",
   linkAttest: "filterLinkAttest",
   attestnummer: "filterAttestnummer",
-  status: "filterStatus",
   certificatiePlatform:
     "filterCertificatiePlatform",
   opmerkingen: "filterOpmerkingen",

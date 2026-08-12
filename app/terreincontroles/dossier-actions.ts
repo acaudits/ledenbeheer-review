@@ -7,16 +7,6 @@ import { schrijfAuditlog } from "@/lib/auditlog";
 import { vereisMachtiging } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
-const STATUSSEN = [
-  "GEEN",
-  "IN_OPMAAK",
-  "GEACTUALISEERD",
-  "AFGEROND",
-] as const;
-
-type Status =
-  (typeof STATUSSEN)[number];
-
 function controleerId(id: number) {
   if (
     !Number.isInteger(id) ||
@@ -131,14 +121,6 @@ function haalAttestIdUitLink(
   }
 }
 
-function geldigeStatus(
-  waarde: string,
-): waarde is Status {
-  return STATUSSEN.includes(
-    waarde as Status,
-  );
-}
-
 function gebruikersnaam(
   gebruiker: {
     naam: string | null;
@@ -176,93 +158,6 @@ function herlaad(id: number) {
   revalidatePath(
     "/mijn-overzicht",
   );
-}
-
-export async function wijzigTerreincontroleStatus(
-  id: number,
-  formData: FormData,
-) {
-  const gebruiker =
-    await vereisMachtiging(
-      "TERREINCONTROLES_BEHEREN",
-    );
-
-  controleerId(id);
-
-  const status = tekst(
-    formData,
-    "status",
-  );
-
-  if (!geldigeStatus(status)) {
-    throw new Error(
-      "Ongeldige status.",
-    );
-  }
-
-  await prisma.$transaction(
-    async (tx) => {
-      const bestaand =
-        await tx.terreincontroleDossier.findFirst({
-          where: {
-            id,
-            verwijderdOp: null,
-          },
-          select: {
-            status: true,
-            attestnummer: true,
-          },
-        });
-
-      if (!bestaand) {
-        throw new Error(
-          "De terreincontrole bestaat niet of is verwijderd.",
-        );
-      }
-
-      if (
-        bestaand.status === status
-      ) {
-        return;
-      }
-
-      await tx.terreincontroleDossier.update({
-        where: {
-          id,
-        },
-        data: {
-          status,
-        },
-      });
-
-      await schrijfAuditlog(
-        tx,
-        gebruiker,
-        {
-          actie:
-            "TERREINCONTROLE_STATUS_GEWIJZIGD",
-          entiteit:
-            "TERREINCONTROLE_DOSSIER",
-          entiteitId: id,
-          omschrijving:
-            "Status van terreincontrole gewijzigd.",
-          oudeWaarde: {
-            status:
-              bestaand.status,
-          },
-          nieuweWaarde: {
-            status,
-          },
-          metadata: {
-            attestnummer:
-              bestaand.attestnummer,
-          },
-        },
-      );
-    },
-  );
-
-  herlaad(id);
 }
 
 export async function voegTerreincontroleVaststellingToe(
@@ -509,7 +404,6 @@ export async function verwijderTerreincontrole(
           },
           select: {
             attestnummer: true,
-            status: true,
           },
         });
 
@@ -549,8 +443,6 @@ export async function verwijderTerreincontrole(
           metadata: {
             attestnummer:
               dossier.attestnummer,
-            status:
-              dossier.status,
           },
         },
       );
@@ -586,7 +478,6 @@ export async function herstelTerreincontrole(
           },
           select: {
             attestnummer: true,
-            status: true,
             verwijderdOp: true,
           },
         });
@@ -629,8 +520,6 @@ export async function herstelTerreincontrole(
           metadata: {
             attestnummer:
               dossier.attestnummer,
-            status:
-              dossier.status,
           },
         },
       );
@@ -682,11 +571,6 @@ export async function bewerkTerreincontrole(
     "attestnummer",
   ).toUpperCase();
 
-  const status = tekst(
-    formData,
-    "status",
-  );
-
   const datumControle =
     leesDatum(
       tekst(
@@ -719,7 +603,6 @@ export async function bewerkTerreincontrole(
     !linkAttest ||
     !attestId ||
     !attestnummer ||
-    !geldigeStatus(status) ||
     !datumControle
   ) {
     throw new Error(
@@ -832,7 +715,6 @@ export async function bewerkTerreincontrole(
         linkAttest,
         attestId,
         attestnummer,
-        status,
         certificatiePlatform:
           lid.certificatiePlatform,
         opmerkingen,
@@ -884,8 +766,6 @@ export async function bewerkTerreincontrole(
               bestaand.linkAttest,
             attestnummer:
               bestaand.attestnummer,
-            status:
-              bestaand.status,
             opmerkingen:
               bestaand.opmerkingen,
             datumControle:
@@ -905,7 +785,6 @@ export async function bewerkTerreincontrole(
               lid.naamPersoon,
             linkAttest,
             attestnummer,
-            status,
             opmerkingen,
             datumControle:
               datumControle.toISOString(),

@@ -64,21 +64,12 @@ export default async function TerreincontrolesPage() {
             ) : null}
 
             {magExporteren ? (
-              <>
-                <Link
-                  href="/terreincontroles/export"
-                  className="inline-flex h-11 items-center justify-center rounded-xl border border-emerald-300 bg-emerald-50 px-5 text-sm font-bold text-emerald-800 shadow-sm transition hover:bg-emerald-100"
-                >
-                  Exporteren naar Excel
-                </Link>
-
-                <Link
-                  href="/terreincontroles/export-openstaand"
-                  className="inline-flex h-11 items-center justify-center rounded-xl border border-amber-300 bg-amber-50 px-5 text-sm font-bold text-amber-900 shadow-sm transition hover:bg-amber-100"
-                >
-                  Excel Geen / In opmaak
-                </Link>
-              </>
+              <Link
+                href="/terreincontroles/export"
+                className="inline-flex h-11 items-center justify-center rounded-xl border border-emerald-300 bg-emerald-50 px-5 text-sm font-bold text-emerald-800 shadow-sm transition hover:bg-emerald-100"
+              >
+                Exporteren naar Excel
+              </Link>
             ) : null}
 
             {magBeheren ? (

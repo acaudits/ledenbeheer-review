@@ -19,7 +19,6 @@ export type TerreincontroleSelectieRij = {
   naamAdi: string;
   linkAttest: string;
   attestnummer: string;
-  status: string;
   certificatiePlatform: string;
   opmerkingen: string;
   datumControle: string;
@@ -50,15 +49,6 @@ type SelectieInvoer = {
   cursorId: number | null;
 };
 
-const statusExpressie = Prisma.sql`
-  CASE d."status"
-    WHEN 'AFGEROND' THEN 'Afgerond'
-    WHEN 'IN_OPMAAK' THEN 'In opmaak'
-    WHEN 'GEACTUALISEERD' THEN 'Geactualiseerd'
-    ELSE 'Geen'
-  END
-`;
-
 const tekstExpressies: Record<
   keyof TerreincontroleTekstfilters,
   Prisma.Sql
@@ -71,8 +61,6 @@ const tekstExpressies: Record<
     Prisma.sql`d."link_attest"`,
   attestnummer:
     Prisma.sql`d."attestnummer"`,
-  status:
-    statusExpressie,
   certificatiePlatform:
     Prisma.sql`d."certificatie_platform"`,
   opmerkingen:
@@ -222,7 +210,6 @@ function maakFiltervoorwaarden({
           d."naam_adi",
           d."link_attest",
           d."attestnummer",
-          ${statusExpressie},
           d."certificatie_platform",
           d."opmerkingen",
           TO_CHAR(
@@ -428,7 +415,6 @@ export async function laadTerreincontroleSelectie({
         d."naam_adi" AS "naamAdi",
         d."link_attest" AS "linkAttest",
         d."attestnummer",
-        ${statusExpressie} AS "status",
         COALESCE(
           d."certificatie_platform",
           ''
@@ -487,7 +473,6 @@ export async function laadTerreincontroleSelectie({
       g."naamAdi",
       g."linkAttest",
       g."attestnummer",
-      g."status",
       g."certificatiePlatform",
       g."opmerkingen",
       g."datumControle",

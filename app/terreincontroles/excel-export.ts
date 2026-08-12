@@ -23,26 +23,6 @@ function formatteerDatum(
   return `${jaar}-${maand}-${dag}`;
 }
 
-function statusLabel(
-  status: string,
-) {
-  if (status === "IN_OPMAAK") {
-    return "In opmaak";
-  }
-
-  if (
-    status === "GEACTUALISEERD"
-  ) {
-    return "Geactualiseerd";
-  }
-
-  if (status === "AFGEROND") {
-    return "Afgerond";
-  }
-
-  return "Geen";
-}
-
 function geefCelRand(
   kleur: string,
 ): Partial<ExcelJS.Borders> {
@@ -166,21 +146,11 @@ function formatteerWerkblad(
   };
 }
 
-export async function maakTerreincontroleExcel(
-  alleenOpenstaand = false,
-) {
+export async function maakTerreincontroleExcel() {
   const dossiers =
     await prisma.terreincontroleDossier.findMany({
       where: {
         verwijderdOp: null,
-        status: alleenOpenstaand
-          ? {
-              in: [
-                "GEEN",
-                "IN_OPMAAK",
-              ],
-            }
-          : undefined,
       },
       include: {
         vaststellingen: {
@@ -195,9 +165,6 @@ export async function maakTerreincontroleExcel(
         },
       },
       orderBy: [
-        {
-          status: "asc",
-        },
         {
           datumControle:
             "desc",
@@ -219,9 +186,7 @@ export async function maakTerreincontroleExcel(
 
   const werkblad =
     werkboek.addWorksheet(
-      alleenOpenstaand
-        ? "Geen - In opmaak"
-        : "Terreincontroles",
+      "Terreincontroles",
       {
         views: [
           {
@@ -252,11 +217,6 @@ export async function maakTerreincontroleExcel(
       header: "Attestnummer",
       key: "attestnummer",
       width: 28,
-    },
-    {
-      header: "Status",
-      key: "status",
-      width: 18,
     },
     {
       header:
@@ -326,10 +286,6 @@ export async function maakTerreincontroleExcel(
         dossier.linkAttest,
       attestnummer:
         dossier.attestnummer,
-      status:
-        statusLabel(
-          dossier.status,
-        ),
       certificatiePlatform:
         dossier.certificatiePlatform ??
         "",

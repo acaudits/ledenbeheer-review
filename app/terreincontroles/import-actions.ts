@@ -938,8 +938,6 @@ export async function importeerTerreincontroleUitExcel(
                 attestId,
                 attestnummer,
 
-                status: "GEEN",
-
                 certificatiePlatform:
                   lid.certificatiePlatform,
 
@@ -1036,7 +1034,6 @@ export async function importeerTerreincontroleUitExcel(
                 naamAdi:
                   lid.naamPersoon,
                 attestnummer,
-                status: "GEEN",
                 datumControle:
                   datumControle.toISOString(),
                 persoonsId:

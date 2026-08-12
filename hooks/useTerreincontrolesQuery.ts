@@ -30,7 +30,6 @@ const TEKSTFILTERPARAMETERS = {
   linkAttest: "filterLinkAttest",
   attestnummer:
     "filterAttestnummer",
-  status: "filterStatus",
   certificatiePlatform:
     "filterCertificatiePlatform",
   opmerkingen:

@@ -33,26 +33,6 @@ function datum(datum: Date) {
   ).format(datum);
 }
 
-function statusLabel(
-  status: string,
-) {
-  if (status === "IN_OPMAAK") {
-    return "In opmaak";
-  }
-
-  if (
-    status === "GEACTUALISEERD"
-  ) {
-    return "Geactualiseerd";
-  }
-
-  if (status === "AFGEROND") {
-    return "Afgerond";
-  }
-
-  return "Geen";
-}
-
 function Veld({
   label,
   waarde,
@@ -156,10 +136,7 @@ export default async function TerreincontroleDetailPage({
 
           <p className="mt-2 text-sm text-emerald-100">
             {dossier.naamAdi} ·{" "}
-            {dossier.bedrijfsnaam} ·{" "}
-            {statusLabel(
-              dossier.status,
-            )}
+            {dossier.bedrijfsnaam}
           </p>
         </header>
 
@@ -171,12 +148,6 @@ export default async function TerreincontroleDetailPage({
           <Veld
             label="Naam ADI"
             waarde={dossier.naamAdi}
-          />
-          <Veld
-            label="Status"
-            waarde={statusLabel(
-              dossier.status,
-            )}
           />
           <Veld
             label="Attestnummer"
@@ -276,7 +247,6 @@ export default async function TerreincontroleDetailPage({
       !dossier.verwijderdOp ? (
         <TerreincontroleDossierActies
           id={dossier.id}
-          status={dossier.status}
         />
       ) : null}
 

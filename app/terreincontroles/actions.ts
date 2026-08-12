@@ -182,11 +182,6 @@ export async function maakTerreincontroleAan(
     "attestnummer",
   ).toUpperCase();
 
-  const status = tekst(
-    formData,
-    "status",
-  );
-
   const datumControleWaarde =
     tekst(
       formData,
@@ -210,13 +205,6 @@ export async function maakTerreincontroleAan(
     haalAttestIdUitLink(
       linkAttest,
     );
-
-  const geldigeStatussen = [
-    "GEEN",
-    "IN_OPMAAK",
-    "GEACTUALISEERD",
-    "AFGEROND",
-  ];
 
   if (!auditeurGebruikerId) {
     foutRedirect(
@@ -245,16 +233,6 @@ export async function maakTerreincontroleAan(
   if (!attestnummer) {
     foutRedirect(
       "Attestnummer is verplicht.",
-    );
-  }
-
-  if (
-    !geldigeStatussen.includes(
-      status,
-    )
-  ) {
-    foutRedirect(
-      "Kies een geldige status.",
     );
   }
 
@@ -372,13 +350,6 @@ export async function maakTerreincontroleAan(
                 attestId,
                 attestnummer,
 
-                status:
-                  status as
-                    | "GEEN"
-                    | "IN_OPMAAK"
-                    | "GEACTUALISEERD"
-                    | "AFGEROND",
-
                 certificatiePlatform:
                   lid.certificatiePlatform,
 
@@ -430,7 +401,6 @@ export async function maakTerreincontroleAan(
                 naamAdi:
                   lid.naamPersoon,
                 attestnummer,
-                status,
                 datumControle:
                   datumControle.toISOString(),
                 persoonsId:

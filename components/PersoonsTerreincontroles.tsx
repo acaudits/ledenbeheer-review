@@ -38,42 +38,6 @@ function toonWaarde(
   return String(waarde);
 }
 
-function statusLabel(
-  status: string,
-) {
-  switch (status) {
-    case "IN_OPMAAK":
-      return "In opmaak";
-
-    case "GEACTUALISEERD":
-      return "Geactualiseerd";
-
-    case "AFGEROND":
-      return "Afgerond";
-
-    default:
-      return "Geen";
-  }
-}
-
-function statusStijl(
-  status: string,
-) {
-  switch (status) {
-    case "AFGEROND":
-      return "border-green-200 bg-green-100 text-green-900";
-
-    case "GEACTUALISEERD":
-      return "border-emerald-200 bg-emerald-100 text-emerald-900";
-
-    case "IN_OPMAAK":
-      return "border-amber-200 bg-amber-100 text-amber-900";
-
-    default:
-      return "border-slate-200 bg-slate-100 text-slate-700";
-  }
-}
-
 export async function PersoonsTerreincontroles({
   lidId,
 }: {
@@ -142,22 +106,10 @@ export async function PersoonsTerreincontroles({
             >
               <header className="flex flex-col gap-4 border-b border-slate-200 bg-slate-50 px-5 py-5 lg:flex-row lg:items-start lg:justify-between">
                 <div>
-                  <div className="flex flex-wrap items-center gap-2">
-                    <h3 className="text-lg font-bold text-slate-950">
-                      {terreincontrole.attestnummer ||
-                        `Terreincontrole #${terreincontrole.id}`}
-                    </h3>
-
-                    <span
-                      className={`inline-flex rounded-full border px-3 py-1 text-xs font-bold ${statusStijl(
-                        terreincontrole.status,
-                      )}`}
-                    >
-                      {statusLabel(
-                        terreincontrole.status,
-                      )}
-                    </span>
-                  </div>
+                  <h3 className="text-lg font-bold text-slate-950">
+                    {terreincontrole.attestnummer ||
+                      `Terreincontrole #${terreincontrole.id}`}
+                  </h3>
 
                   <p className="mt-2 text-sm text-slate-600">
                     Controle op{" "}

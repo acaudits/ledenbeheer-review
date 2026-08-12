@@ -13,9 +13,7 @@ export async function GET() {
   );
 
   const excelBuffer =
-    await maakTerreincontroleExcel(
-      false,
-    );
+    await maakTerreincontroleExcel();
 
   const blob = new Blob(
     [

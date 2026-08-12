@@ -11,7 +11,6 @@ export type TerreincontroleDossierRij = {
   naamAdi: string;
   linkAttest: string;
   attestnummer: string;
-  status: string;
   certificatiePlatform: string;
   opmerkingen: string;
   datumControle: string;

@@ -6,18 +6,10 @@ import {
   voegTerreincontroleVaststellingToe,
   verwijderTerreincontrole,
   verwijderTerreincontroleVaststelling,
-  wijzigTerreincontroleStatus,
 } from "@/app/terreincontroles/dossier-actions";
-
-type Status =
-  | "GEEN"
-  | "IN_OPMAAK"
-  | "GEACTUALISEERD"
-  | "AFGEROND";
 
 type Props = {
   id: number;
-  status: Status;
 };
 
 const invoer =
@@ -28,14 +20,7 @@ const tekstvak =
 
 export function TerreincontroleDossierActies({
   id,
-  status,
 }: Props) {
-  const statusActie =
-    wijzigTerreincontroleStatus.bind(
-      null,
-      id,
-    );
-
   const vaststellingActie =
     voegTerreincontroleVaststellingToe.bind(
       null,
@@ -50,41 +35,7 @@ export function TerreincontroleDossierActies({
 
   return (
     <section className="space-y-5 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <form
-          action={statusActie}
-          className="flex flex-wrap items-end gap-3"
-        >
-          <label className="text-sm font-bold text-slate-700">
-            Status
-            <select
-              name="status"
-              defaultValue={status}
-              className={`${invoer} min-w-52`}
-            >
-              <option value="GEEN">
-                Geen
-              </option>
-              <option value="IN_OPMAAK">
-                In opmaak
-              </option>
-              <option value="GEACTUALISEERD">
-                Geactualiseerd
-              </option>
-              <option value="AFGEROND">
-                Afgerond
-              </option>
-            </select>
-          </label>
-
-          <button
-            type="submit"
-            className="h-10 rounded-xl bg-emerald-700 px-4 text-sm font-bold text-white"
-          >
-            Status opslaan
-          </button>
-        </form>
-
+      <div className="flex flex-wrap justify-end gap-4">
         <div className="flex flex-wrap gap-3">
           <Link
             href={`/terreincontroles/${id}/bewerken`}
