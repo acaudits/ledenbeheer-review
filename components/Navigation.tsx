@@ -11,7 +11,7 @@ import { MeldingenLink } from "@/components/MeldingenLink";
 
 const navigatie = [
   {
-    naam: "Dashboard",
+    naam: "Totaal overzicht",
     href: "/",
     icoon: (
       <svg viewBox="0 0 24 24" fill="none" className="size-5">
@@ -169,6 +169,64 @@ const navigatie = [
       >
         <path
           d="M5 20V10m7 10V4m7 16v-7M3 20h18"
+          stroke="currentColor"
+          strokeWidth="1.8"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      </svg>
+    ),
+  },
+
+  {
+    naam: "Opvolging/sancties",
+    href: "/opvolging-sancties",
+    icoon: (
+      <svg viewBox="0 0 24 24" fill="none" className="size-5">
+        <path
+          d="M12 3 5 6v5c0 4.6 2.9 8.2 7 10 4.1-1.8 7-5.4 7-10V6l-7-3"
+          stroke="currentColor"
+          strokeWidth="1.8"
+          strokeLinejoin="round"
+        />
+      </svg>
+    ),
+  },
+  {
+    naam: "Kennis auditeurs",
+    href: "/kennis-auditeurs",
+    icoon: (
+      <svg viewBox="0 0 24 24" fill="none" className="size-5">
+        <path
+          d="M4 5a2 2 0 0 1 2-2h5v16H6a2 2 0 0 0-2 2V5Zm16 0a2 2 0 0 0-2-2h-5v16h5a2 2 0 0 1 2 2V5Z"
+          stroke="currentColor"
+          strokeWidth="1.8"
+          strokeLinejoin="round"
+        />
+      </svg>
+    ),
+  },
+  {
+    naam: "Begeleiding starters",
+    href: "/begeleiding-starters",
+    icoon: (
+      <svg viewBox="0 0 24 24" fill="none" className="size-5">
+        <path
+          d="M10 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm-7 10a7 7 0 0 1 14 0m2-10v6m-3-3h6"
+          stroke="currentColor"
+          strokeWidth="1.8"
+          strokeLinecap="round"
+        />
+      </svg>
+    ),
+  },
+  {
+    naam: "Klachtenbeheer",
+    href: "/klachtenbeheer",
+    icoon: (
+      <svg viewBox="0 0 24 24" fill="none" className="size-5">
+        <path
+          d="M5 4h14a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2h-8l-5 3v-3H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2Zm7 3v5m0 3h.01"
           stroke="currentColor"
           strokeWidth="1.8"
           strokeLinecap="round"
