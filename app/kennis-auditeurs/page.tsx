@@ -1,8 +1,8 @@
 import { PaginaInOntwikkeling } from "@/components/PaginaInOntwikkeling";
 import { vereisMachtiging } from "@/lib/auth";
 
-export default async function TotaalOverzichtPage() {
+export default async function KennisAuditeursPage() {
   await vereisMachtiging("CERTIFICATEN_BEKIJKEN");
 
-  return <PaginaInOntwikkeling titel="Totaal overzicht" />;
+  return <PaginaInOntwikkeling titel="Kennis auditeurs" />;
 }
