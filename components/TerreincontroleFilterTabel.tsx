@@ -1197,7 +1197,7 @@ export function TerreincontroleFilterTabel({
                           className={
                             kolom.type ===
                             "acties"
-                              ? `sticky right-0 z-10 min-w-56 whitespace-nowrap border-l border-slate-200 px-3 py-3 align-top has-[details[open]]:z-[70] ${
+                              ? `sticky right-0 z-10 has-[details[open]]:z-50 min-w-56 whitespace-nowrap border-l border-slate-200 px-3 py-3 align-top has-[details[open]]:z-[70] ${
                                   modus ===
                                     "afwezig" &&
                                   rij.ovamIdRood ===

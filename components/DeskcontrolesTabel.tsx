@@ -1255,7 +1255,7 @@ export function DeskcontrolesTabel({
                       },
                     )}
 
-                    <td className="sticky right-0 z-10 whitespace-nowrap bg-white px-3 py-3 align-top group-hover:bg-[#f7fcfa]">
+                    <td className="sticky right-0 z-10 has-[details[open]]:z-50 whitespace-nowrap bg-white px-3 py-3 align-top group-hover:bg-[#f7fcfa]">
                       {modus === "verwijderd" ? (
                         <BeheerHerstelButton
                           magBeheren={magBeheren}

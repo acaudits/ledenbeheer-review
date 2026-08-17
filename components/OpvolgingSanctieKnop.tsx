@@ -22,11 +22,13 @@ import {
 type Props = {
   bronType: OpvolgingBron;
   bronId: number;
+  sluitMeerMenu?: () => void;
 };
 
 export function OpvolgingSanctieKnop({
   bronType,
   bronId,
+  sluitMeerMenu,
 }: Props) {
   const [
     dialoogOpen,
@@ -77,6 +79,7 @@ export function OpvolgingSanctieKnop({
       : "";
 
   function openDialoog() {
+    sluitMeerMenu?.();
     setFout("");
     setSucces("");
     setNcCategorie("CAT_0");

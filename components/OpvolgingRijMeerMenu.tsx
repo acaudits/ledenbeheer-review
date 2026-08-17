@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import type {
-  ReactNode,
+import {
+  useRef,
+  type ReactNode,
 } from "react";
 
 import {
@@ -25,6 +26,15 @@ export function OpvolgingRijMeerMenu({
   bewerkenHref,
   kinderen,
 }: Props) {
+  const menuRef =
+    useRef<HTMLDetailsElement>(null);
+
+  function sluitMenu() {
+    if (menuRef.current) {
+      menuRef.current.open = false;
+    }
+  }
+
   return (
     <div
       className="relative inline-block"
@@ -36,6 +46,7 @@ export function OpvolgingRijMeerMenu({
       }}
     >
       <details
+        ref={menuRef}
         className="group"
         data-opvolging-rij-meer-menu="true"
         onToggle={(event) => {
@@ -63,7 +74,7 @@ export function OpvolgingRijMeerMenu({
           Meer
         </summary>
 
-        <div className="absolute right-0 z-[80] mt-1 min-w-56 rounded-xl border border-slate-200 bg-white p-1.5 shadow-xl">
+        <div className="absolute bottom-full right-0 z-[80] mb-1 min-w-56 rounded-xl border border-slate-200 bg-white p-1.5 shadow-xl">
           <Link
             href={bewerkenHref}
             className="flex w-full rounded-lg px-3 py-2 text-left text-xs font-bold text-slate-700 hover:bg-slate-100"
@@ -74,6 +85,7 @@ export function OpvolgingRijMeerMenu({
           <OpvolgingSanctieKnop
             bronType={bronType}
             bronId={bronId}
+            sluitMeerMenu={sluitMenu}
           />
 
           <div className="mt-1 border-t border-slate-200 pt-1">

@@ -926,7 +926,7 @@ export function NaFinalisatieTabel({
                       ),
                     )}
 
-                    <td className="sticky right-0 z-10 min-w-56 border-l border-slate-200 bg-white px-3 py-3 group-hover:bg-[#f7fcfa]">
+                    <td className="sticky right-0 z-10 has-[details[open]]:z-50 min-w-56 border-l border-slate-200 bg-white px-3 py-3 group-hover:bg-[#f7fcfa]">
                       {verwijderd ? (
                         <NaFinalisatieHerstelKnop
                           id={rij.id}
