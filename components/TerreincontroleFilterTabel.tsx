@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import {
   useRouter,
 } from "next/navigation";
@@ -15,6 +14,7 @@ import {
   TerreincontroleDossierVerwijderKnop,
 } from "@/components/TerreincontroleDossierVerwijderKnop";
 import TerreincontroleMeerMenu from "@/components/TerreincontroleMeerMenu";
+import { OpvolgingRijMeerMenu } from "@/components/OpvolgingRijMeerMenu";
 import {
   TerreincontroleFactuurSelect,
   TerreincontroleStatusSelect,
@@ -683,18 +683,16 @@ export function TerreincontroleFilterTabel({
     }
 
     return (
-      <div className="flex min-w-max flex-wrap gap-2">
-        <Link
-          href={`/terreincontroles/${rij.id}/bewerken`}
-          className="inline-flex h-8 items-center rounded-lg border border-slate-300 bg-white px-3 text-xs font-bold text-slate-700 hover:bg-slate-50"
-        >
-          Bewerken
-        </Link>
-
-        <TerreincontroleDossierVerwijderKnop
-          id={rij.id}
-        />
-      </div>
+      <OpvolgingRijMeerMenu
+        bronType="TERREINCONTROLE"
+        bronId={rij.id}
+        bewerkenHref={`/terreincontroles/${rij.id}/bewerken`}
+        kinderen={
+          <TerreincontroleDossierVerwijderKnop
+            id={rij.id}
+          />
+        }
+      />
     );
   }
 
