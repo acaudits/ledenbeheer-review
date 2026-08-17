@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { OpvolgingSanctieActies } from "@/components/OpvolgingSanctieActies";
@@ -179,6 +180,19 @@ export default async function OpvolgingSanctiesPage() {
             ? "registratie"
             : "registraties"}
         </p>
+        {(
+          magDeskcontrolesBeheren ||
+          magTerreincontrolesBeheren
+        ) ? (
+          <div className="mt-4">
+            <Link
+              href="/opvolging-sancties/verwijderd"
+              className="inline-flex h-10 items-center justify-center rounded-xl border border-slate-300 bg-white px-4 text-sm font-bold text-slate-700 transition hover:bg-slate-50"
+            >
+              Verwijderde registraties
+            </Link>
+          </div>
+        ) : null}
       </header>
 
       <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
