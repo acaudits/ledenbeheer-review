@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import {
   useRouter,
 } from "next/navigation";
@@ -15,6 +14,7 @@ import {
 import {
   NaFinalisatieVerwijderKnop,
 } from "@/components/NaFinalisatieVerwijderKnop";
+import { OpvolgingRijMeerMenu } from "@/components/OpvolgingRijMeerMenu";
 import {
   useNaFinalisatieQuery,
 } from "@/hooks/useNaFinalisatieQuery";
@@ -932,18 +932,16 @@ export function NaFinalisatieTabel({
                           id={rij.id}
                         />
                       ) : magBeheren ? (
-                        <div className="flex flex-wrap items-start gap-2">
-                          <Link
-                            href={`/na-finalisatie/${rij.id}/bewerken`}
-                            className="inline-flex h-10 items-center justify-center rounded-xl border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
-                          >
-                            Bewerken
-                          </Link>
-
-                          <NaFinalisatieVerwijderKnop
-                            id={rij.id}
-                          />
-                        </div>
+                        <OpvolgingRijMeerMenu
+                          bronType="NA_FINALISATIE"
+                          bronId={rij.id}
+                          bewerkenHref={`/na-finalisatie/${rij.id}/bewerken`}
+                          kinderen={
+                            <NaFinalisatieVerwijderKnop
+                              id={rij.id}
+                            />
+                          }
+                        />
                       ) : (
                         <span className="text-xs text-slate-400">
                           —

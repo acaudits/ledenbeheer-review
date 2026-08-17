@@ -10,6 +10,7 @@ import {
 import { DeskcontroleHerstelButton as BasisDeskcontroleHerstelButton } from "@/components/DeskcontroleHerstelButton";
 import { DeskcontroleOpmerkingenDialog } from "@/components/DeskcontroleOpmerkingenDialog";
 import { DeskcontroleVerwijderButton as BasisDeskcontroleVerwijderButton } from "@/components/DeskcontroleVerwijderButton";
+import { OpvolgingRijMeerMenu } from "@/components/OpvolgingRijMeerMenu";
 import {
   DeskcontroleSelectievak,
   DeskcontroleStatusSelect,
@@ -1261,20 +1262,17 @@ export function DeskcontrolesTabel({
                           id={Number(rij.id)}
                         />
                       ) : (
-                        <div className="flex items-center gap-2">
-                          <BeheerLink
-                magBeheren={magBeheren}
-                            href={`/deskcontroles/${rij.id}/bewerken`}
-                            className="inline-flex items-center rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-700 transition hover:bg-slate-50"
-                          >
-                            Bewerken
-                          </BeheerLink>
-
-                          <BeheerVerwijderButton
-                            magBeheren={magBeheren}
-                            id={Number(rij.id)}
-                          />
-                        </div>
+                        <OpvolgingRijMeerMenu
+                          bronType="DESKCONTROLE"
+                          bronId={Number(rij.id)}
+                          bewerkenHref={`/deskcontroles/${rij.id}/bewerken`}
+                          kinderen={
+                            <BeheerVerwijderButton
+                              magBeheren={magBeheren}
+                              id={Number(rij.id)}
+                            />
+                          }
+                        />
                       )}
                     </td>
                   </tr>

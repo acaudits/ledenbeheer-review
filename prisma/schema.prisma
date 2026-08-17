@@ -303,6 +303,9 @@ model ToegestaneGebruiker {
   auditlogs                    Auditlog[]
   terreincontroleReserveringen TerreincontroleReservering[]
   pushAbonnementen             PushAbonnement[]
+  opvolgingenAlsAuditeur       OpvolgingSanctie[]           @relation("OpvolgingSanctieAuditeur")
+  opvolgingenAfgerondDoor      OpvolgingSanctie[]           @relation("OpvolgingSanctieAfgerondDoor")
+  opvolgingenAangemaakt        OpvolgingSanctie[]           @relation("OpvolgingSanctieAangemaaktDoor")
 
   @@index([email])
   @@index([actief])
@@ -582,4 +585,73 @@ model PushVerzending {
   @@index([status])
   @@index([aangemaaktOp])
   @@map("push_verzendingen")
+}
+
+enum OpvolgingSanctieBron {
+  DESKCONTROLE
+  TERREINCONTROLE
+  NA_FINALISATIE
+}
+
+enum OpvolgingNcCategorie {
+  CAT_0
+  CAT_1
+  CAT_2
+  CAT_3
+  CAT_4
+}
+
+model OpvolgingSanctie {
+  id Int @id @default(autoincrement())
+
+  bronType OpvolgingSanctieBron @map("bron_type")
+  bronId   Int                  @map("bron_id")
+
+  auditeur            String?
+  auditeurGebruikerId Int?                 @map("auditeur_gebruiker_id")
+  auditeurGebruiker   ToegestaneGebruiker? @relation("OpvolgingSanctieAuditeur", fields: [auditeurGebruikerId], references: [id], onDelete: SetNull)
+
+  naamAdi String? @map("naam_adi")
+
+  opvolgingAfgerond Boolean   @default(false) @map("opvolging_afgerond")
+  datumAfgerond     DateTime? @map("datum_afgerond") @db.Date
+
+  afgerondDoorGebruikerId Int?                 @map("afgerond_door_gebruiker_id")
+  afgerondDoorGebruiker   ToegestaneGebruiker? @relation("OpvolgingSanctieAfgerondDoor", fields: [afgerondDoorGebruikerId], references: [id], onDelete: Restrict)
+
+  linkAttest   String? @map("link_attest") @db.VarChar(2048)
+  attestnummer String? @db.VarChar(255)
+
+  reden String @db.Text
+
+  bedrijfsnaam String? @db.VarChar(500)
+  ovamId       String? @map("ovam_id") @db.VarChar(255)
+
+  datumVaststelling DateTime @map("datum_vaststelling") @db.Date
+  opmerkingen       String?  @db.Text
+
+  ncCategorie OpvolgingNcCategorie @map("nc_categorie")
+
+  sanctieBegindatum DateTime? @map("sanctie_begindatum") @db.Date
+  sanctieEinddatum  DateTime? @map("sanctie_einddatum") @db.Date
+
+  aangemaaktDoorId Int? @map("aangemaakt_door_id")
+
+  aangemaaktDoor ToegestaneGebruiker? @relation("OpvolgingSanctieAangemaaktDoor", fields: [aangemaaktDoorId], references: [id], onDelete: SetNull)
+  aangemaaktOp   DateTime             @default(now()) @map("aangemaakt_op")
+  bijgewerktOp   DateTime             @updatedAt @map("bijgewerkt_op")
+  verwijderdOp   DateTime?            @map("verwijderd_op")
+
+  @@unique([bronType, bronId])
+  @@index([auditeurGebruikerId])
+  @@index([afgerondDoorGebruikerId])
+  @@index([aangemaaktDoorId])
+  @@index([opvolgingAfgerond])
+  @@index([ncCategorie])
+  @@index([datumVaststelling])
+  @@index([sanctieBegindatum])
+  @@index([sanctieEinddatum])
+  @@index([verwijderdOp])
+  @@index([verwijderdOp, datumVaststelling(sort: Desc), id(sort: Desc)])
+  @@map("opvolging_sancties")
 }
