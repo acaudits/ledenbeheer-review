@@ -4,6 +4,10 @@ import {
   useRouter,
 } from "next/navigation";
 import {
+  createPortal,
+} from "react-dom";
+import {
+  useRef,
   useState,
   useTransition,
 } from "react";
@@ -61,6 +65,9 @@ export function OpvolgingSanctieActies({
   const router =
     useRouter();
 
+  const menuRef =
+    useRef<HTMLDetailsElement>(null);
+
   const [
     dialoogOpen,
     setDialoogOpen,
@@ -83,7 +90,14 @@ export function OpvolgingSanctieActies({
     startTransition,
   ] = useTransition();
 
+  function sluitMenu() {
+    if (menuRef.current) {
+      menuRef.current.open = false;
+    }
+  }
+
   function openDialoog() {
+    sluitMenu();
     setAfgerond(
       registratie.opvolgingAfgerond,
     );
@@ -169,12 +183,36 @@ export function OpvolgingSanctieActies({
           event.stopPropagation();
         }}
       >
-        <details className="group">
+        <details
+          ref={menuRef}
+          className="group"
+          data-opvolging-rij-meer-menu="true"
+          onToggle={(event) => {
+            const geopendMenu =
+              event.currentTarget;
+
+            if (!geopendMenu.open) {
+              return;
+            }
+
+            document
+              .querySelectorAll<HTMLDetailsElement>(
+                'details[data-opvolging-rij-meer-menu="true"][open]',
+              )
+              .forEach((menu) => {
+                if (
+                  menu !== geopendMenu
+                ) {
+                  menu.open = false;
+                }
+              });
+          }}
+        >
           <summary className="inline-flex h-9 cursor-pointer list-none items-center rounded-lg border border-slate-300 bg-white px-3 text-xs font-bold text-slate-700 hover:bg-slate-50">
             Meer
           </summary>
 
-          <div className="absolute right-0 z-50 mt-1 min-w-44 rounded-xl border border-slate-200 bg-white p-1.5 shadow-xl">
+          <div className="absolute right-full top-0 z-50 mr-1 min-w-44 rounded-xl border border-slate-200 bg-white p-1.5 shadow-xl">
             <button
               type="button"
               onClick={
@@ -210,7 +248,8 @@ export function OpvolgingSanctieActies({
         ) : null}
       </div>
 
-      {dialoogOpen ? (
+      {dialoogOpen
+        ? createPortal(
         <div
           role="presentation"
           className="fixed inset-0 z-[120] flex items-center justify-center bg-slate-950/50 p-4"
@@ -315,7 +354,7 @@ export function OpvolgingSanctieActies({
               />
             </div>
 
-            <label className="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 p-4">
+            <label className="flex cursor-pointer items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 p-4">
               <input
                 name="opvolgingAfgerond"
                 type="checkbox"
@@ -329,7 +368,7 @@ export function OpvolgingSanctieActies({
                   );
                 }}
                 disabled={isBezig}
-                className="size-5 accent-emerald-700"
+                className="size-5 cursor-pointer accent-emerald-700"
               />
 
               <span className="font-bold text-slate-800">
@@ -436,8 +475,10 @@ export function OpvolgingSanctieActies({
               </button>
             </div>
           </form>
-        </div>
-      ) : null}
+        </div>,
+          document.body,
+        )
+        : null}
     </>
   );
 }

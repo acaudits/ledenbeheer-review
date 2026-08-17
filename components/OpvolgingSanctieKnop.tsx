@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { createPortal } from "react-dom";
 import {
   useState,
   useTransition,
@@ -142,7 +143,8 @@ export function OpvolgingSanctieKnop({
         Opvolgen/sanctioneren
       </button>
 
-      {dialoogOpen ? (
+      {dialoogOpen
+        ? createPortal(
         <div
           role="presentation"
           className="fixed inset-0 z-[120] flex items-center justify-center bg-slate-950/50 p-4"
@@ -449,8 +451,10 @@ export function OpvolgingSanctieKnop({
               </form>
             )}
           </div>
-        </div>
-      ) : null}
+        </div>,
+          document.body,
+        )
+        : null}
     </>
   );
 }

@@ -855,3 +855,119 @@ export async function verwijderOpvolgingSanctie(
       "De opvolging werd verwijderd.",
   };
 }
+
+export async function herstelOpvolgingSanctie(
+  id: number,
+): Promise<WijzigOpvolgingSanctieResultaat> {
+  if (!geldigeBronId(id)) {
+    return {
+      succes: false,
+      melding:
+        "De geselecteerde opvolging is ongeldig.",
+    };
+  }
+
+  const bestaande =
+    await prisma.opvolgingSanctie.findFirst({
+      where: {
+        id,
+        verwijderdOp: {
+          not: null,
+        },
+      },
+      select: {
+        id: true,
+        bronType: true,
+        bronId: true,
+        ncCategorie: true,
+        verwijderdOp: true,
+      },
+    });
+
+  if (!bestaande?.verwijderdOp) {
+    return {
+      succes: false,
+      melding:
+        "De opvolging bestaat niet of werd al hersteld.",
+    };
+  }
+
+  const verwijderdOp =
+    bestaande.verwijderdOp;
+
+  const gebruiker =
+    await vereisMachtigingVoorBron(
+      bestaande.bronType,
+    );
+
+  const hersteld =
+    await prisma.$transaction(
+      async (database) => {
+        const resultaat =
+          await database.opvolgingSanctie.updateMany({
+            where: {
+              id,
+              verwijderdOp:
+                verwijderdOp,
+            },
+            data: {
+              verwijderdOp: null,
+            },
+          });
+
+        if (resultaat.count === 0) {
+          return false;
+        }
+
+        await schrijfAuditlog(
+          database,
+          gebruiker,
+          {
+            actie:
+              "OPVOLGING_SANCTIE_HERSTELD",
+            entiteit:
+              "OpvolgingSanctie",
+            entiteitId: id,
+            omschrijving:
+              "Verwijderde opvolging/sanctie hersteld.",
+            oudeWaarde: {
+              bronType:
+                bestaande.bronType,
+              bronId:
+                bestaande.bronId,
+              ncCategorie:
+                bestaande.ncCategorie,
+              verwijderdOp:
+                verwijderdOp.toISOString(),
+            },
+            nieuweWaarde: {
+              verwijderdOp: null,
+            },
+          },
+        );
+
+        return true;
+      },
+    );
+
+  if (!hersteld) {
+    return {
+      succes: false,
+      melding:
+        "De opvolging werd intussen al hersteld.",
+    };
+  }
+
+  revalidatePath(
+    "/opvolging-sancties",
+  );
+  revalidatePath(
+    "/opvolging-sancties/verwijderd",
+  );
+
+  return {
+    succes: true,
+    melding:
+      "De opvolging werd hersteld.",
+  };
+}
