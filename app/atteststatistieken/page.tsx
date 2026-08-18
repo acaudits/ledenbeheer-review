@@ -1,4 +1,7 @@
 import {
+  BeheerOverzichtHeader,
+} from "@/components/BeheerOverzichtHeader";
+import {
   vereisMachtiging,
 } from "@/lib/auth";
 import {
@@ -87,20 +90,16 @@ export default async function AtteststatistiekenPage() {
 
   return (
     <div className="space-y-5">
-      <header className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-        <p className="text-sm font-medium text-emerald-700">
-          Attestbeheer
-        </p>
-
-        <h1 className="mt-1 text-2xl font-bold tracking-tight text-slate-950">
-          Atteststatistieken
-        </h1>
-
-        <p className="mt-1 text-sm text-slate-600">
-          Unieke attesten per persoon en bedrijf,
-          aangevuld met handmatige correcties.
-        </p>
-      </header>
+      <BeheerOverzichtHeader
+        bovenTitel="Attestbeheer"
+        titel="Atteststatistieken"
+        omschrijving={
+          <>
+            Unieke attesten per persoon en bedrijf,
+            aangevuld met handmatige correcties.
+          </>
+        }
+      />
 
       <AtteststatistiekenClient
         personen={personen}

@@ -1060,7 +1060,7 @@ export function DeskcontrolesTabel({
                     },
                   )}
 
-                  <th className="sticky right-0 top-0 z-30 border-b border-slate-200 bg-slate-50 px-3 py-2.5 text-right text-xs font-bold uppercase text-slate-500">
+                  <th className="sticky right-0 w-20 min-w-20 top-0 z-30 border-b border-slate-200 bg-slate-50 px-3 py-2.5 text-left text-xs font-bold uppercase text-slate-500">
                     Acties
                   </th>
                 </tr>
@@ -1255,7 +1255,7 @@ export function DeskcontrolesTabel({
                       },
                     )}
 
-                    <td className="sticky right-0 z-10 has-[details[open]]:z-50 whitespace-nowrap bg-white px-3 py-3 align-top group-hover:bg-[#f7fcfa]">
+                    <td className="sticky right-0 w-20 min-w-20 z-10 has-[details[open]]:z-50 whitespace-nowrap border-l border-slate-200 bg-inherit px-3 py-3 align-top group-hover:bg-[#f7fcfa]">
                       {modus === "verwijderd" ? (
                         <BeheerHerstelButton
                           magBeheren={magBeheren}

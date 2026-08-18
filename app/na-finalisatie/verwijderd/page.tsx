@@ -1,4 +1,7 @@
-import Link from "next/link";
+import {
+  BeheerActieLink,
+  BeheerOverzichtHeader,
+} from "@/components/BeheerOverzichtHeader";
 
 import {
   NaFinalisatieTabel,
@@ -77,35 +80,33 @@ export default async function VerwijderdeNaFinalisatiePage() {
 
   return (
     <div className="space-y-4">
-      <header className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
-        <Link
-          href="/na-finalisatie"
-          className="text-sm font-bold text-emerald-700 hover:text-emerald-900"
-        >
-          ← Terug naar Na finalisatie
-        </Link>
-
-        <p className="mt-4 text-xs font-bold uppercase tracking-[0.16em] text-emerald-700">
-          Controlebeheer
-        </p>
-
-        <h1 className="mt-1 text-2xl font-black tracking-tight text-slate-950 sm:text-3xl">
-          Verwijderde registraties
-        </h1>
-
-        <p className="mt-1.5 text-sm text-slate-500">
-          {registraties.length}{" "}
-          {registraties.length === 1
-            ? "verwijderde registratie"
-            : "verwijderde registraties"}
-        </p>
-      </header>
-
-      <NaFinalisatieTabel
-        rijen={rijen}
-        magBeheren
-        verwijderd
+      <BeheerOverzichtHeader
+        bovenTitel="Controlebeheer"
+        titel="Verwijderde registraties"
+        omschrijving={
+          <>
+            {registraties.length}{" "}
+            {registraties.length === 1
+              ? "verwijderde registratie"
+              : "verwijderde registraties"}
+          </>
+        }
+        acties={
+          <BeheerActieLink
+            href="/na-finalisatie"
+            variant="neutraal"
+            kinderen="← Terug naar Na finalisatie"
+          />
+        }
       />
+
+      <div className="rounded-2xl ring-1 ring-slate-200">
+        <NaFinalisatieTabel
+          rijen={rijen}
+          magBeheren
+          verwijderd
+        />
+      </div>
     </div>
   );
 }

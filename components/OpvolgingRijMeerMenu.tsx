@@ -74,7 +74,7 @@ export function OpvolgingRijMeerMenu({
           Meer
         </summary>
 
-        <div className="absolute right-full top-0 z-[80] mr-1 min-w-56 rounded-xl border border-slate-200 bg-white p-1.5 shadow-xl">
+        <div className="absolute right-full top-0 z-[80] mr-2 min-w-56 rounded-xl border border-slate-200 bg-white p-1.5 shadow-xl">
           <Link
             href={bewerkenHref}
             className="flex w-full rounded-lg px-3 py-2 text-left text-xs font-bold text-slate-700 hover:bg-slate-100"

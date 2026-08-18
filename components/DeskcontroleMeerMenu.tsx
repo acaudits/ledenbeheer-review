@@ -156,7 +156,7 @@ export function DeskcontroleMeerMenu({
       {geopend ? (
         <div
           role="menu"
-          className="absolute right-0 top-full z-50 mt-2 w-[min(92vw,34rem)] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl"
+          className="absolute right-full top-0 z-50 mr-2 w-[min(92vw,34rem)] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl"
         >
           <div className="p-2">
             {magBeheren ? (
@@ -200,7 +200,7 @@ export function DeskcontroleMeerMenu({
             ) : null}
 
             {magExporteren ? (
-            <a
+            <Link
               href="/deskcontroles/export-openstaand"
               role="menuitem"
               className="flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold text-slate-700 transition hover:bg-emerald-50 hover:text-emerald-900"
@@ -231,7 +231,7 @@ export function DeskcontroleMeerMenu({
                   Openstaande deskcontroles downloaden
                 </span>
               </span>
-            </a>
+            </Link>
             ) : null}
           </div>
 

@@ -69,7 +69,7 @@ export default async function PersoonscertificatenPage() {
   );
 
   return (
-    <>
+    <div className="space-y-4">
       <PageHeader
         compact
         titel="Persoonscertificaten"
@@ -108,6 +108,6 @@ export default async function PersoonscertificatenPage() {
         soort="persoon"
         magBeheren={magBeheren}
       />
-    </>
+    </div>
   );
 }

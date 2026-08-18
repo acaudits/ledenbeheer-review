@@ -1,16 +1,50 @@
-import Link from "next/link";
+import {
+  BeheerActieLink,
+  BeheerOverzichtHeader,
+} from "@/components/BeheerOverzichtHeader";
+import {
+  VerwijderdeBeheerTabel,
+  type VerwijderdeBeheerTabelRij,
+} from "@/components/VerwijderdeBeheerTabel";
+import {
+  vereisMachtiging,
+} from "@/lib/auth";
+import type {
+  BeheerTabelKolom,
+} from "@/lib/beheer-tabel";
+import {
+  prisma,
+} from "@/lib/prisma";
 
-import { herstelTerreincontrole } from "@/app/terreincontroles/dossier-actions";
-import { vereisMachtiging } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
-
-export const dynamic = "force-dynamic";
+export const dynamic =
+  "force-dynamic";
 
 type Props = {
   searchParams: Promise<{
     hersteld?: string;
   }>;
 };
+
+const kolommen:
+  BeheerTabelKolom[] = [
+    {
+      sleutel: "attestnummer",
+      label: "Attestnummer",
+    },
+    {
+      sleutel: "naamAdi",
+      label: "Naam ADI",
+    },
+    {
+      sleutel: "bedrijfsnaam",
+      label: "Bedrijfsnaam",
+    },
+    {
+      sleutel: "verwijderdOp",
+      label: "Verwijderd op",
+      type: "datum",
+    },
+  ];
 
 function datum(
   waarde: Date | null,
@@ -52,14 +86,38 @@ export default async function VerwijderdeTerreincontrolesPage({
       },
     });
 
+  const rijen:
+    VerwijderdeBeheerTabelRij[] =
+    dossiers.map(
+      (dossier) => ({
+        id: dossier.id,
+        attestnummer:
+          dossier.attestnummer,
+        naamAdi:
+          dossier.naamAdi,
+        bedrijfsnaam:
+          dossier.bedrijfsnaam,
+        verwijderdOp:
+          datum(
+            dossier.verwijderdOp,
+          ),
+      }),
+    );
+
   return (
-    <div className="space-y-5">
-      <Link
-        href="/terreincontroles"
-        className="text-sm font-bold text-emerald-700"
-      >
-        ← Terug naar terreincontroles
-      </Link>
+    <div className="space-y-4">
+      <BeheerOverzichtHeader
+        bovenTitel="Controlebeheer"
+        titel="Verwijderde terreincontroles"
+        omschrijving={`${dossiers.length} verwijderde terreincontroles`}
+        acties={
+          <BeheerActieLink
+            href="/terreincontroles"
+            variant="neutraal"
+            kinderen="← Terug naar terreincontroles"
+          />
+        }
+      />
 
       {hersteld === "1" ? (
         <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm font-semibold text-emerald-800">
@@ -67,103 +125,16 @@ export default async function VerwijderdeTerreincontrolesPage({
         </div>
       ) : null}
 
-      <header className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-        <h1 className="text-2xl font-bold text-slate-950">
-          Verwijderde terreincontroles
-        </h1>
-
-        <p className="mt-1 text-sm text-slate-500">
-          {dossiers.length} verwijderd
-        </p>
-      </header>
-
-      <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-        {dossiers.length === 0 ? (
-          <div className="p-12 text-center text-sm text-slate-500">
-            Er zijn geen verwijderde terreincontroles.
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="min-w-[1100px] text-left text-sm">
-              <thead className="bg-slate-50 text-slate-600">
-                <tr>
-                  <th className="px-4 py-3">
-                    Attestnummer
-                  </th>
-                  <th className="px-4 py-3">
-                    Naam ADI
-                  </th>
-                  <th className="px-4 py-3">
-                    Bedrijfsnaam
-                  </th>
-                  <th className="px-4 py-3">
-                    Verwijderd op
-                  </th>
-                  <th className="px-4 py-3">
-                    Actie
-                  </th>
-                </tr>
-              </thead>
-
-              <tbody>
-                {dossiers.map(
-                  (dossier) => {
-                    const actie =
-                      herstelTerreincontrole.bind(
-                        null,
-                        dossier.id,
-                      );
-
-                    return (
-                      <tr
-                        key={
-                          dossier.id
-                        }
-                        className="border-t border-slate-100"
-                      >
-                        <td className="px-4 py-3 font-bold">
-                          {
-                            dossier.attestnummer
-                          }
-                        </td>
-                        <td className="px-4 py-3">
-                          {
-                            dossier.naamAdi
-                          }
-                        </td>
-                        <td className="px-4 py-3">
-                          {
-                            dossier.bedrijfsnaam
-                          }
-                        </td>
-                        <td className="px-4 py-3">
-                          {datum(
-                            dossier.verwijderdOp,
-                          )}
-                        </td>
-                        <td className="px-4 py-3">
-                          <form
-                            action={
-                              actie
-                            }
-                          >
-                            <button
-                              type="submit"
-                              className="rounded-xl bg-emerald-700 px-4 py-2 text-xs font-bold text-white"
-                            >
-                              Herstellen
-                            </button>
-                          </form>
-                        </td>
-                      </tr>
-                    );
-                  },
-                )}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </section>
+      <VerwijderdeBeheerTabel
+        rijen={rijen}
+        kolommen={kolommen}
+        herstelType="terreincontrole-dossier"
+        zoekPlaceholder="Zoeken in verwijderde terreincontroles..."
+        legeTitel="Geen verwijderde terreincontroles"
+        legeBeschrijving="Er zijn momenteel geen verwijderde terreincontroles."
+        resultaatEnkelvoud="verwijderde terreincontrole"
+        resultaatMeervoud="verwijderde terreincontroles"
+      />
     </div>
   );
 }

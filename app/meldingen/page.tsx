@@ -15,7 +15,7 @@ export default async function MeldingenPage() {
   await vereisIngelogdeGebruiker();
 
   return (
-    <div className="mx-auto max-w-5xl">
+    <div className="space-y-4">
       <PageHeader
         bovenTitel="Persoonlijk"
         titel="Meldingen"

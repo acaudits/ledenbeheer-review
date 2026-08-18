@@ -1,5 +1,6 @@
 "use client";
 
+import { BEHEER_TABEL_STIJLEN } from "@/components/BeheerTabelOnderdelen";
 import {
   type ReactNode,
   useEffect,
@@ -656,7 +657,7 @@ export function LaattijdigePlaatsbezoekenTabel({
               void kaartQuery
                 .opnieuwLaden();
             }}
-            className="mt-2 font-bold underline"
+            className={BEHEER_TABEL_STIJLEN.foutKnop}
           >
             Opnieuw proberen
           </button>
@@ -709,10 +710,10 @@ export function LaattijdigePlaatsbezoekenTabel({
         </div>
       </div>
 
-      <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[2350px] text-left text-sm">
-            <thead className="bg-slate-100 text-xs uppercase tracking-wide text-slate-600">
+      <div className={BEHEER_TABEL_STIJLEN.kader}>
+        <div className={BEHEER_TABEL_STIJLEN.scroll}>
+          <table className={`${BEHEER_TABEL_STIJLEN.tabel} min-w-[2350px] text-sm`}>
+            <thead className={BEHEER_TABEL_STIJLEN.kop}>
               <tr>
                 {kolommen.map(
                   (kolom) => (
@@ -953,14 +954,14 @@ export function LaattijdigePlaatsbezoekenTabel({
                 void serverQuery
                   .opnieuwLaden();
               }}
-              className="mt-2 font-bold underline"
+              className={BEHEER_TABEL_STIJLEN.foutKnop}
             >
               Opnieuw proberen
             </button>
           </div>
         ) : null}
 
-        <div className="flex flex-col gap-3 border-t border-slate-200 bg-slate-50 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className={BEHEER_TABEL_STIJLEN.voet}>
           <p className="text-sm font-semibold text-slate-600">
             {
               zichtbareRijen.length
@@ -981,7 +982,7 @@ export function LaattijdigePlaatsbezoekenTabel({
                 void serverQuery
                   .laadVolgendePagina();
               }}
-              className="rounded-xl bg-blue-700 px-5 py-2.5 text-sm font-black text-white hover:bg-blue-800 disabled:cursor-wait disabled:opacity-60"
+              className={BEHEER_TABEL_STIJLEN.meerKnop}
             >
               {serverQuery
                 .isVolgendePaginaLaden

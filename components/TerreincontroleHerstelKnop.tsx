@@ -1,6 +1,9 @@
 "use client";
 
 import {
+  BEHEER_KNOP_KLASSEN,
+} from "@/components/BeheerOverzichtHeader";
+import {
   useQueryClient,
 } from "@tanstack/react-query";
 import {
@@ -89,7 +92,7 @@ export default function TerreincontroleHerstelKnop({
         type="button"
         onClick={herstel}
         disabled={isBezig}
-        className="inline-flex h-9 items-center justify-center rounded-lg border border-emerald-300 bg-emerald-50 px-3 text-xs font-semibold text-emerald-800 hover:bg-emerald-100 disabled:cursor-wait disabled:opacity-60"
+        className={`${BEHEER_KNOP_KLASSEN.primair} disabled:cursor-wait disabled:opacity-60`}
       >
         {isBezig
           ? "Herstellen..."
