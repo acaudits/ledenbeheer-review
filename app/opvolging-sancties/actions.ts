@@ -971,3 +971,349 @@ export async function herstelOpvolgingSanctie(
       "De opvolging werd hersteld.",
   };
 }
+
+export type BewerkOpvolgingSanctieDetailStatus = {
+  fout?: string;
+  succes?: string;
+};
+
+export async function bewerkOpvolgingSanctieDetail(
+  id: number,
+  _vorigeStatus: BewerkOpvolgingSanctieDetailStatus,
+  formData: FormData,
+): Promise<BewerkOpvolgingSanctieDetailStatus> {
+  if (!geldigeBronId(id)) {
+    return {
+      fout: "Ongeldige registratie.",
+    };
+  }
+
+  const bestaande =
+    await prisma.opvolgingSanctie.findFirst({
+      where: {
+        id,
+        verwijderdOp: null,
+      },
+    });
+
+  if (!bestaande) {
+    return {
+      fout: "De opvolging/sanctie bestaat niet meer.",
+    };
+  }
+
+  const gebruiker =
+    await vereisMachtigingVoorBron(
+      bestaande.bronType,
+    );
+
+  const validatie =
+    valideerOpvolgingSanctieInvoer(
+      formData,
+    );
+
+  if (!validatie.geldig) {
+    return {
+      fout: validatie.melding,
+    };
+  }
+
+  function invoer(
+    naam: string,
+    maximum: number,
+  ) {
+    return String(
+      formData.get(naam) ?? "",
+    )
+      .trim()
+      .slice(0, maximum);
+  }
+
+  function optioneelId(
+    naam: string,
+  ) {
+    const waarde =
+      String(
+        formData.get(naam) ?? "",
+      ).trim();
+
+    if (!waarde) {
+      return null;
+    }
+
+    const nummer =
+      Number(waarde);
+
+    return Number.isInteger(nummer) &&
+      nummer > 0
+      ? nummer
+      : NaN;
+  }
+
+  const auditeur =
+    invoer("auditeur", 500);
+
+  const naamAdi =
+    invoer("naamAdi", 500);
+
+  const linkAttest =
+    invoer("linkAttest", 2048);
+
+  const attestnummer =
+    invoer("attestnummer", 255);
+
+  const bedrijfsnaam =
+    invoer("bedrijfsnaam", 500);
+
+  const ovamId =
+    invoer("ovamId", 255);
+
+  const opmerkingen =
+    invoer("opmerkingen", 10_000);
+
+  if (
+    linkAttest &&
+    !/^https?:\/\/\S+$/i.test(
+      linkAttest,
+    )
+  ) {
+    return {
+      fout:
+        "De link naar het attest moet een geldige http- of https-URL zijn.",
+    };
+  }
+
+  const auditeurGebruikerId =
+    optioneelId(
+      "auditeurGebruikerId",
+    );
+
+  const afgerondDoorGebruikerId =
+    optioneelId(
+      "afgerondDoorGebruikerId",
+    );
+
+  if (
+    Number.isNaN(
+      auditeurGebruikerId,
+    ) ||
+    Number.isNaN(
+      afgerondDoorGebruikerId,
+    )
+  ) {
+    return {
+      fout:
+        "Selecteer een geldige gebruiker.",
+    };
+  }
+
+  const gebruikersIds = [
+    auditeurGebruikerId,
+    afgerondDoorGebruikerId,
+  ].filter(
+    (
+      waarde,
+    ): waarde is number =>
+      waarde !== null,
+  );
+
+  if (gebruikersIds.length > 0) {
+    const geldigeGebruikers =
+      await prisma.toegestaneGebruiker.count({
+        where: {
+          id: {
+            in: Array.from(
+              new Set(
+                gebruikersIds,
+              ),
+            ),
+          },
+          actief: true,
+          rol: "AUDITEUR",
+        },
+      });
+
+    if (
+      geldigeGebruikers !==
+      new Set(
+        gebruikersIds,
+      ).size
+    ) {
+      return {
+        fout:
+          "Een geselecteerde auditeur is niet meer actief.",
+      };
+    }
+  }
+
+  const opvolgingAfgerond =
+    formData.get(
+      "opvolgingAfgerond",
+    ) === "on";
+
+  const datumAfgerond =
+    opvolgingAfgerond
+      ? ontleedDatumInvoer(
+          formData.get(
+            "datumAfgerond",
+          ),
+        )
+      : null;
+
+  if (
+    opvolgingAfgerond &&
+    (
+      !datumAfgerond ||
+      !afgerondDoorGebruikerId
+    )
+  ) {
+    return {
+      fout:
+        "Vul bij een afgeronde opvolging de datum en de verantwoordelijke in.",
+    };
+  }
+
+  const nieuweWaarde = {
+    auditeur:
+      auditeur || null,
+    auditeurGebruikerId,
+    naamAdi:
+      naamAdi || null,
+    opvolgingAfgerond,
+    datumAfgerond,
+    afgerondDoorGebruikerId:
+      opvolgingAfgerond
+        ? afgerondDoorGebruikerId
+        : null,
+    linkAttest:
+      linkAttest || null,
+    attestnummer:
+      attestnummer || null,
+    reden:
+      validatie.invoer.reden,
+    bedrijfsnaam:
+      bedrijfsnaam || null,
+    ovamId:
+      ovamId || null,
+    datumVaststelling:
+      validatie.invoer
+        .datumVaststelling,
+    opmerkingen:
+      opmerkingen || null,
+    ncCategorie:
+      validatie.invoer
+        .ncCategorie,
+    sanctieBegindatum:
+      validatie.invoer
+        .sanctieBegindatum,
+    sanctieEinddatum:
+      validatie.invoer
+        .sanctieEinddatum,
+  };
+
+  function auditDatum(
+    waarde: Date | null,
+  ) {
+    return waarde
+      ? waarde.toISOString()
+      : null;
+  }
+
+  await prisma.$transaction(
+    async (database) => {
+      await database.opvolgingSanctie.update({
+        where: {
+          id,
+        },
+        data: nieuweWaarde,
+      });
+
+      await schrijfAuditlog(
+        database,
+        gebruiker,
+        {
+          actie:
+            "OPVOLGING_SANCTIE_GEWIJZIGD",
+          entiteit:
+            "OpvolgingSanctie",
+          entiteitId: id,
+          omschrijving:
+            "Opvolging/sanctie via detailpagina gewijzigd.",
+          oudeWaarde: {
+            auditeur:
+              bestaande.auditeur,
+            auditeurGebruikerId:
+              bestaande.auditeurGebruikerId,
+            naamAdi:
+              bestaande.naamAdi,
+            opvolgingAfgerond:
+              bestaande.opvolgingAfgerond,
+            datumAfgerond:
+              auditDatum(
+                bestaande.datumAfgerond,
+              ),
+            afgerondDoorGebruikerId:
+              bestaande.afgerondDoorGebruikerId,
+            linkAttest:
+              bestaande.linkAttest,
+            attestnummer:
+              bestaande.attestnummer,
+            reden:
+              bestaande.reden,
+            bedrijfsnaam:
+              bestaande.bedrijfsnaam,
+            ovamId:
+              bestaande.ovamId,
+            datumVaststelling:
+              auditDatum(
+                bestaande.datumVaststelling,
+              ),
+            opmerkingen:
+              bestaande.opmerkingen,
+            ncCategorie:
+              bestaande.ncCategorie,
+            sanctieBegindatum:
+              auditDatum(
+                bestaande.sanctieBegindatum,
+              ),
+            sanctieEinddatum:
+              auditDatum(
+                bestaande.sanctieEinddatum,
+              ),
+          },
+          nieuweWaarde: {
+            ...nieuweWaarde,
+            datumAfgerond:
+              auditDatum(
+                nieuweWaarde.datumAfgerond,
+              ),
+            datumVaststelling:
+              auditDatum(
+                nieuweWaarde.datumVaststelling,
+              ),
+            sanctieBegindatum:
+              auditDatum(
+                nieuweWaarde.sanctieBegindatum,
+              ),
+            sanctieEinddatum:
+              auditDatum(
+                nieuweWaarde.sanctieEinddatum,
+              ),
+          },
+        },
+      );
+    },
+  );
+
+  revalidatePath(
+    "/opvolging-sancties",
+  );
+  revalidatePath(
+    `/opvolging-sancties/${id}`,
+  );
+
+  return {
+    succes:
+      "De wijzigingen zijn opgeslagen.",
+  };
+}

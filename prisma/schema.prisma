@@ -307,6 +307,8 @@ model ToegestaneGebruiker {
   opvolgingenAfgerondDoor      OpvolgingSanctie[]           @relation("OpvolgingSanctieAfgerondDoor")
   opvolgingenAangemaakt        OpvolgingSanctie[]           @relation("OpvolgingSanctieAangemaaktDoor")
 
+  opvolgingSanctieMailsAangemaakt OpvolgingSanctieMail[] @relation("OpvolgingSanctieMailAangemaaktDoor")
+
   @@index([email])
   @@index([actief])
   @@index([beheerder])
@@ -642,6 +644,8 @@ model OpvolgingSanctie {
   bijgewerktOp   DateTime             @updatedAt @map("bijgewerkt_op")
   verwijderdOp   DateTime?            @map("verwijderd_op")
 
+  mails OpvolgingSanctieMail[]
+
   @@unique([bronType, bronId])
   @@index([auditeurGebruikerId])
   @@index([afgerondDoorGebruikerId])
@@ -654,4 +658,37 @@ model OpvolgingSanctie {
   @@index([verwijderdOp])
   @@index([verwijderdOp, datumVaststelling(sort: Desc), id(sort: Desc)])
   @@map("opvolging_sancties")
+}
+
+model OpvolgingSanctieMail {
+  id                 Int              @id @default(autoincrement())
+  opvolgingSanctieId Int              @map("opvolging_sanctie_id")
+  opvolgingSanctie   OpvolgingSanctie @relation(fields: [opvolgingSanctieId], references: [id], onDelete: Cascade)
+
+  bestandsnaam    String @db.VarChar(255)
+  bestandstype    String @db.VarChar(10)
+  mimeType        String @map("mime_type") @db.VarChar(255)
+  bestandsgrootte Int    @map("bestandsgrootte")
+  sha256          String @db.VarChar(64)
+
+  afzenderNaam    String?  @map("afzender_naam") @db.VarChar(500)
+  afzenderEmail   String   @map("afzender_email") @db.VarChar(320)
+  ontvangers      Json
+  cc              Json
+  onderwerp       String?  @db.VarChar(1000)
+  berichtId       String?  @map("bericht_id") @db.VarChar(1000)
+  verzondenOp     DateTime @map("verzonden_op")
+  tekstInhoud     String   @map("tekst_inhoud") @db.Text
+  bijlagen        Json
+  internVerzonden Boolean  @map("intern_verzonden")
+
+  aangemaaktDoorId Int?                 @map("aangemaakt_door_id")
+  aangemaaktDoor   ToegestaneGebruiker? @relation("OpvolgingSanctieMailAangemaaktDoor", fields: [aangemaaktDoorId], references: [id], onDelete: SetNull)
+
+  aangemaaktOp DateTime @default(now()) @map("aangemaakt_op")
+
+  @@unique([opvolgingSanctieId, sha256])
+  @@index([opvolgingSanctieId, verzondenOp, id])
+  @@index([aangemaaktDoorId])
+  @@map("opvolging_sanctie_mails")
 }

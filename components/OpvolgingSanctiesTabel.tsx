@@ -190,6 +190,8 @@ export function OpvolgingSanctiesTabel({
   rijen,
   auditeurs,
 }: Props) {
+  void auditeurs;
+
   const [
     zoekterm,
     setZoekterm,
@@ -689,23 +691,7 @@ export function OpvolgingSanctiesTabel({
                         <OpvolgingSanctieActies
                           registratie={{
                             id: rij.id,
-                            auditeurGebruikerId:
-                              rij.auditeurGebruikerId,
-                            opvolgingAfgerond:
-                              rij.opvolgingAfgerond,
-                            datumAfgerond:
-                              rij.datumAfgerondInvoer,
-                            afgerondDoorGebruikerId:
-                              rij.afgerondDoorGebruikerId,
-                            opmerkingen:
-                              rij.opmerkingen ===
-                              "—"
-                                ? ""
-                                : rij.opmerkingen,
                           }}
-                          auditeurs={
-                            auditeurs
-                          }
                         />
                       ) : (
                         <span className="text-xs text-slate-400">
