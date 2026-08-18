@@ -1,4 +1,10 @@
-import Link from "next/link";
+import {
+  BeheerActieLink,
+  BeheerOverzichtHeader,
+} from "@/components/BeheerOverzichtHeader";
+import {
+  BEHEER_TABEL_STIJLEN,
+} from "@/components/BeheerTabelOnderdelen";
 import {
   redirect,
 } from "next/navigation";
@@ -140,39 +146,29 @@ export default async function VerwijderdeOpvolgingSanctiesPage() {
 
   return (
     <div className="space-y-5">
-      <header className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
-        <p className="text-xs font-bold uppercase tracking-[0.16em] text-emerald-700">
-          Controlebeheer
-        </p>
-
-        <h1 className="mt-1 text-2xl font-black tracking-tight text-slate-950 sm:text-3xl">
-          Verwijderde opvolgingen/sancties
-        </h1>
-
-        <p className="mt-2 text-sm text-slate-600">
-          Overzicht van verwijderde opvolgingen die opnieuw geactiveerd kunnen worden.
-        </p>
-
-        <p className="mt-3 text-sm font-semibold text-slate-700">
-          {registraties.length}{" "}
-          {registraties.length === 1
-            ? "verwijderde registratie"
-            : "verwijderde registraties"}
-        </p>
-
-        <div className="mt-4">
-          <Link
+      <BeheerOverzichtHeader
+        bovenTitel="Controlebeheer"
+        titel="Verwijderde opvolgingen/sancties"
+        omschrijving={
+          <>
+            {registraties.length}{" "}
+            {registraties.length === 1
+              ? "verwijderde registratie"
+              : "verwijderde registraties"}
+          </>
+        }
+        acties={
+          <BeheerActieLink
             href="/opvolging-sancties"
-            className="inline-flex h-10 items-center justify-center rounded-xl border border-slate-300 bg-white px-4 text-sm font-bold text-slate-700 transition hover:bg-slate-50"
-          >
-            Terug naar actieve registraties
-          </Link>
-        </div>
-      </header>
+            variant="neutraal"
+            kinderen="← Terug naar actieve registraties"
+          />
+        }
+      />
 
-      <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+      <section className={BEHEER_TABEL_STIJLEN.verwijderdKader}>
         {registraties.length === 0 ? (
-          <div className="p-8 text-center">
+          <div className={BEHEER_TABEL_STIJLEN.leeg}>
             <h2 className="text-lg font-bold text-slate-900">
               Geen verwijderde opvolgingen
             </h2>
@@ -182,9 +178,9 @@ export default async function VerwijderdeOpvolgingSanctiesPage() {
             </p>
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="min-w-[1200px] border-collapse text-left">
-              <thead className="bg-slate-100">
+          <div className={BEHEER_TABEL_STIJLEN.scroll}>
+            <table className={`${BEHEER_TABEL_STIJLEN.tabel} min-w-[1200px] ${BEHEER_TABEL_STIJLEN.actieKolomLaatste}`}>
+              <thead className={BEHEER_TABEL_STIJLEN.kop}>
                 <tr className="text-xs uppercase tracking-wide text-slate-600">
                   <th className="px-3 py-3">
                     Bron

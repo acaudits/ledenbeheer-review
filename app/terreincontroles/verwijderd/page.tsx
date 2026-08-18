@@ -1,4 +1,11 @@
-import Link from "next/link";
+import {
+  BeheerActieLink,
+  BeheerOverzichtHeader,
+  BEHEER_KNOP_KLASSEN,
+} from "@/components/BeheerOverzichtHeader";
+import {
+  BEHEER_TABEL_STIJLEN,
+} from "@/components/BeheerTabelOnderdelen";
 
 import { herstelTerreincontrole } from "@/app/terreincontroles/dossier-actions";
 import { vereisMachtiging } from "@/lib/auth";
@@ -54,12 +61,25 @@ export default async function VerwijderdeTerreincontrolesPage({
 
   return (
     <div className="space-y-5">
-      <Link
-        href="/terreincontroles"
-        className="text-sm font-bold text-emerald-700"
-      >
-        ← Terug naar terreincontroles
-      </Link>
+      <BeheerOverzichtHeader
+        bovenTitel="Controlebeheer"
+        titel="Verwijderde terreincontroles"
+        omschrijving={
+          <>
+            {dossiers.length}{" "}
+            {dossiers.length === 1
+              ? "verwijderde terreincontrole"
+              : "verwijderde terreincontroles"}
+          </>
+        }
+        acties={
+          <BeheerActieLink
+            href="/terreincontroles"
+            variant="neutraal"
+            kinderen="← Terug naar terreincontroles"
+          />
+        }
+      />
 
       {hersteld === "1" ? (
         <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm font-semibold text-emerald-800">
@@ -67,25 +87,15 @@ export default async function VerwijderdeTerreincontrolesPage({
         </div>
       ) : null}
 
-      <header className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-        <h1 className="text-2xl font-bold text-slate-950">
-          Verwijderde terreincontroles
-        </h1>
-
-        <p className="mt-1 text-sm text-slate-500">
-          {dossiers.length} verwijderd
-        </p>
-      </header>
-
-      <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+      <section className={BEHEER_TABEL_STIJLEN.verwijderdKader}>
         {dossiers.length === 0 ? (
-          <div className="p-12 text-center text-sm text-slate-500">
+          <div className={BEHEER_TABEL_STIJLEN.leeg}>
             Er zijn geen verwijderde terreincontroles.
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="min-w-[1100px] text-left text-sm">
-              <thead className="bg-slate-50 text-slate-600">
+          <div className={BEHEER_TABEL_STIJLEN.scroll}>
+            <table className={`${BEHEER_TABEL_STIJLEN.tabel} min-w-[1100px] text-sm ${BEHEER_TABEL_STIJLEN.actieKolomLaatste}`}>
+              <thead className={BEHEER_TABEL_STIJLEN.kop}>
                 <tr>
                   <th className="px-4 py-3">
                     Attestnummer
@@ -149,7 +159,7 @@ export default async function VerwijderdeTerreincontrolesPage({
                           >
                             <button
                               type="submit"
-                              className="rounded-xl bg-emerald-700 px-4 py-2 text-xs font-bold text-white"
+                              className={`${BEHEER_KNOP_KLASSEN.primair} disabled:cursor-wait disabled:opacity-60`}
                             >
                               Herstellen
                             </button>

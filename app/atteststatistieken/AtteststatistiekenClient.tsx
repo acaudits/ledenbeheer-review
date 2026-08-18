@@ -1,6 +1,12 @@
 "use client";
 
 import {
+  BEHEER_KNOP_KLASSEN,
+} from "@/components/BeheerOverzichtHeader";
+import {
+  BEHEER_TABEL_STIJLEN,
+} from "@/components/BeheerTabelOnderdelen";
+import {
   useActionState,
   useEffect,
   useMemo,
@@ -56,7 +62,7 @@ type Props = {
 };
 
 const invoerStijl =
-  "h-10 w-full rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-950 outline-none focus:border-emerald-600 focus:ring-2 focus:ring-emerald-100";
+  "h-11 w-full rounded-xl border border-slate-300 bg-white px-4 text-sm text-slate-950 outline-none transition focus:border-emerald-600 focus:ring-4 focus:ring-emerald-100";
 
 function Melding({
   status,
@@ -253,7 +259,7 @@ export default function AtteststatistiekenClient({
 
   return (
     <div className="space-y-6">
-      <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+      <section className={`${BEHEER_TABEL_STIJLEN.kader} p-5`}>
         <h2 className="text-lg font-bold text-slate-950">
           Dagelijkse Excel-import
         </h2>
@@ -284,7 +290,7 @@ export default function AtteststatistiekenClient({
           <button
             type="submit"
             disabled={importBezig}
-            className="inline-flex h-10 items-center justify-center rounded-lg bg-emerald-700 px-5 text-sm font-bold text-white hover:bg-emerald-800 disabled:cursor-wait disabled:bg-slate-400"
+            className={`${BEHEER_KNOP_KLASSEN.primair} disabled:cursor-wait disabled:opacity-60`}
           >
             {importBezig
               ? "Importeren..."
@@ -344,7 +350,7 @@ export default function AtteststatistiekenClient({
       </section>
 
       <div className="grid gap-6 xl:grid-cols-2">
-        <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+        <section className={BEHEER_TABEL_STIJLEN.kader}>
           <div className="border-b border-slate-200 p-5">
             <h2 className="text-lg font-bold text-slate-950">
               Lijst 1 — Personen
@@ -366,8 +372,8 @@ export default function AtteststatistiekenClient({
           </div>
 
           <div className="max-h-[600px] overflow-auto">
-            <table className="min-w-full text-left text-sm">
-              <thead className="sticky top-0 bg-slate-100 text-slate-700">
+            <table className={`${BEHEER_TABEL_STIJLEN.tabel} text-sm`}>
+              <thead className={`${BEHEER_TABEL_STIJLEN.kop} sticky top-0`}>
                 <tr>
                   <th className="px-4 py-3">
                     PersoonsID
@@ -411,7 +417,7 @@ export default function AtteststatistiekenClient({
           </div>
         </section>
 
-        <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+        <section className={BEHEER_TABEL_STIJLEN.kader}>
           <div className="border-b border-slate-200 p-5">
             <h2 className="text-lg font-bold text-slate-950">
               Lijst 2 — Bedrijven
@@ -433,8 +439,8 @@ export default function AtteststatistiekenClient({
           </div>
 
           <div className="max-h-[600px] overflow-auto">
-            <table className="min-w-full text-left text-sm">
-              <thead className="sticky top-0 bg-slate-100 text-slate-700">
+            <table className={`${BEHEER_TABEL_STIJLEN.tabel} text-sm`}>
+              <thead className={`${BEHEER_TABEL_STIJLEN.kop} sticky top-0`}>
                 <tr>
                   <th className="px-4 py-3">
                     Bedrijfsnaam
@@ -473,7 +479,7 @@ export default function AtteststatistiekenClient({
         </section>
       </div>
 
-      <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+      <section className={`${BEHEER_TABEL_STIJLEN.kader} p-5`}>
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div>
             <h2 className="text-lg font-bold text-slate-950">
@@ -496,7 +502,7 @@ export default function AtteststatistiekenClient({
                 laatsteImport.correctiesToegepastOp,
               )
             }
-            className="inline-flex h-10 items-center justify-center rounded-lg bg-emerald-700 px-5 text-sm font-bold text-white hover:bg-emerald-800 disabled:cursor-not-allowed disabled:bg-slate-400"
+            className={`${BEHEER_KNOP_KLASSEN.secundair} disabled:cursor-wait disabled:opacity-60`}
           >
             {achtergrondBezig
               ? "Bezig..."
@@ -568,7 +574,7 @@ export default function AtteststatistiekenClient({
             <button
               type="submit"
               disabled={correctieBezig}
-              className="h-10 w-full rounded-lg bg-slate-900 px-4 text-sm font-bold text-white hover:bg-slate-800 disabled:cursor-wait disabled:bg-slate-400"
+              className={`${BEHEER_KNOP_KLASSEN.primair} w-full disabled:cursor-wait disabled:opacity-60`}
             >
               {correctieBezig
                 ? "Toevoegen..."
@@ -591,9 +597,9 @@ export default function AtteststatistiekenClient({
           className={`${invoerStijl} mt-5 max-w-xl`}
         />
 
-        <div className="mt-4 overflow-x-auto">
-          <table className="min-w-full text-left text-sm">
-            <thead className="bg-slate-100 text-slate-700">
+        <div className={`${BEHEER_TABEL_STIJLEN.scroll} mt-4`}>
+          <table className={`${BEHEER_TABEL_STIJLEN.tabel} text-sm`}>
+            <thead className={BEHEER_TABEL_STIJLEN.kop}>
               <tr>
                 <th className="px-4 py-3">
                   PersoonsID
@@ -635,7 +641,7 @@ export default function AtteststatistiekenClient({
                       onClick={() =>
                         correctieVerwijderen(correctie.id)
                       }
-                      className="font-semibold text-red-700 hover:text-red-900 disabled:text-slate-400"
+                      className={`${BEHEER_KNOP_KLASSEN.gevaar} disabled:cursor-wait disabled:opacity-60`}
                     >
                       Verwijderen
                     </button>

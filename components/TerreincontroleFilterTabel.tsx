@@ -11,6 +11,9 @@ import {
 
 import AfwezigeTerreincontroleHerstelKnop from "@/components/AfwezigeTerreincontroleHerstelKnop";
 import {
+  BEHEER_TABEL_STIJLEN,
+} from "@/components/BeheerTabelOnderdelen";
+import {
   TerreincontroleDossierVerwijderKnop,
 } from "@/components/TerreincontroleDossierVerwijderKnop";
 import TerreincontroleMeerMenu from "@/components/TerreincontroleMeerMenu";
@@ -878,15 +881,15 @@ export function TerreincontroleFilterTabel({
   }
 
   return (
-    <section className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
-      <div className="space-y-4 border-b border-slate-200 p-4">
+    <section className={BEHEER_TABEL_STIJLEN.kader}>
+      <div className={`${BEHEER_TABEL_STIJLEN.bovenbalk} space-y-4`}>
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h2 className="font-bold text-slate-950">
+            <h2 className={BEHEER_TABEL_STIJLEN.overzichtTitel}>
               Overzicht
             </h2>
 
-            <p className="mt-0.5 text-xs text-slate-500">
+            <p className={BEHEER_TABEL_STIJLEN.aantal}>
               {zichtbareRijen.length} van{" "}
               {gebruiktServer
                 ? (
@@ -1051,13 +1054,13 @@ export function TerreincontroleFilterTabel({
         </div>
       ) : zichtbareRijen.length ===
         0 ? (
-        <div className="p-12 text-center text-sm text-slate-500">
+        <div className={BEHEER_TABEL_STIJLEN.leeg}>
           Geen terreincontroles gevonden.
         </div>
       ) : (
-        <div className="max-h-[calc(100vh-240px)] overflow-auto">
-          <table className="w-full min-w-max border-collapse text-left">
-            <thead className="sticky top-0 z-20 bg-slate-50 text-slate-600 shadow-sm">
+        <div className={BEHEER_TABEL_STIJLEN.scroll}>
+          <table className={BEHEER_TABEL_STIJLEN.tabel}>
+            <thead className={BEHEER_TABEL_STIJLEN.kop}>
               <tr>
                 {kolommen.map(
                   (kolom) => {
@@ -1230,7 +1233,7 @@ export function TerreincontroleFilterTabel({
         </div>
       )}
 
-      <footer className="flex flex-col gap-3 border-t border-slate-200 bg-slate-50 px-4 py-2.5 text-xs text-slate-500 sm:flex-row sm:items-center sm:justify-between">
+      <footer className={BEHEER_TABEL_STIJLEN.voet}>
         <span>
           Klik op een rij om de terreincontrole te bekijken. Klik op een kolomnaam om te sorteren en gebruik de filters om de lijst te verfijnen.
         </span>
@@ -1248,7 +1251,7 @@ export function TerreincontroleFilterTabel({
               void serverQuery
                 .laadVolgendePagina();
             }}
-            className="inline-flex h-9 shrink-0 items-center justify-center rounded-xl border border-emerald-300 bg-white px-4 font-semibold text-emerald-800 hover:bg-emerald-50 disabled:cursor-wait disabled:opacity-60"
+            className={BEHEER_TABEL_STIJLEN.meerKnop}
           >
             {serverQuery
               .isVolgendePaginaLaden

@@ -1,4 +1,10 @@
-import Link from "next/link";
+import {
+  BeheerActieLink,
+  BeheerOverzichtHeader,
+} from "@/components/BeheerOverzichtHeader";
+import {
+  BEHEER_TABEL_STIJLEN,
+} from "@/components/BeheerTabelOnderdelen";
 import { CopyButton } from "@/components/CopyButton";
 import { HerstelButton } from "@/components/CertificaatStatusButton";
 import { formatteerOndernemingsnummer } from "@/lib/ondernemingsnummer";
@@ -42,42 +48,37 @@ export default async function VerwijderdeProcescertificatenPage() {
     });
 
   return (
-    <>
-      <header className="mb-7 border-b border-slate-200 pb-7">
-        <Link
-          href="/procescertificaten"
-          className="text-sm font-semibold text-emerald-700 hover:text-emerald-900"
-        >
-          ← Terug naar
-          procescertificaten
-        </Link>
+    <div className="space-y-4">
+      <BeheerOverzichtHeader
+        bovenTitel="Procescertificaten"
+        titel="Verwijderde procescertificaten"
+        omschrijving={
+          <>
+            {certificaten.length} verwijderde
+            {certificaten.length === 1
+              ? " registratie"
+              : " registraties"}
+          </>
+        }
+        acties={
+          <BeheerActieLink
+            href="/procescertificaten"
+            variant="neutraal"
+            kinderen="← Terug naar procescertificaten"
+          />
+        }
+      />
 
-        <p className="mt-6 text-xs font-bold uppercase tracking-[0.18em] text-emerald-700">
-          Procescertificaten
-        </p>
-
-        <h1 className="mt-2 text-3xl font-bold text-slate-950 sm:text-4xl">
-          Verwijderde
-          procescertificaten
-        </h1>
-
-        <p className="mt-2 text-slate-600">
-          Deze records zijn niet meer
-          zichtbaar in de gewone lijst.
-          Je kunt ze opnieuw terugzetten.
-        </p>
-      </header>
-
-      <section className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
-        <div className="border-b border-slate-200 px-5 py-4">
-          <p className="font-semibold text-slate-950">
+      <section className={BEHEER_TABEL_STIJLEN.verwijderdKader}>
+        <div className={BEHEER_TABEL_STIJLEN.bovenbalk}>
+          <p className={BEHEER_TABEL_STIJLEN.aantal}>
             {certificaten.length}{" "}
             verwijderde records
           </p>
         </div>
 
         {certificaten.length === 0 ? (
-          <div className="px-6 py-20 text-center">
+          <div className={BEHEER_TABEL_STIJLEN.leeg}>
             <h2 className="text-xl font-bold text-slate-950">
               Geen verwijderde
               procescertificaten
@@ -90,9 +91,9 @@ export default async function VerwijderdeProcescertificatenPage() {
             </p>
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[1100px] text-left">
-              <thead className="bg-slate-50">
+          <div className={BEHEER_TABEL_STIJLEN.scroll}>
+            <table className={`${BEHEER_TABEL_STIJLEN.tabel} min-w-[1100px] ${BEHEER_TABEL_STIJLEN.actieKolomLaatste}`}>
+              <thead className={BEHEER_TABEL_STIJLEN.kop}>
                 <tr>
                   {[
                     "Bedrijf",
@@ -182,6 +183,6 @@ export default async function VerwijderdeProcescertificatenPage() {
           </div>
         )}
       </section>
-    </>
+    </div>
   );
 }

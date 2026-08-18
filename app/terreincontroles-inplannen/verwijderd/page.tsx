@@ -1,4 +1,10 @@
-import Link from "next/link";
+import {
+  BeheerActieLink,
+  BeheerOverzichtHeader,
+} from "@/components/BeheerOverzichtHeader";
+import {
+  BEHEER_TABEL_STIJLEN,
+} from "@/components/BeheerTabelOnderdelen";
 
 import TerreincontroleHerstelKnop from "@/components/TerreincontroleHerstelKnop";
 import { vereisMachtiging } from "@/lib/auth";
@@ -88,44 +94,39 @@ export default async function VerwijderdeTerreincontrolesPage() {
     );
 
   return (
-    <main className="min-h-screen bg-slate-50 px-4 py-8 sm:px-6 lg:px-8">
-      <div className="mx-auto max-w-7xl">
-        <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-          <div>
-            <Link
-              href="/terreincontroles-inplannen"
-              className="text-sm font-semibold text-emerald-700 hover:text-emerald-900"
-            >
-              ← Terug naar terreincontroles
-            </Link>
+    <div className="space-y-4">
+      <BeheerOverzichtHeader
+        bovenTitel="Controlebeheer"
+        titel="Verwijderde terreincontroles"
+        omschrijving={
+          <>
+            {terreincontroles.length}{" "}
+            {terreincontroles.length === 1
+              ? "verwijderde terreincontrole"
+              : "verwijderde terreincontroles"}
+          </>
+        }
+        acties={
+          <BeheerActieLink
+            href="/terreincontroles-inplannen"
+            variant="neutraal"
+            kinderen="← Terug naar planning"
+          />
+        }
+      />
 
-            <h1 className="mt-3 text-3xl font-bold tracking-tight text-slate-950">
-              Verwijderde terreincontroles
-            </h1>
-
-            <p className="mt-2 text-sm text-slate-600">
-              {terreincontroles.length}{" "}
-              verwijderde{" "}
-              {terreincontroles.length ===
-              1
-                ? "terreincontrole"
-                : "terreincontroles"}
-            </p>
-          </div>
-        </div>
-
-        <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+        <div className={BEHEER_TABEL_STIJLEN.verwijderdKader}>
           {terreincontroles.length ===
           0 ? (
-            <div className="p-8 text-center">
+            <div className={BEHEER_TABEL_STIJLEN.leeg}>
               <p className="text-sm font-medium text-slate-600">
                 Er zijn geen verwijderde terreincontroles.
               </p>
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="min-w-[1500px] text-left text-sm">
-                <thead className="bg-slate-100 text-xs uppercase tracking-wide text-slate-600">
+            <div className={BEHEER_TABEL_STIJLEN.scroll}>
+              <table className={`${BEHEER_TABEL_STIJLEN.tabel} ${BEHEER_TABEL_STIJLEN.actieKolomEerste} min-w-[1500px] text-sm`}>
+                <thead className={BEHEER_TABEL_STIJLEN.kop}>
                   <tr>
                     <th className="border-b border-slate-200 px-4 py-3">
                       Acties
@@ -275,9 +276,8 @@ export default async function VerwijderdeTerreincontrolesPage() {
               </table>
             </div>
           )}
-        </div>
       </div>
-    </main>
+    </div>
   );
 }
 

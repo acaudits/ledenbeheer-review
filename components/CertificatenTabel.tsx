@@ -1,5 +1,6 @@
 "use client";
 
+import { BEHEER_TABEL_STIJLEN } from "@/components/BeheerTabelOnderdelen";
 import { VerwijderButton as BasisVerwijderButton } from "@/components/CertificaatStatusButton";
 import { CopyButton } from "@/components/CopyButton";
 import { OpmerkingDialog } from "@/components/OpmerkingDialog";
@@ -7,7 +8,13 @@ import { usePersoonscertificatenQuery } from "@/hooks/usePersoonscertificatenQue
 import { useProcescertificatenQuery } from "@/hooks/useProcescertificatenQuery";
 import NextLink from "next/link";
 import { useRouter } from "next/navigation";
-import { useMemo, useState, type ComponentProps } from "react";
+import {
+  useMemo,
+  useRef,
+  useState,
+  type ComponentProps,
+  type ReactNode,
+} from "react";
 
 export type CertificaatKolom = {
   sleutel: string;
@@ -254,6 +261,97 @@ function BeheerVerwijderButton({
   }
 
   return <BasisVerwijderButton {...props} />;
+}
+
+
+type CertificaatRijMeerMenuProps = {
+  bewerkenHref: string;
+  children: ReactNode;
+};
+
+function CertificaatRijMeerMenu({
+  bewerkenHref,
+  children,
+}: CertificaatRijMeerMenuProps) {
+  const menuRef =
+    useRef<HTMLDetailsElement>(null);
+
+  function sluitMenu() {
+    if (menuRef.current) {
+      menuRef.current.open = false;
+    }
+  }
+
+  return (
+    <div
+      className="relative inline-block"
+      data-voorkom-rij-navigatie
+      onClick={(event) => {
+        event.stopPropagation();
+      }}
+      onKeyDown={(event) => {
+        event.stopPropagation();
+      }}
+    >
+      <details
+        ref={menuRef}
+        className="group"
+        data-certificaat-rij-meer-menu="true"
+        onToggle={(event) => {
+          const geopendMenu =
+            event.currentTarget;
+
+          if (!geopendMenu.open) {
+            return;
+          }
+
+          document
+            .querySelectorAll<HTMLDetailsElement>(
+              'details[data-certificaat-rij-meer-menu="true"][open]',
+            )
+            .forEach((menu) => {
+              if (menu !== geopendMenu) {
+                menu.open = false;
+              }
+            });
+        }}
+      >
+        <summary className="inline-flex h-9 cursor-pointer list-none items-center rounded-lg border border-slate-300 bg-white px-3 text-xs font-bold text-slate-700 shadow-sm hover:border-emerald-300 hover:bg-emerald-50 hover:text-emerald-800">
+          Meer
+        </summary>
+
+        <div
+          role="menu"
+          className="absolute bottom-full right-0 z-[80] mb-1 min-w-52 rounded-xl border border-slate-200 bg-white p-1.5 text-left shadow-xl"
+          onClickCapture={(event) => {
+            const doel = event.target;
+
+            if (
+              doel instanceof Element &&
+              doel.closest("a, button")
+            ) {
+              window.setTimeout(
+                sluitMenu,
+                0,
+              );
+            }
+          }}
+        >
+          <NextLink
+            href={bewerkenHref}
+            role="menuitem"
+            className="flex w-full rounded-lg px-3 py-2 text-left text-xs font-bold text-slate-700 hover:bg-slate-100"
+          >
+            Bewerken
+          </NextLink>
+
+          <div className="mt-1 border-t border-slate-200 pt-1 [&>button]:w-full">
+            {children}
+          </div>
+        </div>
+      </details>
+    </div>
+  );
 }
 
 export function CertificatenTabel({
@@ -711,20 +809,20 @@ export function CertificatenTabel({
 
   return (
     <section
-      className={`overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm ${
+      className={`${BEHEER_TABEL_STIJLEN.kader} ${
         magBeheren
           ? ""
           : "[&_th:last-child]:hidden [&_td:last-child]:hidden"
       }`}
     >
-      <div className="border-b border-slate-200 p-4 sm:p-5">
+      <div className={BEHEER_TABEL_STIJLEN.bovenbalk}>
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div>
-            <h2 className="text-lg font-bold text-slate-950">
+            <h2 className={BEHEER_TABEL_STIJLEN.overzichtTitel}>
               Overzicht
             </h2>
 
-            <p className="mt-1 text-sm text-slate-500">
+            <p className={BEHEER_TABEL_STIJLEN.aantal}>
               {totaalAantal} geregistreerd ·{" "}
               {
                 gefilterdeEnGesorteerdeRijen.length
@@ -1147,9 +1245,9 @@ export function CertificatenTabel({
         </div>
       ) : (
         <>
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-max text-left">
-              <thead className="bg-slate-50">
+          <div className={BEHEER_TABEL_STIJLEN.scroll}>
+            <table className={BEHEER_TABEL_STIJLEN.tabel}>
+              <thead className={BEHEER_TABEL_STIJLEN.kop}>
                 <tr>
                   {zichtbareKolommen.map(
                     (kolom, index) => {
@@ -1264,7 +1362,7 @@ export function CertificatenTabel({
                     },
                   )}
 
-                  <th className="sticky right-0 z-10 border-b border-slate-200 bg-slate-50 px-5 py-3 text-right text-xs font-bold uppercase tracking-wider text-slate-500">
+                  <th className="sticky right-0 top-0 z-30 w-40 min-w-40 border-b border-slate-200 bg-slate-50 px-3 py-2.5 text-right text-xs font-bold uppercase tracking-wider text-slate-500">
                     Acties
                   </th>
                 </tr>
@@ -1496,44 +1594,23 @@ export function CertificatenTabel({
                         },
                       )}
 
-                      <td className="sticky right-0 z-10 bg-inherit px-5 py-3 text-right">
-                        <div className="flex min-w-max items-center justify-end gap-2">
-                          <BeheerLink
-                            magBeheren={magBeheren}
-                            nieuwHref={nieuwHref}
-                            bewerkBasisHref={bewerkBasisHref}
-                            href={`${bewerkBasisHref}/${rij.id}/bewerken`}
-                            className="inline-flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-bold text-slate-700 shadow-sm hover:border-emerald-300 hover:bg-emerald-50 hover:text-emerald-800"
+                      <td className="sticky right-0 z-10 w-40 min-w-40 bg-inherit px-3 py-2.5 text-right">
+                        {magBeheren ? (
+                          <CertificaatRijMeerMenu
+                            bewerkenHref={`${bewerkBasisHref}/${rij.id}/bewerken`}
                           >
-                            <svg
-                              viewBox="0 0 24 24"
-                              fill="none"
-                              className="size-4"
-                              aria-hidden="true"
-                            >
-                              <path
-                                d="m4 16-.8 4.8L8 20l11-11-4-4L4 16Zm9-9 4 4"
-                                stroke="currentColor"
-                                strokeWidth="1.8"
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                              />
-                            </svg>
-
-                            Bewerken
-                          </BeheerLink>
-
-                          <BeheerVerwijderButton
-                            magBeheren={magBeheren}
-                            id={rij.id}
-                            soort={soort}
-                            naam={String(
-                              rij.naamPersoon ??
-                                rij.bedrijf ??
-                                `record ${rij.id}`,
-                            )}
-                          />
-                        </div>
+                            <BeheerVerwijderButton
+                              magBeheren={magBeheren}
+                              id={rij.id}
+                              soort={soort}
+                              naam={String(
+                                rij.naamPersoon ??
+                                  rij.bedrijf ??
+                                  `record ${rij.id}`,
+                              )}
+                            />
+                          </CertificaatRijMeerMenu>
+                        ) : null}
                       </td>
                     </tr>
                   ),
@@ -1542,7 +1619,7 @@ export function CertificatenTabel({
             </table>
           </div>
 
-          <div className="flex flex-col gap-2 border-t border-slate-200 bg-slate-50/70 px-5 py-3 text-sm text-slate-500 sm:flex-row sm:items-center sm:justify-between">
+          <div className={BEHEER_TABEL_STIJLEN.voet}>
             <p>
               <strong className="text-slate-700">
                 {

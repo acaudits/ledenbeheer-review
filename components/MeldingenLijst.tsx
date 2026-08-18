@@ -1,6 +1,12 @@
 "use client";
 
 import {
+  BEHEER_KNOP_KLASSEN,
+} from "@/components/BeheerOverzichtHeader";
+import {
+  BEHEER_TABEL_STIJLEN,
+} from "@/components/BeheerTabelOnderdelen";
+import {
   useCallback,
   useEffect,
   useState,
@@ -124,7 +130,13 @@ export function MeldingenLijst() {
     );
 
   useEffect(() => {
-    void laadMeldingen();
+    const timer = window.setTimeout(() => {
+      void laadMeldingen();
+    }, 0);
+
+    return () => {
+      window.clearTimeout(timer);
+    };
   }, [laadMeldingen]);
 
   async function pasStatusAan(
@@ -271,7 +283,7 @@ export function MeldingenLijst() {
     !fout
   ) {
     return (
-      <div className="rounded-2xl border border-slate-200 bg-white px-6 py-12 text-center text-sm font-medium text-slate-500 shadow-sm">
+      <div className={`${BEHEER_TABEL_STIJLEN.kader} ${BEHEER_TABEL_STIJLEN.leeg}`}>
         Meldingen laden...
       </div>
     );
@@ -291,14 +303,14 @@ export function MeldingenLijst() {
             onClick={() =>
               void laadMeldingen()
             }
-            className="ml-2 font-bold underline"
+            className={BEHEER_TABEL_STIJLEN.foutKnop}
           >
             Opnieuw proberen
           </button>
         </div>
       ) : null}
 
-      <div className="flex flex-col gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between">
+      <div className={`${BEHEER_TABEL_STIJLEN.kader} flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between`}>
         <p className="text-sm font-medium text-slate-600">
           {gegevens?.aantalOngelezen ??
             0}{" "}
@@ -316,7 +328,7 @@ export function MeldingenLijst() {
           onClick={() =>
             void markeerAllesGelezen()
           }
-          className="inline-flex h-10 items-center justify-center rounded-xl bg-slate-950 px-4 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
+          className={`${BEHEER_KNOP_KLASSEN.neutraal} disabled:cursor-not-allowed disabled:opacity-50`}
         >
           {allesBezig
             ? "Bezig..."
@@ -327,7 +339,7 @@ export function MeldingenLijst() {
       {!gegevens ||
       gegevens.meldingen
         .length === 0 ? (
-        <div className="rounded-2xl border border-slate-200 bg-white px-6 py-12 text-center shadow-sm">
+        <div className={`${BEHEER_TABEL_STIJLEN.kader} ${BEHEER_TABEL_STIJLEN.leeg}`}>
           <p className="font-semibold text-slate-900">
             Geen meldingen
           </p>
@@ -390,7 +402,7 @@ export function MeldingenLijst() {
                             ongelezen,
                           )
                         }
-                        className="inline-flex h-10 items-center justify-center rounded-xl border border-slate-300 bg-white px-3 text-xs font-semibold text-slate-700 transition hover:bg-slate-50 disabled:opacity-50"
+                        className={`${BEHEER_KNOP_KLASSEN.neutraal} disabled:opacity-50`}
                       >
                         {ongelezen
                           ? "Markeer gelezen"
@@ -409,7 +421,7 @@ export function MeldingenLijst() {
                               melding,
                             )
                           }
-                          className="inline-flex h-10 items-center justify-center rounded-xl bg-emerald-700 px-4 text-xs font-semibold text-white transition hover:bg-emerald-800 disabled:opacity-50"
+                          className={`${BEHEER_KNOP_KLASSEN.primair} disabled:opacity-50`}
                         >
                           Open controle
                         </button>

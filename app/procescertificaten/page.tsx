@@ -55,7 +55,7 @@ export default async function ProcescertificatenPage() {
   );
 
   return (
-    <>
+    <div className="space-y-4">
       <PageHeader
         compact
         titel="Procescertificaten"
@@ -95,6 +95,6 @@ export default async function ProcescertificatenPage() {
         soort="proces"
         magBeheren={magBeheren}
       />
-    </>
+    </div>
   );
 }

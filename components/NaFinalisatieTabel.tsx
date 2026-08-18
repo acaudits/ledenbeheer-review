@@ -9,6 +9,9 @@ import {
 } from "react";
 
 import {
+  BEHEER_TABEL_STIJLEN,
+} from "@/components/BeheerTabelOnderdelen";
+import {
   NaFinalisatieHerstelKnop,
 } from "@/components/NaFinalisatieHerstelKnop";
 import {
@@ -684,21 +687,21 @@ export function NaFinalisatieTabel({
     );
 
   return (
-    <section className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
-      <div className="border-b border-slate-200 p-4 sm:p-5">
+    <section className={BEHEER_TABEL_STIJLEN.kader}>
+      <div className={BEHEER_TABEL_STIJLEN.bovenbalk}>
         <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
           <div>
-            <p className="text-xs font-bold uppercase tracking-[0.16em] text-emerald-700">
+            <h2 className={BEHEER_TABEL_STIJLEN.overzichtTitel}>
               Overzicht
-            </p>
+            </h2>
 
-            <h2 className="mt-1 text-xl font-black text-slate-950">
+            <p className={BEHEER_TABEL_STIJLEN.aantal}>
               {zichtbareRijen.length} van{" "}
               {aantalBronRijen}{" "}
               {rijen.length === 1
                 ? "registratie"
                 : "registraties"}
-            </h2>
+            </p>
           </div>
 
           <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
@@ -779,13 +782,13 @@ export function NaFinalisatieTabel({
       </div>
 
       {zichtbareRijen.length === 0 ? (
-        <div className="px-6 py-14 text-center text-sm font-medium text-slate-500">
+        <div className={BEHEER_TABEL_STIJLEN.leeg}>
           Geen registraties gevonden.
         </div>
       ) : (
-        <div className="max-h-[calc(100vh-240px)] overflow-auto">
-          <table className="min-w-[2800px] w-full text-left">
-            <thead className="sticky top-0 z-20 bg-slate-100 text-xs font-bold uppercase tracking-wide text-slate-600 shadow-sm">
+        <div className={BEHEER_TABEL_STIJLEN.scroll}>
+          <table className={`${BEHEER_TABEL_STIJLEN.tabel} ${BEHEER_TABEL_STIJLEN.actieKolomLaatste} min-w-[2800px]`}>
+            <thead className={BEHEER_TABEL_STIJLEN.kop}>
               <tr>
                 {kolommen.map(
                   (kolom) => (
@@ -983,7 +986,7 @@ export function NaFinalisatieTabel({
               onClick={() => {
                 void serverQuery.opnieuwLaden();
               }}
-              className="inline-flex h-10 items-center justify-center rounded-xl border border-red-300 bg-red-50 px-4 text-sm font-semibold text-red-800 transition hover:bg-red-100"
+              className={BEHEER_TABEL_STIJLEN.foutKnop}
             >
               Opnieuw proberen
             </button>
@@ -998,7 +1001,7 @@ export function NaFinalisatieTabel({
                 void serverQuery
                   .laadVolgendePagina();
               }}
-              className="inline-flex h-10 items-center justify-center rounded-xl border border-emerald-300 bg-emerald-50 px-4 text-sm font-bold text-emerald-800 transition hover:bg-emerald-100 disabled:cursor-wait disabled:opacity-60"
+              className={BEHEER_TABEL_STIJLEN.meerKnop}
             >
               {serverQuery
                 .isVolgendePaginaLaden
@@ -1009,7 +1012,7 @@ export function NaFinalisatieTabel({
         </div>
       ) : null}
 
-      <footer className="border-t border-slate-200 bg-slate-50 px-4 py-2.5 text-xs text-slate-500">
+      <footer className={BEHEER_TABEL_STIJLEN.voet}>
         {verwijderd
           ? "Gebruik Herstellen om een verwijderde registratie opnieuw actief te maken."
           : "Klik op een rij om de registratie te bekijken. Klik op een kolomnaam om te sorteren."}

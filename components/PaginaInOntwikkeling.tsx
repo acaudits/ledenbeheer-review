@@ -8,7 +8,7 @@ export function PaginaInOntwikkeling({
   titel,
 }: PaginaInOntwikkelingProps) {
   return (
-    <>
+    <div className="space-y-4">
       <PageHeader
         titel={titel}
         beschrijving="Deze module wordt momenteel voorbereid."
@@ -30,6 +30,6 @@ export function PaginaInOntwikkeling({
           </p>
         </div>
       </section>
-    </>
+    </div>
   );
 }
