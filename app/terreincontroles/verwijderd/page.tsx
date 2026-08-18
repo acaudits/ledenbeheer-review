@@ -88,12 +88,22 @@ export default async function VerwijderdeTerreincontrolesPage({
       ) : null}
 
       <section className={BEHEER_TABEL_STIJLEN.verwijderdKader}>
+        <div className={BEHEER_TABEL_STIJLEN.verwijderdBovenbalk}>
+          <h2 className={BEHEER_TABEL_STIJLEN.overzichtTitel}>
+            Overzicht
+          </h2>
+
+          <p className={BEHEER_TABEL_STIJLEN.aantal}>
+            {dossiers.length} verwijderde terreincontroles
+          </p>
+        </div>
+
         {dossiers.length === 0 ? (
-          <div className={BEHEER_TABEL_STIJLEN.leeg}>
+          <div className={BEHEER_TABEL_STIJLEN.verwijderdLeeg}>
             Er zijn geen verwijderde terreincontroles.
           </div>
         ) : (
-          <div className={BEHEER_TABEL_STIJLEN.scroll}>
+          <div className={`${BEHEER_TABEL_STIJLEN.scroll} bg-white`}>
             <table className={`${BEHEER_TABEL_STIJLEN.tabel} min-w-[1100px] text-sm ${BEHEER_TABEL_STIJLEN.actieKolomLaatste}`}>
               <thead className={BEHEER_TABEL_STIJLEN.kop}>
                 <tr>

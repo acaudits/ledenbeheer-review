@@ -28,11 +28,15 @@ export const BEHEER_TABEL_STIJLEN = {
   voet:
     "flex flex-col gap-3 border-t border-slate-200 bg-slate-50 px-4 py-3 text-xs text-slate-500 sm:flex-row sm:items-center sm:justify-between",
   verwijderdKader:
-    "overflow-hidden rounded-2xl border border-slate-300 bg-white shadow-sm ring-1 ring-slate-200",
+    "isolate min-h-72 overflow-hidden rounded-2xl border border-slate-300 bg-white shadow-sm ring-1 ring-slate-200",
+  verwijderdBovenbalk:
+    "flex flex-col gap-3 border-b border-slate-200 bg-white px-4 py-3 sm:flex-row sm:items-center sm:justify-between",
+  verwijderdLeeg:
+    "flex min-h-56 flex-col items-center justify-center bg-white px-6 py-16 text-center text-sm font-medium text-slate-500",
   actieKolomLaatste:
-    "[&_th:last-child]:sticky [&_th:last-child]:right-0 [&_th:last-child]:top-0 [&_th:last-child]:z-30 [&_th:last-child]:w-40 [&_th:last-child]:min-w-40 [&_th:last-child]:bg-slate-50 [&_th:last-child]:text-right [&_td:last-child]:sticky [&_td:last-child]:right-0 [&_td:last-child]:z-10 [&_td:last-child]:w-40 [&_td:last-child]:min-w-40 [&_td:last-child]:bg-inherit [&_td:last-child]:text-right",
+    "[&_th:last-child]:sticky [&_th:last-child]:right-0 [&_th:last-child]:top-0 [&_th:last-child]:z-30 [&_th:last-child]:w-20 [&_th:last-child]:min-w-20 [&_th:last-child]:bg-slate-50 [&_th:last-child]:text-left [&_td:last-child]:sticky [&_td:last-child]:right-0 [&_td:last-child]:z-10 [&_td:last-child]:w-20 [&_td:last-child]:min-w-20 [&_td:last-child]:bg-inherit [&_td:last-child]:text-left",
   actieKolomEerste:
-    "[&_th:first-child]:sticky [&_th:first-child]:left-0 [&_th:first-child]:top-0 [&_th:first-child]:z-30 [&_th:first-child]:w-40 [&_th:first-child]:min-w-40 [&_th:first-child]:bg-slate-50 [&_td:first-child]:sticky [&_td:first-child]:left-0 [&_td:first-child]:z-10 [&_td:first-child]:w-40 [&_td:first-child]:min-w-40 [&_td:first-child]:bg-inherit",
+    "[&_th:first-child]:sticky [&_th:first-child]:left-0 [&_th:first-child]:top-0 [&_th:first-child]:z-30 [&_th:first-child]:w-20 [&_th:first-child]:min-w-20 [&_th:first-child]:bg-slate-50 [&_th:first-child]:text-left [&_td:first-child]:sticky [&_td:first-child]:left-0 [&_td:first-child]:z-10 [&_td:first-child]:w-20 [&_td:first-child]:min-w-20 [&_td:first-child]:bg-inherit [&_td:first-child]:text-left",
   meerKnop:
     "inline-flex h-9 shrink-0 items-center justify-center rounded-xl border border-emerald-300 bg-white px-4 font-semibold text-emerald-800 hover:bg-emerald-50 disabled:cursor-wait disabled:opacity-60",
   foutKnop:
@@ -304,7 +308,7 @@ export function BeheerTabelKolomKop({
 
 export function BeheerActieKolomKop() {
   return (
-    <th className="sticky right-0 top-0 z-30 border-b border-slate-200 bg-slate-50 px-3 py-2.5 text-right text-xs font-bold uppercase text-slate-500">
+    <th className="sticky right-0 top-0 z-30 w-44 min-w-44 border-b border-slate-200 bg-slate-50 px-3 py-2.5 text-right text-xs font-bold uppercase text-slate-500">
       Acties
     </th>
   );

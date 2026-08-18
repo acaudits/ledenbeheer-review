@@ -851,7 +851,7 @@ export function NaFinalisatieTabel({
                   ),
                 )}
 
-                <th className="sticky right-0 z-30 min-w-56 border-b border-l border-slate-200 bg-slate-100 px-3 py-2">
+                <th className="sticky right-0 w-20 min-w-20 z-30 border-b border-l border-slate-200 bg-slate-100 px-3 py-2 text-left">
                   Acties
                 </th>
               </tr>
@@ -929,7 +929,7 @@ export function NaFinalisatieTabel({
                       ),
                     )}
 
-                    <td className="sticky right-0 z-10 has-[details[open]]:z-50 min-w-56 border-l border-slate-200 bg-white px-3 py-3 group-hover:bg-[#f7fcfa]">
+                    <td className="sticky right-0 w-20 min-w-20 z-10 has-[details[open]]:z-50 border-l border-slate-200 bg-inherit px-3 py-3 text-left group-hover:bg-[#f7fcfa]">
                       {verwijderd ? (
                         <NaFinalisatieHerstelKnop
                           id={rij.id}

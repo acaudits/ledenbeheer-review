@@ -1078,7 +1078,7 @@ export function TerreincontroleFilterTabel({
                         className={
                           kolom.type ===
                           "acties"
-                            ? "sticky right-0 top-0 z-30 whitespace-nowrap border-b border-l border-slate-200 bg-slate-50 px-3 py-2.5 text-right text-xs font-bold uppercase tracking-wide text-slate-500"
+                            ? "sticky right-0 w-20 min-w-20 top-0 z-30 whitespace-nowrap border-b border-l border-slate-200 bg-slate-50 px-3 py-2.5 text-left text-xs font-bold uppercase tracking-wide text-slate-500"
                             : "whitespace-nowrap border-b border-slate-200 px-3 py-2.5 text-xs font-bold uppercase tracking-wide text-slate-500"
                         }
                       >
@@ -1122,7 +1122,7 @@ export function TerreincontroleFilterTabel({
                       className={
                         kolom.type ===
                         "acties"
-                          ? "sticky right-0 z-30 border-b border-l border-slate-200 bg-white px-2 py-2 shadow-[-8px_0_12px_-10px_rgba(15,23,42,0.45)]"
+                          ? "sticky right-0 w-20 min-w-20 z-30 border-b border-l border-slate-200 bg-inherit px-2 py-2 shadow-[-8px_0_12px_-10px_rgba(15,23,42,0.45)]"
                           : "border-b border-slate-200 px-2 py-2"
                       }
                     >
@@ -1200,7 +1200,7 @@ export function TerreincontroleFilterTabel({
                           className={
                             kolom.type ===
                             "acties"
-                              ? `sticky right-0 z-10 has-[details[open]]:z-50 min-w-56 whitespace-nowrap border-l border-slate-200 px-3 py-3 align-top has-[details[open]]:z-[70] ${
+                              ? `sticky right-0 w-20 min-w-20 z-10 has-[details[open]]:z-50 whitespace-nowrap border-l border-slate-200 px-3 py-3 align-top has-[details[open]]:z-[70] ${
                                   modus ===
                                     "afwezig" &&
                                   rij.ovamIdRood ===

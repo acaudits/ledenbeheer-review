@@ -212,7 +212,7 @@ export function OpvolgingSanctieActies({
             Meer
           </summary>
 
-          <div className="absolute right-full top-0 z-50 mr-1 min-w-44 rounded-xl border border-slate-200 bg-white p-1.5 shadow-xl">
+          <div className="absolute right-full top-0 z-50 mr-2 min-w-44 rounded-xl border border-slate-200 bg-white p-1.5 shadow-xl">
             <button
               type="button"
               onClick={

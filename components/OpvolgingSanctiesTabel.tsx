@@ -684,7 +684,7 @@ export function OpvolgingSanctiesTabel({
                       ),
                     )}
 
-                    <td className="sticky right-0 z-10 has-[details[open]]:z-50 min-w-44 whitespace-nowrap border-l border-slate-200 bg-white px-3 py-3 group-hover:bg-[#f7fcfa]">
+                    <td className="sticky right-0 w-20 min-w-20 z-10 has-[details[open]]:z-50 whitespace-nowrap border-l border-slate-200 bg-inherit px-3 py-3 text-left group-hover:bg-[#f7fcfa]">
                       {rij.magBeheren ? (
                         <OpvolgingSanctieActies
                           registratie={{

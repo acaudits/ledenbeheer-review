@@ -63,14 +63,18 @@ export default async function VerwijderdePersoonscertificatenPage() {
       />
 
       <section className={BEHEER_TABEL_STIJLEN.verwijderdKader}>
-        <div className={BEHEER_TABEL_STIJLEN.bovenbalk}>
+        <div className={BEHEER_TABEL_STIJLEN.verwijderdBovenbalk}>
+          <h2 className={BEHEER_TABEL_STIJLEN.overzichtTitel}>
+            Overzicht
+          </h2>
+
           <p className={BEHEER_TABEL_STIJLEN.aantal}>
             {leden.length} verwijderde records
           </p>
         </div>
 
         {leden.length === 0 ? (
-          <div className={BEHEER_TABEL_STIJLEN.leeg}>
+          <div className={BEHEER_TABEL_STIJLEN.verwijderdLeeg}>
             <h2 className="text-xl font-bold text-slate-950">
               Geen verwijderde persoonscertificaten
             </h2>
@@ -80,7 +84,7 @@ export default async function VerwijderdePersoonscertificatenPage() {
             </p>
           </div>
         ) : (
-          <div className={BEHEER_TABEL_STIJLEN.scroll}>
+          <div className={`${BEHEER_TABEL_STIJLEN.scroll} bg-white`}>
             <table className={`${BEHEER_TABEL_STIJLEN.tabel} min-w-[1100px] ${BEHEER_TABEL_STIJLEN.actieKolomLaatste}`}>
               <thead className={BEHEER_TABEL_STIJLEN.kop}>
                 <tr>

@@ -322,7 +322,7 @@ function CertificaatRijMeerMenu({
 
         <div
           role="menu"
-          className="absolute bottom-full right-0 z-[80] mb-1 min-w-52 rounded-xl border border-slate-200 bg-white p-1.5 text-left shadow-xl"
+          className="absolute right-full top-0 z-[80] mr-2 min-w-52 rounded-xl border border-slate-200 bg-white p-1.5 text-left shadow-xl"
           onClickCapture={(event) => {
             const doel = event.target;
 
@@ -1362,7 +1362,7 @@ export function CertificatenTabel({
                     },
                   )}
 
-                  <th className="sticky right-0 top-0 z-30 w-40 min-w-40 border-b border-slate-200 bg-slate-50 px-3 py-2.5 text-right text-xs font-bold uppercase tracking-wider text-slate-500">
+                  <th className="sticky right-0 w-20 min-w-20 top-0 z-30 border-b border-slate-200 bg-slate-50 px-3 py-2.5 text-left text-xs font-bold uppercase tracking-wider text-slate-500">
                     Acties
                   </th>
                 </tr>
@@ -1594,7 +1594,7 @@ export function CertificatenTabel({
                         },
                       )}
 
-                      <td className="sticky right-0 z-10 w-40 min-w-40 bg-inherit px-3 py-2.5 text-right">
+                      <td className="sticky right-0 w-20 min-w-20 z-10 bg-inherit px-3 py-2.5 text-left">
                         {magBeheren ? (
                           <CertificaatRijMeerMenu
                             bewerkenHref={`${bewerkBasisHref}/${rij.id}/bewerken`}

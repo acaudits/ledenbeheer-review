@@ -167,8 +167,18 @@ export default async function VerwijderdeOpvolgingSanctiesPage() {
       />
 
       <section className={BEHEER_TABEL_STIJLEN.verwijderdKader}>
+        <div className={BEHEER_TABEL_STIJLEN.verwijderdBovenbalk}>
+          <h2 className={BEHEER_TABEL_STIJLEN.overzichtTitel}>
+            Overzicht
+          </h2>
+
+          <p className={BEHEER_TABEL_STIJLEN.aantal}>
+            {registraties.length} verwijderde registraties
+          </p>
+        </div>
+
         {registraties.length === 0 ? (
-          <div className={BEHEER_TABEL_STIJLEN.leeg}>
+          <div className={BEHEER_TABEL_STIJLEN.verwijderdLeeg}>
             <h2 className="text-lg font-bold text-slate-900">
               Geen verwijderde opvolgingen
             </h2>
@@ -178,7 +188,7 @@ export default async function VerwijderdeOpvolgingSanctiesPage() {
             </p>
           </div>
         ) : (
-          <div className={BEHEER_TABEL_STIJLEN.scroll}>
+          <div className={`${BEHEER_TABEL_STIJLEN.scroll} bg-white`}>
             <table className={`${BEHEER_TABEL_STIJLEN.tabel} min-w-[1200px] ${BEHEER_TABEL_STIJLEN.actieKolomLaatste}`}>
               <thead className={BEHEER_TABEL_STIJLEN.kop}>
                 <tr className="text-xs uppercase tracking-wide text-slate-600">
@@ -267,7 +277,7 @@ export default async function VerwijderdeOpvolgingSanctiesPage() {
                           )}
                         </td>
 
-                        <td className="sticky right-0 bg-white px-3 py-3">
+                        <td className="sticky right-0 bg-inherit px-3 py-3">
                           {magHerstellen ? (
                             <OpvolgingSanctieHerstelKnop
                               id={
