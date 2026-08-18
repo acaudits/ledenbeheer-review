@@ -3,56 +3,117 @@ import {
   BeheerOverzichtHeader,
 } from "@/components/BeheerOverzichtHeader";
 import {
-  BEHEER_TABEL_STIJLEN,
-} from "@/components/BeheerTabelOnderdelen";
-import { CopyButton } from "@/components/CopyButton";
-import { HerstelButton } from "@/components/CertificaatStatusButton";
-import { prisma } from "@/lib/prisma";
-import { vereisMachtiging } from "@/lib/auth";
+  VerwijderdeBeheerTabel,
+  type VerwijderdeBeheerTabelRij,
+} from "@/components/VerwijderdeBeheerTabel";
+import {
+  vereisMachtiging,
+} from "@/lib/auth";
+import type {
+  BeheerTabelKolom,
+} from "@/lib/beheer-tabel";
+import {
+  prisma,
+} from "@/lib/prisma";
 
-export const dynamic = "force-dynamic";
+export const dynamic =
+  "force-dynamic";
 
-function datum(datumWaarde: Date | null) {
-  if (!datumWaarde) {
+const kolommen:
+  BeheerTabelKolom[] = [
+    {
+      sleutel: "naamPersoon",
+      label: "Naam persoon",
+    },
+    {
+      sleutel: "ovamId",
+      label: "OVAM-ID",
+    },
+    {
+      sleutel: "certificaatnummer",
+      label: "Certificaatnummer",
+    },
+    {
+      sleutel: "bedrijf",
+      label: "Bedrijf",
+    },
+    {
+      sleutel: "mailadres",
+      label: "Mailadres",
+    },
+    {
+      sleutel: "verwijderdOp",
+      label: "Verwijderd op",
+      type: "datum",
+    },
+  ];
+
+function datum(
+  waarde: Date | null,
+) {
+  if (!waarde) {
     return "—";
   }
 
-  return new Intl.DateTimeFormat("nl-BE", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  }).format(datumWaarde);
+  return new Intl.DateTimeFormat(
+    "nl-BE",
+    {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    },
+  ).format(waarde);
 }
 
 export default async function VerwijderdePersoonscertificatenPage() {
-  await vereisMachtiging("CERTIFICATEN_BEHEREN");
+  await vereisMachtiging(
+    "CERTIFICATEN_BEHEREN",
+  );
 
-  const leden = await prisma.lid.findMany({
-    where: {
-      verwijderdOp: {
-        not: null,
+  const leden =
+    await prisma.lid.findMany({
+      where: {
+        verwijderdOp: {
+          not: null,
+        },
       },
-    },
-    orderBy: {
-      verwijderdOp: "desc",
-    },
-  });
+      orderBy: {
+        verwijderdOp: "desc",
+      },
+    });
+
+  const rijen:
+    VerwijderdeBeheerTabelRij[] =
+    leden.map(
+      (lid) => ({
+        id: lid.id,
+        naamPersoon:
+          lid.naamPersoon,
+        ovamId:
+          lid.ovamId,
+        certificaatnummer:
+          lid.certificaatnummer,
+        bedrijf:
+          lid.bedrijf,
+        mailadres:
+          lid.mailadres,
+        verwijderdOp:
+          datum(
+            lid.verwijderdOp,
+          ),
+        actieNaam:
+          lid.naamPersoon,
+      }),
+    );
 
   return (
     <div className="space-y-4">
       <BeheerOverzichtHeader
         bovenTitel="Persoonscertificaten"
         titel="Verwijderde persoonscertificaten"
-        omschrijving={
-          <>
-            {leden.length} verwijderde
-            {leden.length === 1
-              ? " registratie"
-              : " registraties"}
-          </>
-        }
+        omschrijving={`${leden.length} verwijderde registraties`}
         acties={
           <BeheerActieLink
             href="/persoonscertificaten"
@@ -62,89 +123,16 @@ export default async function VerwijderdePersoonscertificatenPage() {
         }
       />
 
-      <section className={BEHEER_TABEL_STIJLEN.verwijderdKader}>
-        <div className={BEHEER_TABEL_STIJLEN.verwijderdBovenbalk}>
-          <h2 className={BEHEER_TABEL_STIJLEN.overzichtTitel}>
-            Overzicht
-          </h2>
-
-          <p className={BEHEER_TABEL_STIJLEN.aantal}>
-            {leden.length} verwijderde records
-          </p>
-        </div>
-
-        {leden.length === 0 ? (
-          <div className={BEHEER_TABEL_STIJLEN.verwijderdLeeg}>
-            <h2 className="text-xl font-bold text-slate-950">
-              Geen verwijderde persoonscertificaten
-            </h2>
-
-            <p className="mt-2 text-sm text-slate-500">
-              Verwijderde persoonscertificaten verschijnen hier.
-            </p>
-          </div>
-        ) : (
-          <div className={`${BEHEER_TABEL_STIJLEN.scroll} bg-white`}>
-            <table className={`${BEHEER_TABEL_STIJLEN.tabel} min-w-[1100px] ${BEHEER_TABEL_STIJLEN.actieKolomLaatste}`}>
-              <thead className={BEHEER_TABEL_STIJLEN.kop}>
-                <tr>
-                  {[
-                    "Naam persoon",
-                    "OVAM-ID",
-                    "Certificaatnummer",
-                    "Bedrijf",
-                    "Mailadres",
-                    "Verwijderd op",
-                    "Actie",
-                  ].map((titel) => (
-                    <th
-                      key={titel}
-                      className="border-b border-slate-200 px-5 py-4 text-xs font-bold uppercase tracking-wider text-slate-500"
-                    >
-                      {titel}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-
-              <tbody className="divide-y divide-slate-100">
-                {leden.map((lid) => (
-                  <tr key={lid.id} className="hover:bg-slate-50">
-                    {[
-                      lid.naamPersoon,
-                      lid.ovamId,
-                      lid.certificaatnummer,
-                      lid.bedrijf,
-                      lid.mailadres,
-                      datum(lid.verwijderdOp),
-                    ].map((waarde, index) => (
-                      <td
-                        key={index}
-                        className="px-5 py-4 text-sm text-slate-700"
-                      >
-                        <div className="flex min-w-max items-center gap-2">
-                          <span className={!waarde ? "text-slate-400" : ""}>
-                            {waarde || "—"}
-                          </span>
-                          <CopyButton waarde={waarde} />
-                        </div>
-                      </td>
-                    ))}
-
-                    <td className="px-5 py-4 text-right">
-                      <HerstelButton
-                        id={lid.id}
-                        soort="persoon"
-                        naam={lid.naamPersoon}
-                      />
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </section>
+      <VerwijderdeBeheerTabel
+        rijen={rijen}
+        kolommen={kolommen}
+        herstelType="persoon"
+        zoekPlaceholder="Zoeken in verwijderde persoonscertificaten..."
+        legeTitel="Geen verwijderde persoonscertificaten"
+        legeBeschrijving="Verwijderde persoonscertificaten verschijnen hier."
+        resultaatEnkelvoud="verwijderd persoonscertificaat"
+        resultaatMeervoud="verwijderde persoonscertificaten"
+      />
     </div>
   );
 }

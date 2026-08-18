@@ -3,11 +3,15 @@ import {
   BeheerOverzichtHeader,
 } from "@/components/BeheerOverzichtHeader";
 import {
-  BEHEER_TABEL_STIJLEN,
-} from "@/components/BeheerTabelOnderdelen";
-
-import TerreincontroleHerstelKnop from "@/components/TerreincontroleHerstelKnop";
-import { vereisMachtiging } from "@/lib/auth";
+  VerwijderdeBeheerTabel,
+  type VerwijderdeBeheerTabelRij,
+} from "@/components/VerwijderdeBeheerTabel";
+import {
+  vereisMachtiging,
+} from "@/lib/auth";
+import type {
+  BeheerTabelKolom,
+} from "@/lib/beheer-tabel";
 import {
   prisma,
 } from "@/lib/prisma";
@@ -18,6 +22,50 @@ import {
 
 export const dynamic =
   "force-dynamic";
+
+const kolommen:
+  BeheerTabelKolom[] = [
+    {
+      sleutel: "googleMaps",
+      label: "Google Maps",
+      type: "url",
+    },
+    {
+      sleutel: "auditeur",
+      label: "Auditeur",
+    },
+    {
+      sleutel: "status",
+      label: "Status",
+      type: "badge",
+    },
+    {
+      sleutel: "factuurVerzonden",
+      label: "Factuur verzonden",
+    },
+    {
+      sleutel: "inspectielocatie",
+      label: "Inspectielocatie",
+    },
+    {
+      sleutel: "datumPlaatsbezoek",
+      label: "Datum plaatsbezoek",
+      type: "datum",
+    },
+    {
+      sleutel: "uurPlaatsbezoek",
+      label: "Uur",
+    },
+    {
+      sleutel: "attestId",
+      label: "Attest-ID",
+    },
+    {
+      sleutel: "verwijderdOp",
+      label: "Verwijderd op",
+      type: "datum",
+    },
+  ];
 
 function formatteerDatum(
   datum: Date | null,
@@ -57,40 +105,85 @@ function formatteerDatumTijd(
 }
 
 export default async function VerwijderdeTerreincontrolesPage() {
-  await vereisMachtiging("TERREINCONTROLES_BEHEREN");
+  await vereisMachtiging(
+    "TERREINCONTROLES_BEHEREN",
+  );
 
   const terreincontroles =
-    await prisma.terreincontrole.findMany(
-      {
-        where: {
-          verwijderdOp: {
-            not: null,
-          },
-        },
-
-        orderBy: [
-          {
-            verwijderdOp:
-              "desc",
-          },
-          {
-            id: "desc",
-          },
-        ],
-
-        select: {
-          id: true,
-          auditeur: true,
-          status: true,
-          factuurVerzonden: true,
-          inspectielocatie: true,
-          adres: true,
-          datumPlaatsbezoek: true,
-          uurPlaatsbezoek: true,
-          attestId: true,
-          verwijderdOp: true,
+    await prisma.terreincontrole.findMany({
+      where: {
+        verwijderdOp: {
+          not: null,
         },
       },
+      orderBy: [
+        {
+          verwijderdOp: "desc",
+        },
+        {
+          id: "desc",
+        },
+      ],
+      select: {
+        id: true,
+        auditeur: true,
+        status: true,
+        factuurVerzonden: true,
+        inspectielocatie: true,
+        adres: true,
+        datumPlaatsbezoek: true,
+        uurPlaatsbezoek: true,
+        attestId: true,
+        verwijderdOp: true,
+      },
+    });
+
+  const rijen:
+    VerwijderdeBeheerTabelRij[] =
+    terreincontroles.map(
+      (terreincontrole) => ({
+        id: terreincontrole.id,
+        googleMaps:
+          maakGoogleMapsUrl(
+            terreincontrole
+              .inspectielocatie ??
+              terreincontrole.adres,
+          ) ?? "",
+        auditeur:
+          terreincontrole.auditeur ??
+          "—",
+        status:
+          terreincontrole.status ??
+          "NULL",
+        factuurVerzonden:
+          terreincontrole
+            .factuurVerzonden
+            ? "Ja"
+            : "Nee",
+        inspectielocatie:
+          terreincontrole
+            .inspectielocatie ??
+          terreincontrole.adres ??
+          "—",
+        datumPlaatsbezoek:
+          formatteerDatum(
+            terreincontrole
+              .datumPlaatsbezoek,
+          ),
+        uurPlaatsbezoek:
+          formatteerDatabaseTijd(
+            terreincontrole
+              .uurPlaatsbezoek,
+          ) ?? "—",
+        attestId:
+          terreincontrole.attestId ??
+          "—",
+        verwijderdOp:
+          formatteerDatumTijd(
+            terreincontrole
+              .verwijderdOp,
+          ),
+      }),
     );
 
   return (
@@ -98,14 +191,7 @@ export default async function VerwijderdeTerreincontrolesPage() {
       <BeheerOverzichtHeader
         bovenTitel="Controlebeheer"
         titel="Verwijderde terreincontroles"
-        omschrijving={
-          <>
-            {terreincontroles.length}{" "}
-            {terreincontroles.length === 1
-              ? "verwijderde terreincontrole"
-              : "verwijderde terreincontroles"}
-          </>
-        }
+        omschrijving={`${terreincontroles.length} verwijderde terreincontroles`}
         acties={
           <BeheerActieLink
             href="/terreincontroles-inplannen"
@@ -115,179 +201,16 @@ export default async function VerwijderdeTerreincontrolesPage() {
         }
       />
 
-      <div className={BEHEER_TABEL_STIJLEN.verwijderdKader}>
-        <div className={BEHEER_TABEL_STIJLEN.verwijderdBovenbalk}>
-          <h2 className={BEHEER_TABEL_STIJLEN.overzichtTitel}>
-            Overzicht
-          </h2>
-
-          <p className={BEHEER_TABEL_STIJLEN.aantal}>
-            {terreincontroles.length} verwijderde terreincontroles
-          </p>
-        </div>
-
-          {terreincontroles.length ===
-          0 ? (
-            <div className={BEHEER_TABEL_STIJLEN.verwijderdLeeg}>
-              <p className="text-sm font-medium text-slate-600">
-                Er zijn geen verwijderde terreincontroles.
-              </p>
-            </div>
-          ) : (
-            <div className={`${BEHEER_TABEL_STIJLEN.scroll} bg-white`}>
-              <table className={`${BEHEER_TABEL_STIJLEN.tabel} ${BEHEER_TABEL_STIJLEN.actieKolomEerste} min-w-[1500px] text-sm`}>
-                <thead className={BEHEER_TABEL_STIJLEN.kop}>
-                  <tr>
-                    <th className="border-b border-slate-200 px-4 py-3">
-                      Acties
-                    </th>
-
-                    <th className="border-b border-slate-200 px-4 py-3">
-                      Google Maps
-                    </th>
-
-                    <th className="border-b border-slate-200 px-4 py-3">
-                      Auditeur
-                    </th>
-
-                    <th className="border-b border-slate-200 px-4 py-3">
-                      Status
-                    </th>
-
-                    <th className="border-b border-slate-200 px-4 py-3">
-                      Factuur verzonden
-                    </th>
-
-                    <th className="border-b border-slate-200 px-4 py-3">
-                      Inspectielocatie
-                    </th>
-
-                    <th className="border-b border-slate-200 px-4 py-3">
-                      Datum plaatsbezoek
-                    </th>
-
-                    <th className="border-b border-slate-200 px-4 py-3">
-                      Uur
-                    </th>
-
-                    <th className="border-b border-slate-200 px-4 py-3">
-                      Attest-ID
-                    </th>
-
-                    <th className="border-b border-slate-200 px-4 py-3">
-                      Verwijderd op
-                    </th>
-                  </tr>
-                </thead>
-
-                <tbody className="divide-y divide-slate-100">
-                  {terreincontroles.map(
-                    (
-                      terreincontrole,
-                    ) => {
-                      const googleMapsUrl =
-                        maakGoogleMapsUrl(
-                          terreincontrole
-                            .inspectielocatie ??
-                            terreincontrole
-                              .adres,
-                        );
-
-                      return (
-                        <tr
-                          key={
-                            terreincontrole.id
-                          }
-                          className="align-top hover:bg-slate-50"
-                        >
-                          <td className="px-4 py-3">
-                            <TerreincontroleHerstelKnop
-                              id={
-                                terreincontrole.id
-                              }
-                            />
-                          </td>
-
-                          <td className="px-4 py-3">
-                            {googleMapsUrl ? (
-                              <a
-                                href={
-                                  googleMapsUrl
-                                }
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="font-semibold text-blue-700 underline"
-                              >
-                                Openen
-                              </a>
-                            ) : (
-                              "—"
-                            )}
-                          </td>
-
-                          <td className="px-4 py-3 font-medium">
-                            {terreincontrole
-                              .auditeur ??
-                              "—"}
-                          </td>
-
-                          <td className="px-4 py-3">
-                            {terreincontrole
-                              .status ??
-                              "NULL"}
-                          </td>
-
-                          <td className="px-4 py-3">
-                            {terreincontrole
-                              .factuurVerzonden
-                              ? "Ja"
-                              : "Nee"}
-                          </td>
-
-                          <td className="max-w-sm px-4 py-3">
-                            {terreincontrole
-                              .inspectielocatie ??
-                              terreincontrole
-                                .adres ??
-                              "—"}
-                          </td>
-
-                          <td className="px-4 py-3">
-                            {formatteerDatum(
-                              terreincontrole
-                                .datumPlaatsbezoek,
-                            )}
-                          </td>
-
-                          <td className="px-4 py-3">
-                            {formatteerDatabaseTijd(
-                              terreincontrole
-                                .uurPlaatsbezoek,
-                            ) ?? "—"}
-                          </td>
-
-                          <td className="px-4 py-3 font-mono text-xs">
-                            {terreincontrole
-                              .attestId ??
-                              "—"}
-                          </td>
-
-                          <td className="px-4 py-3">
-                            {formatteerDatumTijd(
-                              terreincontrole
-                                .verwijderdOp,
-                            )}
-                          </td>
-                        </tr>
-                      );
-                    },
-                  )}
-                </tbody>
-              </table>
-            </div>
-          )}
-      </div>
+      <VerwijderdeBeheerTabel
+        rijen={rijen}
+        kolommen={kolommen}
+        herstelType="terreincontrole-planning"
+        zoekPlaceholder="Zoeken in verwijderde planning..."
+        legeTitel="Geen verwijderde terreincontroles"
+        legeBeschrijving="Er zijn momenteel geen verwijderde terreincontroles in de planning."
+        resultaatEnkelvoud="verwijderde terreincontrole"
+        resultaatMeervoud="verwijderde terreincontroles"
+      />
     </div>
   );
 }
-

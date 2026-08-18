@@ -1,23 +1,24 @@
 import {
-  BeheerActieLink,
-  BeheerOverzichtHeader,
-} from "@/components/BeheerOverzichtHeader";
-import {
-  BEHEER_TABEL_STIJLEN,
-} from "@/components/BeheerTabelOnderdelen";
-import {
   redirect,
 } from "next/navigation";
 
 import {
-  OpvolgingSanctieHerstelKnop,
-} from "@/components/OpvolgingSanctieHerstelKnop";
+  BeheerActieLink,
+  BeheerOverzichtHeader,
+} from "@/components/BeheerOverzichtHeader";
+import {
+  VerwijderdeBeheerTabel,
+  type VerwijderdeBeheerTabelRij,
+} from "@/components/VerwijderdeBeheerTabel";
 import {
   heeftMachtiging,
 } from "@/lib/autorisatie";
 import {
   vereisIngelogdeGebruiker,
 } from "@/lib/auth";
+import type {
+  BeheerTabelKolom,
+} from "@/lib/beheer-tabel";
 import {
   ncCategorieLabel,
   opvolgingBronLabel,
@@ -28,6 +29,41 @@ import {
 
 export const dynamic =
   "force-dynamic";
+
+const kolommen:
+  BeheerTabelKolom[] = [
+    {
+      sleutel: "bron",
+      label: "Bron",
+    },
+    {
+      sleutel: "auditeur",
+      label: "Auditeur",
+    },
+    {
+      sleutel: "naamAdi",
+      label: "Naam ADI",
+    },
+    {
+      sleutel: "reden",
+      label: "Reden",
+    },
+    {
+      sleutel: "ncCategorie",
+      label: "NC-categorie",
+      type: "badge",
+    },
+    {
+      sleutel: "datumVaststelling",
+      label: "Datum vaststelling",
+      type: "datum",
+    },
+    {
+      sleutel: "verwijderdOp",
+      label: "Verwijderd op",
+      type: "datum",
+    },
+  ];
 
 function formatteerDatum(
   datum: Date | null,
@@ -144,19 +180,55 @@ export default async function VerwijderdeOpvolgingSanctiesPage() {
       ],
     });
 
+  const rijen:
+    VerwijderdeBeheerTabelRij[] =
+    registraties.map(
+      (registratie) => ({
+        id: registratie.id,
+        bron:
+          opvolgingBronLabel(
+            registratie.bronType,
+          ),
+        auditeur:
+          gebruikerNaam(
+            registratie.auditeurGebruiker,
+          ) !== "—"
+            ? gebruikerNaam(
+                registratie.auditeurGebruiker,
+              )
+            : registratie.auditeur ??
+              "—",
+        naamAdi:
+          registratie.naamAdi ??
+          "—",
+        reden:
+          registratie.reden,
+        ncCategorie:
+          ncCategorieLabel(
+            registratie.ncCategorie,
+          ),
+        datumVaststelling:
+          formatteerDatum(
+            registratie.datumVaststelling,
+          ),
+        verwijderdOp:
+          formatteerDatum(
+            registratie.verwijderdOp,
+          ),
+        magHerstellen:
+          registratie.bronType ===
+          "DESKCONTROLE"
+            ? magDeskcontrolesBeheren
+            : magTerreincontrolesBeheren,
+      }),
+    );
+
   return (
-    <div className="space-y-5">
+    <div className="space-y-4">
       <BeheerOverzichtHeader
         bovenTitel="Controlebeheer"
         titel="Verwijderde opvolgingen/sancties"
-        omschrijving={
-          <>
-            {registraties.length}{" "}
-            {registraties.length === 1
-              ? "verwijderde registratie"
-              : "verwijderde registraties"}
-          </>
-        }
+        omschrijving={`${registraties.length} verwijderde registraties`}
         acties={
           <BeheerActieLink
             href="/opvolging-sancties"
@@ -166,139 +238,16 @@ export default async function VerwijderdeOpvolgingSanctiesPage() {
         }
       />
 
-      <section className={BEHEER_TABEL_STIJLEN.verwijderdKader}>
-        <div className={BEHEER_TABEL_STIJLEN.verwijderdBovenbalk}>
-          <h2 className={BEHEER_TABEL_STIJLEN.overzichtTitel}>
-            Overzicht
-          </h2>
-
-          <p className={BEHEER_TABEL_STIJLEN.aantal}>
-            {registraties.length} verwijderde registraties
-          </p>
-        </div>
-
-        {registraties.length === 0 ? (
-          <div className={BEHEER_TABEL_STIJLEN.verwijderdLeeg}>
-            <h2 className="text-lg font-bold text-slate-900">
-              Geen verwijderde opvolgingen
-            </h2>
-
-            <p className="mt-2 text-sm text-slate-600">
-              Er zijn momenteel geen verwijderde registraties.
-            </p>
-          </div>
-        ) : (
-          <div className={`${BEHEER_TABEL_STIJLEN.scroll} bg-white`}>
-            <table className={`${BEHEER_TABEL_STIJLEN.tabel} min-w-[1200px] ${BEHEER_TABEL_STIJLEN.actieKolomLaatste}`}>
-              <thead className={BEHEER_TABEL_STIJLEN.kop}>
-                <tr className="text-xs uppercase tracking-wide text-slate-600">
-                  <th className="px-3 py-3">
-                    Bron
-                  </th>
-                  <th className="px-3 py-3">
-                    Auditeur
-                  </th>
-                  <th className="px-3 py-3">
-                    Naam ADI
-                  </th>
-                  <th className="px-3 py-3">
-                    Reden
-                  </th>
-                  <th className="px-3 py-3">
-                    NC-categorie
-                  </th>
-                  <th className="px-3 py-3">
-                    Datum vaststelling
-                  </th>
-                  <th className="px-3 py-3">
-                    Verwijderd op
-                  </th>
-                  <th className="sticky right-0 bg-slate-100 px-3 py-3">
-                    Acties
-                  </th>
-                </tr>
-              </thead>
-
-              <tbody className="divide-y divide-slate-100">
-                {registraties.map(
-                  (registratie) => {
-                    const magHerstellen =
-                      registratie.bronType ===
-                      "DESKCONTROLE"
-                        ? magDeskcontrolesBeheren
-                        : magTerreincontrolesBeheren;
-
-                    return (
-                      <tr
-                        key={registratie.id}
-                        className="align-top text-sm text-slate-700 hover:bg-emerald-50/40"
-                      >
-                        <td className="whitespace-nowrap px-3 py-3 font-semibold">
-                          {opvolgingBronLabel(
-                            registratie.bronType,
-                          )}
-                        </td>
-
-                        <td className="px-3 py-3">
-                          {gebruikerNaam(
-                            registratie.auditeurGebruiker,
-                          ) !== "—"
-                            ? gebruikerNaam(
-                                registratie.auditeurGebruiker,
-                              )
-                            : registratie.auditeur ??
-                              "—"}
-                        </td>
-
-                        <td className="px-3 py-3">
-                          {registratie.naamAdi ??
-                            "—"}
-                        </td>
-
-                        <td className="max-w-96 whitespace-pre-wrap px-3 py-3">
-                          {registratie.reden}
-                        </td>
-
-                        <td className="whitespace-nowrap px-3 py-3 font-semibold">
-                          {ncCategorieLabel(
-                            registratie.ncCategorie,
-                          )}
-                        </td>
-
-                        <td className="whitespace-nowrap px-3 py-3">
-                          {formatteerDatum(
-                            registratie.datumVaststelling,
-                          )}
-                        </td>
-
-                        <td className="whitespace-nowrap px-3 py-3">
-                          {formatteerDatum(
-                            registratie.verwijderdOp,
-                          )}
-                        </td>
-
-                        <td className="sticky right-0 bg-inherit px-3 py-3">
-                          {magHerstellen ? (
-                            <OpvolgingSanctieHerstelKnop
-                              id={
-                                registratie.id
-                              }
-                            />
-                          ) : (
-                            <span className="text-xs text-slate-400">
-                              —
-                            </span>
-                          )}
-                        </td>
-                      </tr>
-                    );
-                  },
-                )}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </section>
+      <VerwijderdeBeheerTabel
+        rijen={rijen}
+        kolommen={kolommen}
+        herstelType="opvolging"
+        zoekPlaceholder="Zoeken in verwijderde opvolgingen..."
+        legeTitel="Geen verwijderde opvolgingen"
+        legeBeschrijving="Er zijn momenteel geen verwijderde registraties."
+        resultaatEnkelvoud="verwijderde registratie"
+        resultaatMeervoud="verwijderde registraties"
+      />
     </div>
   );
 }
