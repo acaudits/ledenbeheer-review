@@ -20,6 +20,19 @@ export function UitloggenButton({
     setFout(null);
 
     try {
+      try {
+        await fetch("/api/aanwezigheid", {
+          method: "DELETE",
+          credentials: "include",
+          keepalive: true,
+        });
+      } catch (aanwezigheidsfout) {
+        console.warn(
+          "Uitlogstatus registreren mislukt:",
+          aanwezigheidsfout,
+        );
+      }
+
       const supabase = createClient();
 
       const { error } = await supabase.auth.signOut({

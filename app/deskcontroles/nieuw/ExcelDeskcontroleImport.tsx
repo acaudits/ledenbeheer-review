@@ -2,6 +2,7 @@
 
 import {
   useActionState,
+  useRef,
   useState,
 } from "react";
 import { useFormStatus } from "react-dom";
@@ -46,6 +47,23 @@ export default function ExcelDeskcontroleImport() {
       beginStatus,
     );
 
+  const formulierRef =
+    useRef<HTMLFormElement>(null);
+
+  const bestandRef =
+    useRef<HTMLInputElement>(null);
+
+  const geselecteerdBestandRef =
+    useRef<File | null>(null);
+
+  const overschrijfRef =
+    useRef<HTMLInputElement>(null);
+
+  const [
+    conflictGesloten,
+    setConflictGesloten,
+  ] = useState(false);
+
   const [
     finalisatieDatum,
     setFinalisatieDatum,
@@ -74,6 +92,11 @@ export default function ExcelDeskcontroleImport() {
     setClientFout("");
     setBestandsnaam("");
     setHeeftBestand(false);
+    setConflictGesloten(false);
+
+    if (overschrijfRef.current) {
+      overschrijfRef.current.value = "";
+    }
 
     if (!bestand) {
       return;
@@ -136,9 +159,29 @@ export default function ExcelDeskcontroleImport() {
         </div>
 
         <form
+          ref={formulierRef}
           action={formAction}
+          onChange={(event) => {
+            const doel = event.target;
+
+            if (
+              doel instanceof
+                HTMLInputElement &&
+              doel.name ===
+                "excelBestand"
+            ) {
+              geselecteerdBestandRef.current =
+                doel.files?.[0] ?? null;
+            }
+          }}
           className="mt-5 space-y-5"
         >
+          <input
+            ref={overschrijfRef}
+            type="hidden"
+            name="overschrijfDeskcontroleId"
+            defaultValue=""
+          />
           <div className="grid gap-5 lg:grid-cols-2">
             <div>
               <label
@@ -206,6 +249,7 @@ export default function ExcelDeskcontroleImport() {
               </p>
 
               <input
+                ref={bestandRef}
                 id="excel-bestand"
                 name="excelBestand"
                 type="file"
@@ -341,6 +385,133 @@ export default function ExcelDeskcontroleImport() {
           </div>
         </form>
       </div>
+
+      {status.conflict &&
+      !conflictGesloten ? (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-4"
+          role="presentation"
+        >
+          <section
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="deskcontrole-conflict-titel"
+            className="w-full max-w-lg rounded-3xl bg-white p-6 shadow-2xl"
+          >
+            <p className="text-xs font-black uppercase tracking-[0.16em] text-amber-700">
+              Bestaande deskcontrole
+            </p>
+
+            <h3
+              id="deskcontrole-conflict-titel"
+              className="mt-2 text-xl font-black text-slate-950"
+            >
+              Deskcontrole overschrijven?
+            </h3>
+
+            <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-slate-700">
+              <p>
+                Attestnummer:{" "}
+                <strong>
+                  {status.conflict.attestnummer}
+                </strong>
+              </p>
+
+              <p className="mt-2">
+                Huidige locatie:{" "}
+                <strong>
+                  {status.conflict.locatie ===
+                  "VERWIJDERD"
+                    ? "Verwijderde deskcontroles"
+                    : "Gewone deskcontrolelijst"}
+                </strong>
+              </p>
+
+              {status.conflict.locatie ===
+              "VERWIJDERD" ? (
+                <p className="mt-2">
+                  Bij overschrijven wordt de
+                  deskcontrole opnieuw in de gewone
+                  lijst geplaatst.
+                </p>
+              ) : null}
+            </div>
+
+            <p className="mt-4 text-sm leading-6 text-slate-600">
+              De bestaande deskcontrole en haar
+              vaststellingen worden vervangen door
+              de gegevens uit het Excelbestand.
+            </p>
+
+            <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+              <button
+                type="button"
+                className="min-h-11 rounded-xl border border-slate-300 px-5 text-sm font-bold text-slate-700 hover:bg-slate-50"
+                onClick={() => {
+                  setConflictGesloten(true);
+                  setBestandsnaam("");
+                  setHeeftBestand(false);
+                  geselecteerdBestandRef.current =
+                    null;
+
+                  if (bestandRef.current) {
+                    bestandRef.current.value = "";
+                  }
+
+                  if (overschrijfRef.current) {
+                    overschrijfRef.current.value = "";
+                  }
+                }}
+              >
+                Import annuleren
+              </button>
+
+              <button
+                type="button"
+                className="min-h-11 rounded-xl bg-red-700 px-5 text-sm font-bold text-white hover:bg-red-800"
+                onClick={() => {
+                  const geselecteerdBestand =
+                    geselecteerdBestandRef.current;
+
+                  if (
+                    !geselecteerdBestand ||
+                    !bestandRef.current
+                  ) {
+                    setClientFout(
+                      "Het geselecteerde Excelbestand is niet meer beschikbaar. Selecteer het bestand opnieuw.",
+                    );
+                    setConflictGesloten(true);
+                    return;
+                  }
+
+                  const overdracht =
+                    new DataTransfer();
+
+                  overdracht.items.add(
+                    geselecteerdBestand,
+                  );
+
+                  bestandRef.current.files =
+                    overdracht.files;
+
+                  if (overschrijfRef.current) {
+                    overschrijfRef.current.value =
+                      String(
+                        status.conflict
+                          ?.deskcontroleId,
+                      );
+                  }
+
+                  formulierRef.current
+                    ?.requestSubmit();
+                }}
+              >
+                Deskcontrole overschrijven
+              </button>
+            </div>
+          </section>
+        </div>
+      ) : null}
     </section>
   );
 }

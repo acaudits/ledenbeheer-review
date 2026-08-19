@@ -7,6 +7,7 @@ import { UitloggenButton } from "@/components/UitloggenButton";
 import { BeheerderLink } from "@/components/BeheerderLink";
 import { ProfielLink } from "@/components/ProfielLink";
 import { MeldingenLink } from "@/components/MeldingenLink";
+import { GebruikersAanwezigheid } from "@/components/GebruikersAanwezigheid";
 
 
 const navigatie = [
@@ -275,9 +276,51 @@ function MenuInhoud({
         <p className="mt-4 text-center text-xs font-semibold uppercase tracking-[0.2em] text-emerald-200/60">
           Certificaten CRM
         </p>
+
+        <GebruikersAanwezigheid
+          rol={rol}
+          pathname={pathname}
+        />
       </div>
 
       <nav className="flex-1 space-y-2 px-4 py-5">
+        <Link
+          href="/bug-rapporteren"
+          onClick={sluitMenu}
+          aria-current={
+            isActief(
+              pathname,
+              "/bug-rapporteren",
+            )
+              ? "page"
+              : undefined
+          }
+          className={`mb-5 flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-bold transition ${
+            isActief(
+              pathname,
+              "/bug-rapporteren",
+            )
+              ? "bg-amber-400 text-slate-950"
+              : "bg-amber-400/15 text-amber-300 ring-1 ring-inset ring-amber-400/30 hover:bg-amber-400 hover:text-slate-950"
+          }`}
+        >
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            className="size-5"
+          >
+            <path
+              d="M9 4h6m-7 3h8a3 3 0 0 1 3 3v7a3 3 0 0 1-3 3H8a3 3 0 0 1-3-3v-7a3 3 0 0 1 3-3Zm-3 5H2m20 0h-3M6 17l-2 2m14-2 2 2M9 11h.01M15 11h.01M9 15h6"
+              stroke="currentColor"
+              strokeWidth="1.8"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+
+          <span>Bug rapporteren</span>
+        </Link>
+
         <p className="mb-3 px-3 text-xs font-semibold uppercase tracking-wider text-slate-500">
           Navigatie
         </p>

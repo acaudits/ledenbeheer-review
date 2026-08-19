@@ -281,26 +281,29 @@ enum Gebruikersrol {
 }
 
 model ToegestaneGebruiker {
-  id                 Int           @id @default(autoincrement())
-  email              String        @unique
-  naam               String?
-  voornaam           String?
-  achternaam         String?
-  profielVoltooidOp  DateTime?     @map("profiel_voltooid_op")
-  rol                Gebruikersrol @default(AUDITEUR)
-  beheerder          Boolean       @default(false)
-  actief             Boolean       @default(true)
-  authUserId         String?       @unique @map("auth_user_id")
-  uitgenodigdOp      DateTime?     @map("uitgenodigd_op")
-  aangemaaktOp       DateTime      @default(now()) @map("aangemaakt_op")
-  bijgewerktOp       DateTime      @updatedAt @map("bijgewerkt_op")
-  wachtwoordWijzigen Boolean       @default(true)
+  id                  Int           @id @default(autoincrement())
+  email               String        @unique
+  naam                String?
+  voornaam            String?
+  achternaam          String?
+  profielVoltooidOp   DateTime?     @map("profiel_voltooid_op")
+  rol                 Gebruikersrol @default(AUDITEUR)
+  beheerder           Boolean       @default(false)
+  actief              Boolean       @default(true)
+  authUserId          String?       @unique @map("auth_user_id")
+  uitgenodigdOp       DateTime?     @map("uitgenodigd_op")
+  aangemaaktOp        DateTime      @default(now()) @map("aangemaakt_op")
+  bijgewerktOp        DateTime      @updatedAt @map("bijgewerkt_op")
+  wachtwoordWijzigen  Boolean       @default(true)
+  laatsteActiviteitOp DateTime?     @map("laatste_activiteit_op")
+  isIngelogd          Boolean       @default(false) @map("is_ingelogd")
 
   deskcontroles                Deskcontrole[]               @relation("DeskcontroleAuditeur")
   terreincontroles             Terreincontrole[]            @relation("TerreincontroleAuditeur")
   terreincontroleDossiers      TerreincontroleDossier[]     @relation("TerreincontroledossierAuditeur")
   meldingen                    Melding[]
   auditlogs                    Auditlog[]
+  bugRapporten                 BugRapport[]
   terreincontroleReserveringen TerreincontroleReservering[]
   pushAbonnementen             PushAbonnement[]
   opvolgingenAlsAuditeur       OpvolgingSanctie[]           @relation("OpvolgingSanctieAuditeur")
@@ -313,6 +316,7 @@ model ToegestaneGebruiker {
   @@index([actief])
   @@index([beheerder])
   @@index([rol])
+  @@index([laatsteActiviteitOp])
   @@map("toegestane_gebruikers")
 }
 
@@ -691,4 +695,34 @@ model OpvolgingSanctieMail {
   @@index([opvolgingSanctieId, verzondenOp, id])
   @@index([aangemaaktDoorId])
   @@map("opvolging_sanctie_mails")
+}
+
+enum BugRapportStatus {
+  OPEN
+  IN_BEHANDELING
+  BEHANDELD
+  AFGEWEZEN
+}
+
+model BugRapport {
+  id Int @id @default(autoincrement())
+
+  prioriteit  Int
+  webpagina   String           @db.VarChar(2048)
+  uitleg      String           @db.Text
+  opmerkingen String?          @db.Text
+  status      BugRapportStatus @default(OPEN)
+
+  gebruikerId   Int                 @map("gebruiker_id")
+  gebruiker     ToegestaneGebruiker @relation(fields: [gebruikerId], references: [id], onDelete: Restrict)
+  gebruikerNaam String              @map("gebruiker_naam") @db.VarChar(255)
+
+  aangemaaktOp DateTime @default(now()) @map("aangemaakt_op")
+  bijgewerktOp DateTime @updatedAt @map("bijgewerkt_op")
+
+  @@index([status])
+  @@index([prioriteit])
+  @@index([gebruikerId])
+  @@index([aangemaaktOp(sort: Desc), id(sort: Desc)])
+  @@map("bug_rapporten")
 }

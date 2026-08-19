@@ -10,12 +10,19 @@ import {
 } from "@/lib/ondernemingsnummer";
 import { prisma } from "@/lib/prisma";
 
+export type ExcelImportConflict = {
+  deskcontroleId: number;
+  attestnummer: string;
+  locatie: "LIJST" | "VERWIJDERD";
+};
+
 export type ExcelImportState = {
   message?: string;
   errors?: {
     finalisatieDatum?: string;
     excelBestand?: string;
   };
+  conflict?: ExcelImportConflict;
 };
 
 type DeskcontroleTypeWaarde =
@@ -464,6 +471,18 @@ export async function importeerDeskcontroleUitExcel(
   const bulkimport =
     formData.get("bulkimport") === "1";
 
+  const overschrijfWaarde =
+    String(
+      formData.get(
+        "overschrijfDeskcontroleId",
+      ) ?? "",
+    ).trim();
+
+  const overschrijfDeskcontroleId =
+    /^\d+$/.test(overschrijfWaarde)
+      ? Number(overschrijfWaarde)
+      : null;
+
   const errors: NonNullable<
     ExcelImportState["errors"]
   > = {};
@@ -879,15 +898,11 @@ export async function importeerDeskcontroleUitExcel(
           mode: "insensitive",
         },
         /*
-         * Bij bulkimport mag het OVAM-ID
-         * ook bij de verwijderde
-         * persoonscertificaten staan.
+         * Zowel actieve als verwijderde
+         * persoonscertificaten mogen aan
+         * de geïmporteerde deskcontrole
+         * gekoppeld worden.
          */
-        ...(bulkimport
-          ? {}
-          : {
-              verwijderdOp: null,
-            }),
       },
       select: {
         id: true,
@@ -904,9 +919,10 @@ export async function importeerDeskcontroleUitExcel(
      * ondernemingsnummer.
      */
     prisma.procescertificaat.findMany({
-      where: {
-        verwijderdOp: null,
-      },
+      /*
+       * Zoek ook in verwijderde
+       * procescertificaten.
+       */
       select: {
         id: true,
         naamBedrijf: true,
@@ -935,6 +951,7 @@ export async function importeerDeskcontroleUitExcel(
         attestId: true,
         attestnummer: true,
         linkAttest: true,
+        verwijderdOp: true,
       },
     }),
   ]);
@@ -944,7 +961,7 @@ export async function importeerDeskcontroleUitExcel(
       message:
         bulkimport
           ? `Er werd geen actief of verwijderd persoonscertificaat gevonden voor OVAM-ID ${ovamId}.`
-          : `Er werd geen actief persoonscertificaat gevonden voor OVAM-ID ${ovamId}.`,
+          : `Er werd geen actief of verwijderd persoonscertificaat gevonden voor OVAM-ID ${ovamId}.`,
       errors: {
         excelBestand:
           "Controleer de waarde in cel B7.",
@@ -973,7 +990,7 @@ export async function importeerDeskcontroleUitExcel(
   ) {
     return {
       message:
-        `Er werden meerdere actieve procescertificaten gevonden voor ondernemingsnummer ${ondernemingsnummer}.`,
+        `Er werden meerdere actieve of verwijderde procescertificaten gevonden voor ondernemingsnummer ${ondernemingsnummer}.`,
       errors: {
         excelBestand:
           "Los eerst de dubbele procescertificaten op.",
@@ -997,7 +1014,7 @@ export async function importeerDeskcontroleUitExcel(
   ) {
     return {
       message:
-        `Er werd geen actief procescertificaat gevonden voor ondernemingsnummer ${ondernemingsnummer}.`,
+        `Er werd geen actief of verwijderd procescertificaat gevonden voor ondernemingsnummer ${ondernemingsnummer}.`,
       errors: {
         excelBestand:
           "Controleer de waarde in cel C7.",
@@ -1005,17 +1022,37 @@ export async function importeerDeskcontroleUitExcel(
     };
   }
 
-  if (bestaandeDeskcontrole) {
+  const magOverschrijven =
+    !bulkimport &&
+    bestaandeDeskcontrole !== null &&
+    overschrijfDeskcontroleId ===
+      bestaandeDeskcontrole.id &&
+    bestaandeDeskcontrole.attestnummer ===
+      attestnummer;
+
+  if (
+    bestaandeDeskcontrole &&
+    !magOverschrijven
+  ) {
     if (
       bestaandeDeskcontrole.attestnummer ===
       attestnummer
     ) {
       return {
         message:
-          "Dit attestnummer bestaat al.",
+          `Attestnummer ${attestnummer} bestaat al.`,
         errors: {
           excelBestand:
-            `Attestnummer ${attestnummer} werd al geïmporteerd.`,
+            "Kies of je de bestaande deskcontrole wilt overschrijven of de import wilt annuleren.",
+        },
+        conflict: {
+          deskcontroleId:
+            bestaandeDeskcontrole.id,
+          attestnummer,
+          locatie:
+            bestaandeDeskcontrole.verwijderdOp
+              ? "VERWIJDERD"
+              : "LIJST",
         },
       };
     }
@@ -1049,6 +1086,17 @@ export async function importeerDeskcontroleUitExcel(
     const nieuweDeskcontrole =
       await prisma.$transaction(
         async (transactie) => {
+          if (
+            magOverschrijven &&
+            bestaandeDeskcontrole
+          ) {
+            await transactie.deskcontrole.delete({
+              where: {
+                id: bestaandeDeskcontrole.id,
+              },
+            });
+          }
+
           return transactie.deskcontrole.create(
             {
               data: {
