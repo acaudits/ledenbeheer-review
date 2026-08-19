@@ -1,9 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import {
+  LAATSTE_ACTIVITEIT_SLEUTEL,
+} from "@/lib/inactiviteit";
 
 export default function InloggenPage() {
   const router = useRouter();
@@ -12,6 +15,33 @@ export default function InloggenPage() {
   const [wachtwoord, setWachtwoord] = useState("");
   const [bezig, setBezig] = useState(false);
   const [fout, setFout] = useState<string | null>(null);
+
+  useEffect(() => {
+    const parameters =
+      new URLSearchParams(
+        window.location.search,
+      );
+
+    if (
+      parameters.get("fout") !==
+      "inactief"
+    ) {
+      return;
+    }
+
+    const timer = window.setTimeout(
+      () => {
+        setFout(
+          "Je bent uitgelogd omdat je de webapp 4 uur niet hebt gebruikt. Log opnieuw in.",
+        );
+      },
+      0,
+    );
+
+    return () => {
+      window.clearTimeout(timer);
+    };
+  }, []);
 
   async function inloggen(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -32,6 +62,11 @@ export default function InloggenPage() {
       if (error) {
         throw error;
       }
+
+      window.localStorage.setItem(
+        LAATSTE_ACTIVITEIT_SLEUTEL,
+        String(Date.now()),
+      );
 
       router.replace("/");
       router.refresh();

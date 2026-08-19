@@ -2,6 +2,9 @@
 
 import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
+import {
+  LAATSTE_ACTIVITEIT_SLEUTEL,
+} from "@/lib/inactiviteit";
 
 type UitloggenButtonProps = {
   sluitMenu?: () => void;
@@ -32,6 +35,10 @@ export function UitloggenButton({
           aanwezigheidsfout,
         );
       }
+
+      window.localStorage.removeItem(
+        LAATSTE_ACTIVITEIT_SLEUTEL,
+      );
 
       const supabase = createClient();
 

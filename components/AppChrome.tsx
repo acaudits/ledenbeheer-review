@@ -2,6 +2,7 @@
 
 import { usePathname } from "next/navigation";
 import { Navigation } from "@/components/Navigation";
+import { InactiviteitBewaker } from "@/components/InactiviteitBewaker";
 
 type AppChromeProps = {
   children: React.ReactNode;
@@ -27,6 +28,7 @@ export function AppChrome({ children }: AppChromeProps) {
 
   return (
     <>
+      <InactiviteitBewaker pathname={pathname} />
       <Navigation />
 
       <main className="min-h-screen bg-[#f4f8f7] lg:pl-72">
