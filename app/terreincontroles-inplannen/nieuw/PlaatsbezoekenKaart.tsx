@@ -6,6 +6,7 @@ import {
   useEffect,
   useMemo,
   useRef,
+  useState,
 } from "react";
 
 import type {
@@ -14,11 +15,80 @@ import type {
 
 type Props = {
   rijen: TerreincontroleExcelRij[];
+  planningKleuren:
+    readonly TerreincontroleExcelRij["planningStatus"][];
+  onWijzigPlanningKleuren: (
+    kleuren:
+      TerreincontroleExcelRij["planningStatus"][],
+  ) => void;
   actieveRijSleutel: string | null;
   focusVolgnummer: number;
   geselecteerdeRijSleutels:
     ReadonlySet<string>;
+  selectieBezigSleutels:
+    ReadonlySet<string>;
+  onWijzigSelectie: (
+    rij: TerreincontroleExcelRij,
+  ) => void | Promise<void>;
 };
+
+type PersistenteKaartInstantie = {
+  kaart: import("leaflet").Map;
+  canvas: HTMLDivElement;
+  markerInstanties: Map<
+    string,
+    import("leaflet").CircleMarker
+  >;
+};
+
+let persistenteKaartInstantie:
+  PersistenteKaartInstantie | null =
+    null;
+
+const KAART_PARKEERPLAATS_ID =
+  "persistente-terreincontrole-kaart";
+
+const KAART_PLANNING_KLEUREN:
+  readonly TerreincontroleExcelRij["planningStatus"][] =
+    [
+      "ROOD",
+      "GEEL",
+      "GROEN",
+      "GRIJS",
+    ];
+
+function haalKaartParkeerplaats() {
+  const bestaande =
+    document.getElementById(
+      KAART_PARKEERPLAATS_ID,
+    );
+
+  if (
+    bestaande instanceof
+      HTMLDivElement
+  ) {
+    return bestaande;
+  }
+
+  const parkeerplaats =
+    document.createElement("div");
+
+  parkeerplaats.id =
+    KAART_PARKEERPLAATS_ID;
+
+  parkeerplaats.hidden = true;
+
+  parkeerplaats.setAttribute(
+    "aria-hidden",
+    "true",
+  );
+
+  document.body.appendChild(
+    parkeerplaats,
+  );
+
+  return parkeerplaats;
+}
 
 function pinKleur(
   status:
@@ -107,58 +177,68 @@ function volledigAdres(
     .join(", ");
 }
 
-function maakPopup(
+function beschikbaarheidTekst(
   rij: TerreincontroleExcelRij,
 ) {
-  const container =
-    document.createElement("div");
+  switch (
+    rij.beschikbaarheid
+  ) {
+    case "DOOR_MIJ":
+      return "Door jou geselecteerd";
 
-  container.className =
-    "min-w-[220px] space-y-1 text-sm";
+    case "DOOR_ANDER":
+      return rij.gereserveerdDoor
+        ? `Tijdelijk gereserveerd door ${rij.gereserveerdDoor}`
+        : "Tijdelijk gereserveerd door een andere gebruiker";
 
-  const titel =
-    document.createElement("p");
+    case "INGEPLAND":
+      return rij.ingeplandDoor
+        ? `Reeds ingepland door ${rij.ingeplandDoor}`
+        : "Reeds ingepland";
 
-  titel.className =
-    "font-bold text-slate-950";
+    default:
+      return "Beschikbaar";
+  }
+}
 
-  titel.textContent =
-    rij.naamAdi.trim() ||
-    rij.ovamId.trim() ||
-    "Onbekende persoon";
+function formatteerReserveringstijdstip(
+  waarde: string | null,
+) {
+  if (!waarde) {
+    return null;
+  }
 
-  container.appendChild(titel);
+  const datum =
+    new Date(waarde);
 
-  const afspraak =
-    document.createElement("p");
+  if (
+    Number.isNaN(
+      datum.getTime(),
+    )
+  ) {
+    return null;
+  }
 
-  afspraak.className =
-    "mt-1 text-sm font-bold text-slate-800";
+  return new Intl.DateTimeFormat(
+    "nl-BE",
+    {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+      hour12: false,
+      timeZone:
+        "Europe/Brussels",
+    },
+  ).format(datum);
+}
 
-  const datumPlaatsbezoek =
-    rij.datumPlaatsbezoek
-      ? formatteerDatum(
-          rij.datumPlaatsbezoek,
-        )
-      : "Datum onbekend";
-
-  const uurPlaatsbezoek =
-    rij.uurPlaatsbezoek.trim()
-      ? rij.uurPlaatsbezoek.trim()
-      : "uur onbekend";
-
-  afspraak.textContent =
-    `${datumPlaatsbezoek} om ${uurPlaatsbezoek}`;
-
-  container.appendChild(
-    afspraak,
-  );
-
-  const mapsLink =
-    document.createElement("a");
-
-  const adres =
-    volledigAdres(rij);
+function googleMapsLink(
+  rij: TerreincontroleExcelRij,
+) {
+  const adres = volledigAdres(rij);
 
   const isCapakey =
     /^\d{5}[A-Z]\d{4}\/\d{2}[A-Z]\d{3}$/i.test(
@@ -171,99 +251,36 @@ function maakPopup(
       ? `${rij.latitude},${rij.longitude}`
       : "";
 
-  mapsLink.href =
-    isCapakey &&
-    coordinaten
-      ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
-          coordinaten,
-        )}`
-      : rij.googleMapsUrl.trim() ||
-        `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
-          adres,
-        )}`;
-
-  mapsLink.target = "_blank";
-  mapsLink.rel =
-    "noopener noreferrer";
-
-  mapsLink.className =
-    "inline-block text-sm font-bold text-blue-700 underline decoration-blue-300 underline-offset-2 hover:text-blue-900";
-
-  mapsLink.textContent =
-    "Openen in Google Maps";
-
-  container.appendChild(
-    mapsLink,
-  );
-
-  const gegevens = [
-    [
-      "Adres",
-      volledigAdres(rij) || "Onbekend",
-    ],
-    [
-      "OVAM-ID",
-      rij.ovamId || "Onbekend",
-    ],
-    [
-      "Attesten",
-      String(rij.aantalAttesten),
-    ],
-    [
-      "Terreincontroles",
-      `${rij.aantalTerreincontroles}/${rij.terreincontroleTarget}`,
-    ],
-    [
-      "Nog nodig",
-      String(
-        rij.aantalTerreincontrolesNodig,
-      ),
-    ],
-    [
-      "Laatste controle",
-      formatteerDatum(
-        rij.laatsteTerreincontrole,
-      ),
-    ],
-  ];
-
-  for (const [label, waarde] of gegevens) {
-    const regel =
-      document.createElement("p");
-
-    const vet =
-      document.createElement("strong");
-
-    vet.textContent = `${label}: `;
-
-    regel.appendChild(vet);
-    regel.appendChild(
-      document.createTextNode(waarde),
-    );
-
-    container.appendChild(regel);
+  if (isCapakey && coordinaten) {
+    return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+      coordinaten,
+    )}`;
   }
 
-  const status =
-    document.createElement("p");
-
-  status.className =
-    "mt-2 border-t border-slate-200 pt-2 text-xs font-semibold text-slate-600";
-
-  status.textContent =
-    rij.planningStatusTekst;
-
-  container.appendChild(status);
-
-  return container;
+  return (
+    rij.googleMapsUrl.trim() ||
+    `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+      adres,
+    )}`
+  );
 }
+
 
 export default function PlaatsbezoekenKaart({
   rijen,
+  planningKleuren,
+  onWijzigPlanningKleuren,
   actieveRijSleutel,
   focusVolgnummer,
   geselecteerdeRijSleutels,
+  selectieBezigSleutels,
+  onWijzigSelectie,
 }: Props) {
+  const [
+    geselecteerdeKaartRijSleutel,
+    setGeselecteerdeKaartRijSleutel,
+  ] = useState<string | null>(null);
+
   const kaartElement =
     useRef<HTMLDivElement | null>(null);
 
@@ -313,10 +330,10 @@ export default function PlaatsbezoekenKaart({
     let geannuleerd = false;
 
     async function tekenKaart() {
-      const element =
+      const kaartHost =
         kaartElement.current;
 
-      if (!element) {
+      if (!kaartHost) {
         return;
       }
 
@@ -326,47 +343,101 @@ export default function PlaatsbezoekenKaart({
         return;
       }
 
-      if (kaartInstantie.current) {
-        kaartInstantie.current.stop();
-        kaartInstantie.current.off();
-        const huidigeCentrum =
-          kaartInstantie.current.getCenter();
+      let kaart:
+        import("leaflet").Map;
+
+      if (
+        persistenteKaartInstantie
+      ) {
+        kaart =
+          persistenteKaartInstantie.kaart;
+
+        const huidigCentrum =
+          kaart.getCenter();
 
         bewaardeKaartWeergave.current = {
           latitude:
-            huidigeCentrum.lat,
+            huidigCentrum.lat,
           longitude:
-            huidigeCentrum.lng,
+            huidigCentrum.lng,
           zoom:
-            kaartInstantie.current.getZoom(),
+            kaart.getZoom(),
         };
 
-        kaartInstantie.current.remove();
-        kaartInstantie.current = null;
+        kaartHost.replaceChildren(
+          persistenteKaartInstantie.canvas,
+        );
+      } else {
+        const canvas =
+          document.createElement(
+            "div",
+          );
+
+        canvas.className =
+          "h-full w-full";
+
+        canvas.setAttribute(
+          "aria-label",
+          "Interactieve kaart met plaatsbezoeken",
+        );
+
+        kaartHost.replaceChildren(
+          canvas,
+        );
+
+        kaart = L.map(canvas, {
+          center: [50.8503, 4.3517],
+          zoom: 8,
+          preferCanvas: false,
+          scrollWheelZoom: false,
+          zoomAnimation: false,
+          fadeAnimation: false,
+          markerZoomAnimation: false,
+        });
+
+        L.tileLayer(
+          "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+          {
+            maxZoom: 19,
+            attribution:
+              '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap-bijdragers</a>',
+          },
+        ).addTo(kaart);
+
+        persistenteKaartInstantie = {
+          kaart,
+          canvas,
+          markerInstanties:
+            new Map(),
+        };
       }
 
-      element.replaceChildren();
+      kaartInstantie.current =
+        kaart;
 
-      const kaart = L.map(element, {
-        center: [50.8503, 4.3517],
-        zoom: 8,
-        preferCanvas: false,
-        scrollWheelZoom: false,
-        zoomAnimation: false,
-        fadeAnimation: false,
-        markerZoomAnimation: false,
-      });
+      if (
+        !persistenteKaartInstantie
+      ) {
+        return;
+      }
 
-      kaartInstantie.current = kaart;
+      markerInstanties.current =
+        persistenteKaartInstantie
+          .markerInstanties;
 
-      L.tileLayer(
-        "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
-        {
-          maxZoom: 19,
-          attribution:
-            '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap-bijdragers</a>',
-        },
-      ).addTo(kaart);
+      /*
+       * De kaart en tileLayer blijven bestaan. Alleen de markers
+       * worden opnieuw opgebouwd omdat filters, beschikbaarheid,
+       * selectie en callbackfuncties kunnen zijn gewijzigd.
+       */
+      for (
+        const marker of
+        markerInstanties.current.values()
+      ) {
+        marker.remove();
+      }
+
+      markerInstanties.current.clear();
 
       const grenzen:
         import("leaflet").LatLngExpression[] =
@@ -403,12 +474,11 @@ export default function PlaatsbezoekenKaart({
             kleuren.vulling,
           fillOpacity: 0.9,
         })
-          .bindPopup(
-            maakPopup(rij),
-            {
-              maxWidth: 340,
-            },
-          )
+          .on("click", () => {
+            setGeselecteerdeKaartRijSleutel(
+              rij.sleutel,
+            );
+          })
           .addTo(kaart);
 
         markerInstanties.current.set(
@@ -487,15 +557,19 @@ export default function PlaatsbezoekenKaart({
 
       invalidateTimer.current =
         window.setTimeout(() => {
-          if (
-            !geannuleerd &&
-            kaartInstantie.current ===
-              kaart
-          ) {
-            kaart.invalidateSize({
-              animate: false,
-            });
-          }
+          window.requestAnimationFrame(
+            () => {
+              if (
+                !geannuleerd &&
+                kaartInstantie.current ===
+                  kaart
+              ) {
+                kaart.invalidateSize({
+                  animate: false,
+                });
+              }
+            },
+          );
 
           invalidateTimer.current =
             null;
@@ -516,11 +590,17 @@ export default function PlaatsbezoekenKaart({
           null;
       }
 
-      if (kaartInstantie.current) {
-        kaartInstantie.current.stop();
-        kaartInstantie.current.off();
+      const persistenteKaart =
+        persistenteKaartInstantie;
+
+      if (
+        persistenteKaart &&
+        kaartInstantie.current ===
+          persistenteKaart.kaart
+      ) {
         const huidigeCentrum =
-          kaartInstantie.current.getCenter();
+          persistenteKaart.kaart
+            .getCenter();
 
         bewaardeKaartWeergave.current = {
           latitude:
@@ -528,11 +608,22 @@ export default function PlaatsbezoekenKaart({
           longitude:
             huidigeCentrum.lng,
           zoom:
-            kaartInstantie.current.getZoom(),
+            persistenteKaart.kaart
+              .getZoom(),
         };
 
-        kaartInstantie.current.remove();
-        kaartInstantie.current = null;
+        /*
+         * Verplaats uitsluitend het imperatief aangemaakte canvas.
+         * De Leaflet-instance, tileLayer, zoom en kaartpositie blijven
+         * daardoor actief tijdens interne Next.js-navigatie.
+         */
+        haalKaartParkeerplaats()
+          .appendChild(
+            persistenteKaart.canvas,
+          );
+
+        kaartInstantie.current =
+          null;
       }
     };
   }, [geldigeRijen]);
@@ -546,6 +637,12 @@ export default function PlaatsbezoekenKaart({
     if (actieveRijSleutel) {
       ruitSleutels.add(
         actieveRijSleutel,
+      );
+    }
+
+    if (geselecteerdeKaartRijSleutel) {
+      ruitSleutels.add(
+        geselecteerdeKaartRijSleutel,
       );
     }
 
@@ -630,7 +727,6 @@ export default function PlaatsbezoekenKaart({
           }
         }
 
-        kaartInstantieNu.closePopup();
         return;
       }
 
@@ -659,12 +755,52 @@ export default function PlaatsbezoekenKaart({
   }, [
     actieveRijSleutel,
     focusVolgnummer,
+    geselecteerdeKaartRijSleutel,
     geselecteerdeRijSleutels,
+  ]);
+
+  const detailRij = useMemo(() => {
+    if (geselecteerdeKaartRijSleutel) {
+      const geselecteerdeRij =
+        rijen.find(
+          (rij) =>
+            rij.sleutel ===
+            geselecteerdeKaartRijSleutel,
+        );
+
+      if (geselecteerdeRij) {
+        return geselecteerdeRij;
+      }
+    }
+
+    if (actieveRijSleutel) {
+      return (
+        rijen.find(
+          (rij) =>
+            rij.sleutel ===
+            actieveRijSleutel,
+        ) ?? null
+      );
+    }
+
+    return null;
+  }, [
+    actieveRijSleutel,
+    geselecteerdeKaartRijSleutel,
+    rijen,
   ]);
 
   const nietGevonden =
     rijen.length -
     geldigeRijen.length;
+
+  const alleKleurenGeselecteerd =
+    KAART_PLANNING_KLEUREN.every(
+      (kleur) =>
+        planningKleuren.includes(
+          kleur,
+        ),
+    );
 
   return (
     <section className="border-t border-slate-200 bg-slate-50/70 p-4 sm:p-5">
@@ -680,22 +816,112 @@ export default function PlaatsbezoekenKaart({
           </p>
         </div>
 
-        <div className="flex flex-wrap gap-2 text-xs font-bold">
-          <span className="rounded-full border border-red-200 bg-red-50 px-3 py-1 text-red-800">
-            Rood
-          </span>
+        <div
+          className="flex flex-wrap justify-end gap-2 text-xs font-bold"
+          aria-label="Filter plaatsbezoeken op kleur"
+        >
+          <button
+            type="button"
+            aria-pressed={
+              alleKleurenGeselecteerd
+            }
+            onClick={() =>
+              onWijzigPlanningKleuren(
+                alleKleurenGeselecteerd
+                  ? []
+                  : [
+                      ...KAART_PLANNING_KLEUREN,
+                    ],
+              )
+            }
+            className={`rounded-full border border-indigo-200 bg-indigo-50 px-3 py-1 text-indigo-800 transition hover:bg-indigo-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
+              alleKleurenGeselecteerd
+                ? "ring-2 ring-indigo-500 ring-offset-1"
+                : "opacity-55"
+            }`}
+          >
+            Alle kleuren
+          </button>
 
-          <span className="rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-amber-900">
-            Geel
-          </span>
+          {[
+            {
+              kleur: "ROOD" as const,
+              label: "Controle nodig",
+              stijl:
+                "border-red-200 bg-red-50 text-red-800 hover:bg-red-100 focus:ring-red-500",
+              actieveStijl:
+                "ring-red-500",
+            },
+            {
+              kleur: "GEEL" as const,
+              label: "2 weken",
+              stijl:
+                "border-amber-200 bg-amber-50 text-amber-900 hover:bg-amber-100 focus:ring-amber-500",
+              actieveStijl:
+                "ring-amber-500",
+            },
+            {
+              kleur: "GROEN" as const,
+              label: "Ok",
+              stijl:
+                "border-emerald-200 bg-emerald-50 text-emerald-800 hover:bg-emerald-100 focus:ring-emerald-500",
+              actieveStijl:
+                "ring-emerald-500",
+            },
+            {
+              kleur: "GRIJS" as const,
+              label: "Geen data",
+              stijl:
+                "border-slate-200 bg-slate-100 text-slate-700 hover:bg-slate-200 focus:ring-slate-500",
+              actieveStijl:
+                "ring-slate-500",
+            },
+          ].map(
+            ({
+              kleur,
+              label,
+              stijl,
+              actieveStijl,
+            }) => {
+              const geselecteerd =
+                planningKleuren.includes(
+                  kleur,
+                );
 
-          <span className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-emerald-800">
-            Groen
-          </span>
-
-          <span className="rounded-full border border-slate-200 bg-slate-100 px-3 py-1 text-slate-700">
-            Grijs
-          </span>
+              return (
+                <button
+                  key={kleur}
+                  type="button"
+                  aria-pressed={
+                    geselecteerd
+                  }
+                  onClick={() =>
+                    onWijzigPlanningKleuren(
+                      geselecteerd
+                        ? planningKleuren.filter(
+                            (
+                              huidigeKleur,
+                            ) =>
+                              huidigeKleur !==
+                              kleur,
+                          )
+                        : [
+                            ...planningKleuren,
+                            kleur,
+                          ],
+                    )
+                  }
+                  className={`rounded-full border px-3 py-1 transition focus:outline-none focus:ring-2 ${stijl} ${
+                    geselecteerd
+                      ? `ring-2 ${actieveStijl} ring-offset-1`
+                      : "opacity-45"
+                  }`}
+                >
+                  {label}
+                </button>
+              );
+            },
+          )}
         </div>
       </div>
 
@@ -705,6 +931,213 @@ export default function PlaatsbezoekenKaart({
           className="h-[520px] w-full"
           aria-label="Kaart met plaatsbezoeken"
         />
+
+        {detailRij ? (
+          <aside
+            aria-label="Details van het geselecteerde plaatsbezoek"
+            className="absolute inset-y-0 right-0 z-[600] flex w-[320px] max-w-[90%] flex-col border-l border-slate-300 bg-white shadow-2xl"
+          >
+            <header className="flex items-start justify-between gap-3 border-b border-slate-200 px-4 py-3">
+              <div className="min-w-0">
+                <p className="text-[10px] font-bold uppercase tracking-wide text-slate-500">
+                  Plaatsbezoek
+                </p>
+
+                <h4 className="truncate text-sm font-bold text-slate-950">
+                  {detailRij.naamAdi.trim() ||
+                    detailRij.ovamId.trim() ||
+                    "Onbekende persoon"}
+                </h4>
+
+                <p className="mt-0.5 text-xs font-semibold text-slate-600">
+                  {detailRij.datumPlaatsbezoek
+                    ? formatteerDatum(
+                        detailRij.datumPlaatsbezoek,
+                      )
+                    : "Datum onbekend"}{" "}
+                  om{" "}
+                  {detailRij.uurPlaatsbezoek.trim() ||
+                    "uur onbekend"}
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={() =>
+                  setGeselecteerdeKaartRijSleutel(
+                    null,
+                  )
+                }
+                aria-label="Detailpaneel sluiten"
+                className="flex size-8 shrink-0 items-center justify-center rounded-lg border border-slate-200 text-lg font-bold text-slate-500 hover:bg-slate-100 hover:text-slate-900"
+              >
+                ×
+              </button>
+            </header>
+
+            <div className="min-h-0 flex-1 overflow-y-auto px-4 py-3">
+              <a
+                href={googleMapsLink(
+                  detailRij,
+                )}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-xs font-bold text-blue-700 underline decoration-blue-300 underline-offset-2 hover:text-blue-900"
+              >
+                Openen in Google Maps ↗
+              </a>
+
+              <dl className="mt-3 grid grid-cols-[100px_minmax(0,1fr)] gap-x-2 gap-y-2 text-xs">
+                <dt className="font-bold text-slate-500">
+                  Adres
+                </dt>
+                <dd className="break-words font-semibold text-slate-900">
+                  {volledigAdres(
+                    detailRij,
+                  ) || "Onbekend"}
+                </dd>
+
+                <dt className="font-bold text-slate-500">
+                  OVAM-ID
+                </dt>
+                <dd className="break-words font-semibold text-slate-900">
+                  {detailRij.ovamId ||
+                    "Onbekend"}
+                </dd>
+
+                <dt className="font-bold text-slate-500">
+                  Attesten
+                </dt>
+                <dd className="font-semibold text-slate-900">
+                  {detailRij.aantalAttesten}
+                </dd>
+
+                <dt className="font-bold text-slate-500">
+                  Controles
+                </dt>
+                <dd className="font-semibold text-slate-900">
+                  {
+                    detailRij.aantalTerreincontroles
+                  }
+                  /
+                  {
+                    detailRij.terreincontroleTarget
+                  }
+                </dd>
+
+                <dt className="font-bold text-slate-500">
+                  Nog nodig
+                </dt>
+                <dd className="font-semibold text-slate-900">
+                  {
+                    detailRij.aantalTerreincontrolesNodig
+                  }
+                </dd>
+
+                <dt className="font-bold text-slate-500">
+                  Laatste
+                </dt>
+                <dd className="font-semibold text-slate-900">
+                  {formatteerDatum(
+                    detailRij.laatsteTerreincontrole,
+                  )}
+                </dd>
+
+                <dt className="font-bold text-slate-500">
+                  Planning
+                </dt>
+                <dd className="font-semibold text-slate-900">
+                  {
+                    detailRij.planningStatusTekst
+                  }
+                </dd>
+              </dl>
+
+              <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-3">
+                <p className="text-[10px] font-bold uppercase tracking-wide text-slate-500">
+                  Beschikbaarheid
+                </p>
+
+                <p
+                  className={`mt-1 text-xs font-bold ${
+                    detailRij.beschikbaarheid ===
+                    "BESCHIKBAAR"
+                      ? "text-emerald-700"
+                      : detailRij.beschikbaarheid ===
+                          "DOOR_MIJ"
+                        ? "text-blue-700"
+                        : "text-amber-800"
+                  }`}
+                >
+                  {beschikbaarheidTekst(
+                    detailRij,
+                  )}
+                </p>
+
+                {formatteerReserveringstijdstip(
+                  detailRij.reserveringVerlooptOp,
+                ) ? (
+                  <p className="mt-1 text-[10px] font-medium text-slate-500">
+                    Reservering verloopt op{" "}
+                    {formatteerReserveringstijdstip(
+                      detailRij.reserveringVerlooptOp,
+                    )}
+                  </p>
+                ) : null}
+              </div>
+            </div>
+
+            <footer className="border-t border-slate-200 p-3">
+              <button
+                type="button"
+                onClick={() => {
+                  void Promise.resolve(
+                    onWijzigSelectie(
+                      detailRij,
+                    ),
+                  );
+                }}
+                disabled={
+                  selectieBezigSleutels.has(
+                    detailRij.sleutel,
+                  ) ||
+                  (detailRij.beschikbaarheid !==
+                    "BESCHIKBAAR" &&
+                    detailRij.beschikbaarheid !==
+                      "DOOR_MIJ")
+                }
+                className={`inline-flex h-9 w-full items-center justify-center rounded-lg px-3 text-xs font-bold transition ${
+                  selectieBezigSleutels.has(
+                    detailRij.sleutel,
+                  )
+                    ? "cursor-wait bg-slate-300 text-slate-600"
+                    : detailRij.beschikbaarheid ===
+                        "DOOR_MIJ"
+                      ? "border border-red-200 bg-red-50 text-red-700 hover:bg-red-100"
+                      : detailRij.beschikbaarheid ===
+                          "BESCHIKBAAR"
+                        ? "bg-emerald-700 text-white hover:bg-emerald-600"
+                        : "cursor-not-allowed bg-slate-200 text-slate-500"
+                }`}
+              >
+                {selectieBezigSleutels.has(
+                  detailRij.sleutel,
+                )
+                  ? "Even geduld..."
+                  : detailRij.beschikbaarheid ===
+                      "DOOR_MIJ"
+                    ? "Selectie vrijgeven"
+                    : detailRij.beschikbaarheid ===
+                        "BESCHIKBAAR"
+                      ? "Selecteren"
+                      : detailRij.beschikbaarheid ===
+                          "INGEPLAND"
+                        ? "Reeds ingepland"
+                        : "Niet beschikbaar"}
+              </button>
+            </footer>
+          </aside>
+        ) : null}
 
         {geldigeRijen.length === 0 ? (
           <div className="pointer-events-none absolute inset-0 z-[500] flex items-center justify-center bg-white/75 p-6 backdrop-blur-[1px]">

@@ -872,9 +872,15 @@ export async function bevestigTerreincontrolesUitExcel(
   vorigeStatus: TerreincontroleBevestigState,
   formData: FormData,
 ): Promise<TerreincontroleBevestigState> {
-  await vereisMachtiging(
-    "TERREINCONTROLES_BEHEREN",
-  );
+  const gebruiker =
+    await vereisMachtiging(
+      "TERREINCONTROLES_BEHEREN",
+    );
+
+  const serverAuditeur =
+    bepaalAuditeur(
+      gebruiker,
+    );
 
   const ruweAttestIds =
     formData.get(
@@ -950,14 +956,102 @@ export async function bevestigTerreincontrolesUitExcel(
   }
 
   /*
-   * Alle bestaande formuliervelden blijven behouden.
-   * De oorspronkelijke importactie blijft daardoor haar eigen
-   * JSON-structuur en validaties gebruiken.
+   * Vertrouw de auditeur uit de browser nooit. Maak een server-side
+   * kopie van FormData en overschrijf voor iedere rij de auditeur
+   * met de ingelogde gebruiker.
    */
+  const veiligeFormData =
+    new FormData();
+
+  formData.forEach(
+    (waarde, sleutel) => {
+      veiligeFormData.append(
+        sleutel,
+        waarde,
+      );
+    },
+  );
+
+  const ruweImportGegevens =
+    formData.get(
+      "importGegevens",
+    );
+
+  if (
+    typeof ruweImportGegevens !==
+      "string"
+  ) {
+    return {
+      succes: false,
+      message:
+        "De geselecteerde importgegevens ontbreken.",
+    };
+  }
+
+  try {
+    const importGegevens:
+      unknown =
+      JSON.parse(
+        ruweImportGegevens,
+      );
+
+    if (
+      typeof importGegevens !==
+        "object" ||
+      importGegevens === null ||
+      !(
+        "rijen" in
+        importGegevens
+      ) ||
+      !Array.isArray(
+        importGegevens.rijen,
+      )
+    ) {
+      throw new Error(
+        "Ongeldige importgegevens.",
+      );
+    }
+
+    const veiligeImportGegevens = {
+      ...importGegevens,
+      rijen:
+        importGegevens.rijen.map(
+          (rij) => {
+            if (
+              typeof rij !==
+                "object" ||
+              rij === null
+            ) {
+              return rij;
+            }
+
+            return {
+              ...rij,
+              auditeur:
+                serverAuditeur,
+            };
+          },
+        ),
+    };
+
+    veiligeFormData.set(
+      "importGegevens",
+      JSON.stringify(
+        veiligeImportGegevens,
+      ),
+    );
+  } catch {
+    return {
+      succes: false,
+      message:
+        "De geselecteerde importgegevens konden niet veilig worden verwerkt.",
+    };
+  }
+
   const resultaat =
     await basisBevestigTerreincontrolesUitExcel(
       vorigeStatus,
-      formData,
+      veiligeFormData,
     );
 
   if (resultaat.succes) {

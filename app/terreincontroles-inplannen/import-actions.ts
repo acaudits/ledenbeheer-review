@@ -66,6 +66,7 @@ export type TerreincontroleExcelState = {
   };
 
   bestandsnaam?: string;
+  opgeladenOp?: string;
   rijen?: TerreincontroleExcelRij[];
 };
 
@@ -1307,6 +1308,8 @@ export async function leesTerreincontrolesUitExcel(
       `${rijen.length} plaatsbezoek(en) gevonden.`,
     bestandsnaam:
       bestand.name,
+    opgeladenOp:
+      new Date().toISOString(),
     rijen,
   };
 }

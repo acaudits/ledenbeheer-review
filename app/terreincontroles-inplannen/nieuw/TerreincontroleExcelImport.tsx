@@ -25,16 +25,23 @@ import {
 } from "../reservering-actions";
 
 import PlaatsbezoekenKaart from "./PlaatsbezoekenKaart";
+import {
+  bewaarTerreincontroleImport,
+  leesBewaardeTerreincontroleImport,
+} from "./TerreincontroleImportOpslag";
+import {
+  ExcelKolomFilter,
+  type ExcelSortering,
+} from "./ExcelKolomFilter";
 
-const TERREINCONTROLE_AUDITEURS = [
-  "Ismail El Mourabet",
-  "Koen De Boel",
-  "Youssef Bechana",
-  "Kimberly Velders",
-  "Demis Casaert",
-  "Omer Ekinci",
-  "Stef Dierckx",
-] as const;
+const PLANNING_KLEUREN:
+  readonly TerreincontroleExcelRij["planningStatus"][] =
+    [
+      "ROOD",
+      "GEEL",
+      "GROEN",
+      "GRIJS",
+    ];
 
 const beginstatus:
   TerreincontroleExcelState = {};
@@ -217,6 +224,246 @@ function formatteerReserveringAfteltijd(
   )}`;
 }
 
+function formatteerUploadtijdstip(
+  waarde: string,
+) {
+  const datum =
+    new Date(waarde);
+
+  if (
+    Number.isNaN(
+      datum.getTime(),
+    )
+  ) {
+    return "Onbekend tijdstip";
+  }
+
+  const datumTekst =
+    datum.toLocaleDateString(
+      "nl-BE",
+      {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+        timeZone:
+          "Europe/Brussels",
+      },
+    );
+
+  const tijdTekst =
+    datum.toLocaleTimeString(
+      "nl-BE",
+      {
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+        hour12: false,
+        timeZone:
+          "Europe/Brussels",
+      },
+    );
+
+  return `${datumTekst} om ${tijdTekst}`;
+}
+
+type ExcelKolom = {
+  sleutel: string;
+  label: string;
+};
+
+const EXCEL_KOLOMMEN:
+  ExcelKolom[] = [
+    {
+      sleutel: "googleMaps",
+      label: "Google Maps",
+    },
+    {
+      sleutel: "auditeur",
+      label: "Auditeur",
+    },
+    {
+      sleutel: "datumPlaatsbezoek",
+      label: "Datum plaatsbezoek",
+    },
+    {
+      sleutel: "uurPlaatsbezoek",
+      label: "Uur plaatsbezoek",
+    },
+    {
+      sleutel: "inspectielocatie",
+      label: "Inspectielocatie",
+    },
+    {
+      sleutel: "bouwjaar",
+      label: "Bouwjaar",
+    },
+    {
+      sleutel: "vloeroppervlakteM2",
+      label: "Vloeroppervlakte (m²)",
+    },
+    {
+      sleutel: "ovamId",
+      label: "Deskundige persoonsid",
+    },
+    {
+      sleutel: "naamAdi",
+      label: "Deskundige naam",
+    },
+    {
+      sleutel: "attestUrl",
+      label: "Deskundige kwaliteitspagina",
+    },
+    {
+      sleutel: "bedrijfsnaam",
+      label: "Naam asbestdeskundig bedrijf",
+    },
+    {
+      sleutel: "status",
+      label: "Status",
+    },
+    {
+      sleutel: "postcode",
+      label: "Postcode",
+    },
+    {
+      sleutel: "gemeente",
+      label: "Gemeente",
+    },
+    {
+      sleutel: "straat",
+      label: "Straat",
+    },
+    {
+      sleutel: "huisnummer",
+      label: "Huisnummer",
+    },
+    {
+      sleutel: "extraAdresDetails",
+      label: "Extra adres details",
+    },
+    {
+      sleutel: "perceelGemeenteCode",
+      label: "Perceel gemeente code",
+    },
+    {
+      sleutel: "perceelAfdelingscode",
+      label: "Perceel afdelingscode",
+    },
+    {
+      sleutel: "perceelSectieCode",
+      label: "Perceel sectie code",
+    },
+    {
+      sleutel: "attestId",
+      label: "Liggingsadres",
+    },
+    {
+      sleutel: "controle",
+      label: "Controle",
+    },
+  ];
+
+function excelWaarde(
+  rij: TerreincontroleExcelRij,
+  sleutel: string,
+): string | number {
+  switch (sleutel) {
+    case "googleMaps":
+      return rij.googleMapsUrl
+        ? "Beschikbaar"
+        : "Niet beschikbaar";
+
+    case "auditeur":
+      return rij.auditeur;
+
+    case "inspectielocatie":
+      return rij.inspectielocatie;
+
+    case "bouwjaar":
+      return rij.bouwjaar;
+
+    case "vloeroppervlakteM2":
+      return rij.vloeroppervlakteM2;
+
+    case "datumPlaatsbezoek":
+      return rij.datumPlaatsbezoek;
+
+    case "uurPlaatsbezoek":
+      return rij.uurPlaatsbezoek;
+
+    case "ovamId":
+      return rij.ovamId;
+
+    case "naamAdi":
+      return rij.naamAdi;
+
+    case "attestUrl":
+      return rij.attestUrl;
+
+    case "bedrijfsnaam":
+      return rij.bedrijfsnaam;
+
+    case "status":
+      return statusLabel(
+        rij.status,
+      );
+
+    case "postcode":
+      return rij.postcode;
+
+    case "gemeente":
+      return rij.gemeente;
+
+    case "straat":
+      return rij.straat;
+
+    case "huisnummer":
+      return rij.huisnummer;
+
+    case "extraAdresDetails":
+      return rij.extraAdresDetails;
+
+    case "perceelGemeenteCode":
+      return rij.perceelGemeenteCode;
+
+    case "perceelAfdelingscode":
+      return rij.perceelAfdelingscode;
+
+    case "perceelSectieCode":
+      return rij.perceelSectieCode;
+
+    case "attestId":
+      return rij.attestId;
+
+    case "controle":
+      return rij.waarschuwingen
+        .length === 0
+        ? "Geldig"
+        : rij.waarschuwingen.join(
+            " | ",
+          );
+
+    default:
+      return "";
+  }
+}
+
+function excelFilterWaarde(
+  rij: TerreincontroleExcelRij,
+  sleutel: string,
+) {
+  const waarde =
+    excelWaarde(
+      rij,
+      sleutel,
+    );
+
+  const tekst =
+    String(waarde).trim();
+
+  return tekst || "—";
+}
+
 export default function TerreincontroleExcelImport() {
   const [
     state,
@@ -240,21 +487,52 @@ export default function TerreincontroleExcelImport() {
     >([]);
 
   const [
+    actieveImport,
+    setActieveImport,
+  ] = useState<
+    TerreincontroleExcelState | null
+  >(null);
+
+  const [
+    importOpslagGeladen,
+    setImportOpslagGeladen,
+  ] = useState(false);
+
+  const [
     geselecteerdeSleutels,
     setGeselecteerdeSleutels,
   ] = useState<
     Set<string>
   >(new Set());
 
-  const [
-    standaardAuditeur,
-    setStandaardAuditeur,
-  ] = useState("");
+  const standaardAuditeur =
+    actieveImport
+      ?.standaardAuditeur ??
+    state.standaardAuditeur ??
+    "";
 
   const [
-    planningFilter,
-    setPlanningFilter,
-  ] = useState("ALLE");
+    planningKleuren,
+    setPlanningKleuren,
+  ] = useState<
+    TerreincontroleExcelRij["planningStatus"][]
+  >(() => [
+    ...PLANNING_KLEUREN,
+  ]);
+
+  const [
+    excelFilters,
+    setExcelFilters,
+  ] = useState<
+    Record<string, string[]>
+  >({});
+
+  const [
+    excelSortering,
+    setExcelSortering,
+  ] = useState<ExcelSortering>(
+    null,
+  );
 
   const [
     planningZoekterm,
@@ -313,24 +591,127 @@ export default function TerreincontroleExcelImport() {
   }, []);
 
   useEffect(() => {
+    let actief = true;
+
+    void leesBewaardeTerreincontroleImport()
+      .then(
+        (opgeslagenImport) => {
+          if (
+            !actief ||
+            !opgeslagenImport
+          ) {
+            return;
+          }
+
+          setActieveImport(
+            opgeslagenImport.importState,
+          );
+
+          setRijen(
+            opgeslagenImport.rijen,
+          );
+
+          setGeselecteerdeSleutels(
+            new Set(),
+          );
+        },
+      )
+      .catch(
+        (fout: unknown) => {
+          console.error(
+            "Bewaarde terreincontrole-import kon niet worden geladen.",
+            fout,
+          );
+        },
+      )
+      .finally(
+        () => {
+          if (actief) {
+            setImportOpslagGeladen(
+              true,
+            );
+          }
+        },
+      );
+
+    return () => {
+      actief = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (
+      !state.succes ||
+      !state.rijen
+    ) {
+      return;
+    }
+
     const nieuweRijen =
-      state.rijen ?? [];
+      state.rijen.map(
+        (rij) => ({
+          ...rij,
+          auditeur:
+            state.standaardAuditeur ??
+            rij.auditeur,
+        }),
+      );
+
+    setActieveImport({
+      ...state,
+      rijen: nieuweRijen,
+    });
 
     setRijen(
       nieuweRijen,
     );
 
-    // Na het laden is bewust geen enkele rij geselecteerd.
     setGeselecteerdeSleutels(
       new Set(),
     );
 
-    setStandaardAuditeur(
-      state.standaardAuditeur ?? "",
+    setPlanningKleuren([
+      ...PLANNING_KLEUREN,
+    ]);
+
+    setExcelFilters({});
+    setExcelSortering(null);
+    setPlanningZoekterm("");
+
+    setActieveKaartRijSleutel(
+      null,
     );
   }, [
-    state.rijen,
-    state.standaardAuditeur,
+    state,
+  ]);
+
+  useEffect(() => {
+    if (
+      !importOpslagGeladen ||
+      !actieveImport
+    ) {
+      return;
+    }
+
+    void bewaarTerreincontroleImport({
+      versie: 1,
+      importState: {
+        ...actieveImport,
+        rijen,
+      },
+      rijen,
+    }).catch(
+      (fout: unknown) => {
+        console.error(
+          "Terreincontrole-import kon niet lokaal worden bewaard.",
+          fout,
+        );
+      },
+    );
+  }, [
+    actieveImport,
+    importOpslagGeladen,
+    rijen,
   ]);
 
   useEffect(() => {
@@ -340,13 +721,9 @@ export default function TerreincontroleExcelImport() {
       return;
     }
 
-    setRijen([]);
-
     setGeselecteerdeSleutels(
       new Set(),
     );
-
-    setStandaardAuditeur("");
   }, [
     bevestigState.succes,
     bevestigState.message,
@@ -558,48 +935,136 @@ export default function TerreincontroleExcelImport() {
             "nl-BE",
           );
 
-      return rijen.filter((rij) => {
-        const voldoetAanStatus =
-          planningFilter === "ALLE" ||
-          rij.planningStatus ===
-            planningFilter ||
-          (
-            planningFilter ===
-              "NOG_NODIG" &&
-            rij.aantalTerreincontrolesNodig >
-              0
+      const gefilterd =
+        rijen.filter((rij) => {
+          const voldoetAanKleur =
+            planningKleuren.includes(
+              rij.planningStatus,
+            );
+
+          if (!voldoetAanKleur) {
+            return false;
+          }
+
+          if (zoekterm) {
+            const zoekbareTekst = [
+              rij.ovamId,
+              rij.naamAdi,
+              rij.inspectielocatie,
+              rij.gemeente,
+              rij.postcode,
+              rij.bedrijfsnaam,
+              rij.auditeur,
+            ]
+              .join(" ")
+              .toLocaleLowerCase(
+                "nl-BE",
+              );
+
+            if (
+              !zoekbareTekst.includes(
+                zoekterm,
+              )
+            ) {
+              return false;
+            }
+          }
+
+          return Object.entries(
+            excelFilters,
+          ).every(
+            ([
+              sleutel,
+              waarden,
+            ]) =>
+              waarden.length === 0 ||
+              waarden.includes(
+                excelFilterWaarde(
+                  rij,
+                  sleutel,
+                ),
+              ),
           );
+        });
 
-        if (!voldoetAanStatus) {
-          return false;
-        }
+      if (!excelSortering) {
+        return gefilterd;
+      }
 
-        if (!zoekterm) {
-          return true;
-        }
+      return gefilterd
+        .map(
+          (rij, index) => ({
+            rij,
+            index,
+          }),
+        )
+        .sort((a, b) => {
+          const waardeA =
+            excelWaarde(
+              a.rij,
+              excelSortering.kolom,
+            );
 
-        const zoekbareTekst = [
-          rij.ovamId,
-          rij.naamAdi,
-          rij.inspectielocatie,
-          rij.gemeente,
-          rij.postcode,
-          rij.bedrijfsnaam,
-          rij.auditeur,
-        ]
-          .join(" ")
-          .toLocaleLowerCase(
-            "nl-BE",
-          );
+          const waardeB =
+            excelWaarde(
+              b.rij,
+              excelSortering.kolom,
+            );
 
-        return zoekbareTekst.includes(
-          zoekterm,
+          let vergelijking = 0;
+
+          const getalA =
+            typeof waardeA ===
+              "number"
+              ? waardeA
+              : Number.NaN;
+
+          const getalB =
+            typeof waardeB ===
+              "number"
+              ? waardeB
+              : Number.NaN;
+
+          if (
+            Number.isFinite(getalA) &&
+            Number.isFinite(getalB)
+          ) {
+            vergelijking =
+              getalA - getalB;
+          } else {
+            vergelijking =
+              String(waardeA)
+                .localeCompare(
+                  String(waardeB),
+                  "nl-BE",
+                  {
+                    numeric: true,
+                    sensitivity:
+                      "base",
+                  },
+                );
+          }
+
+          if (vergelijking === 0) {
+            return (
+              a.index - b.index
+            );
+          }
+
+          return excelSortering.richting ===
+            "oplopend"
+            ? vergelijking
+            : -vergelijking;
+        })
+        .map(
+          ({ rij }) => rij,
         );
-      });
     }, [
       rijen,
-      planningFilter,
+      planningKleuren,
       planningZoekterm,
+      excelFilters,
+      excelSortering,
     ]);
 
   const reserveerbareRijen =
@@ -624,7 +1089,10 @@ export default function TerreincontroleExcelImport() {
   const importGegevens =
     JSON.stringify({
       bestandsnaam:
-        state.bestandsnaam ?? "",
+        actieveImport
+          ?.bestandsnaam ??
+        state.bestandsnaam ??
+        "",
 
       rijen:
         geselecteerdeRijen.map(
@@ -633,7 +1101,7 @@ export default function TerreincontroleExcelImport() {
               rij.excelRij,
 
             auditeur:
-              rij.auditeur,
+              standaardAuditeur,
 
             factuurVerzonden:
               rij.factuurVerzonden,
@@ -1035,21 +1503,69 @@ export default function TerreincontroleExcelImport() {
     );
   }
 
-  function wijzigStandaardAuditeur(
-    waarde: string,
+  function maakKolomKop(
+    sleutel: string,
   ) {
-    setStandaardAuditeur(
-      waarde,
-    );
+    const kolom =
+      EXCEL_KOLOMMEN.find(
+        (item) =>
+          item.sleutel ===
+          sleutel,
+      );
 
-    setRijen(
-      (huidigeRijen) =>
-        huidigeRijen.map(
-          (rij) => ({
-            ...rij,
-            auditeur: waarde,
-          }),
-        ),
+    if (!kolom) {
+      return null;
+    }
+
+    return (
+      <ExcelKolomFilter
+        kolom={kolom.sleutel}
+        label={kolom.label}
+        waarden={rijen.map(
+          (rij) =>
+            excelFilterWaarde(
+              rij,
+              kolom.sleutel,
+            ),
+        )}
+        geselecteerdeWaarden={
+          excelFilters[
+            kolom.sleutel
+          ] ?? []
+        }
+        sortering={
+          excelSortering
+        }
+        onFilterWijzigen={(
+          waarden,
+        ) =>
+          setExcelFilters(
+            (huidige) => ({
+              ...huidige,
+              [kolom.sleutel]:
+                waarden,
+            }),
+          )
+        }
+        onSorteren={(
+          richting,
+        ) =>
+          setExcelSortering({
+            kolom:
+              kolom.sleutel,
+            richting,
+          })
+        }
+        onSorteringWissen={() =>
+          setExcelSortering(
+            (huidige) =>
+              huidige?.kolom ===
+              kolom.sleutel
+                ? null
+                : huidige,
+          )
+        }
+      />
     );
   }
 
@@ -1112,65 +1628,91 @@ export default function TerreincontroleExcelImport() {
                 : "border-red-200 bg-red-50 text-red-700"
             }`}
           >
-            {state.message}
+            <p>
+              {state.message}
+            </p>
+
+          </div>
+        ) : null}
+
+        {actieveImport
+          ?.bestandsnaam &&
+        actieveImport
+          .opgeladenOp ? (
+          <div className="mt-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-slate-700">
+            <p className="font-bold text-emerald-800">
+              {rijen.length} plaatsbezoek(en) beschikbaar
+            </p>
+
+            <p className="mt-1">
+              <span className="font-bold text-slate-900">
+                Bestand:
+              </span>{" "}
+              {
+                actieveImport.bestandsnaam
+              }
+            </p>
+
+            <p className="mt-0.5">
+              <span className="font-bold text-slate-900">
+                Opgeladen op:
+              </span>{" "}
+              {formatteerUploadtijdstip(
+                actieveImport.opgeladenOp,
+              )}
+            </p>
+
+            <p className="mt-1 text-xs text-slate-600">
+              Deze import blijft bewaard totdat een nieuw Excelbestand succesvol wordt opgeladen.
+            </p>
           </div>
         ) : null}
       </div>
 
       {rijen.length > 0 ? (
         <>
-          <div className="border-b border-slate-200 bg-slate-50 p-4">
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-              <div className="w-full sm:max-w-sm">
-                <label
-                  htmlFor="standaardAuditeur"
-                  className="block text-sm font-semibold text-slate-700"
-                >
-                  Auditeur voor alle rijen
-                </label>
-
-                <select
-                  id="standaardAuditeur"
-                  value={
-                    standaardAuditeur
-                  }
-                  onChange={(event) =>
-                    wijzigStandaardAuditeur(
-                      event.target.value,
-                    )
-                  }
-                  className="mt-1.5 h-10 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm outline-none focus:border-emerald-600 focus:ring-4 focus:ring-emerald-100"
-                >
-                  <option value="">
-                    Kies een auditeur
-                  </option>
-
-                  {TERREINCONTROLE_AUDITEURS.map(
-                    (auditeur) => (
-                      <option
-                        key={auditeur}
-                        value={auditeur}
-                      >
-                        {auditeur}
-                      </option>
-                    ),
-                  )}
-                </select>
-              </div>
-
-              <div className="text-sm font-semibold text-slate-700">
-                {
-                  geselecteerdeRijen.length
-                }{" "}
-                van {rijen.length} rijen
-                geselecteerd
-              </div>
+          {reserveringMelding ? (
+            <div
+              role="status"
+              className="border-b border-slate-200 bg-blue-50 px-4 py-3 text-sm font-semibold text-blue-900"
+            >
+              {reserveringMelding}
             </div>
-          </div>
+          ) : null}
+
+          <PlaatsbezoekenKaart
+            rijen={zichtbareRijen}
+            planningKleuren={
+              planningKleuren
+            }
+            onWijzigPlanningKleuren={(
+              kleuren,
+            ) => {
+              setPlanningKleuren(
+                kleuren,
+              );
+            }}
+
+            actieveRijSleutel={
+              actieveKaartRijSleutel
+            }
+            focusVolgnummer={
+              kaartFocusVolgnummer
+            }
+            geselecteerdeRijSleutels={
+              geselecteerdeSleutels
+            }
+            selectieBezigSleutels={
+              reserveringBezig
+            }
+            onWijzigSelectie={
+              wijzigSelectie
+            }
+          />
 
           <div className="border-b border-slate-200 bg-white p-4">
-            <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_280px]">
-              <div>
+            <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+              <div className="w-full md:max-w-2xl">
                 <label
                   htmlFor="planningZoekterm"
                   className="block text-xs font-bold uppercase tracking-wide text-slate-500"
@@ -1192,86 +1734,43 @@ export default function TerreincontroleExcelImport() {
                 />
               </div>
 
-              <div>
-                <label
-                  htmlFor="planningFilter"
-                  className="block text-xs font-bold uppercase tracking-wide text-slate-500"
-                >
-                  Planningsstatus
-                </label>
-
-                <select
-                  id="planningFilter"
-                  value={planningFilter}
-                  onChange={(event) =>
-                    setPlanningFilter(
-                      event.target.value,
-                    )
-                  }
-                  className="mt-1.5 h-11 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm font-semibold outline-none focus:border-emerald-600 focus:ring-4 focus:ring-emerald-100"
-                >
-                  <option value="ALLE">
-                    Alle kleuren
-                  </option>
-
-                  <option value="NOG_NODIG">
-                    Nog terreincontroles nodig
-                  </option>
-
-                  <option value="ROOD">
-                    Rood — target niet behaald
-                  </option>
-
-                  <option value="GEEL">
-                    Geel — controle minder dan 14 dagen geleden
-                  </option>
-
-                  <option value="GROEN">
-                    Groen — target behaald
-                  </option>
-
-                  <option value="GRIJS">
-                    Grijs — geen attesten of koppeling
-                  </option>
-                </select>
-              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setExcelFilters(
+                    {},
+                  );
+                  setExcelSortering(
+                    null,
+                  );
+                }}
+                disabled={
+                  Object.values(
+                    excelFilters,
+                  ).every(
+                    (waarden) =>
+                      waarden.length ===
+                      0,
+                  ) &&
+                  !excelSortering
+                }
+                className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                Alle kolomfilters wissen
+              </button>
             </div>
 
-            <p className="mt-3 text-xs font-medium text-slate-500">
+            <p className="mt-2 text-xs font-medium text-slate-500">
               {zichtbareRijen.length} van{" "}
               {rijen.length} plaatsbezoeken zichtbaar.
-              Na het laden is geen enkele rij automatisch geselecteerd.
             </p>
           </div>
 
-          {reserveringMelding ? (
-            <div
-              role="status"
-              className="border-b border-slate-200 bg-blue-50 px-4 py-3 text-sm font-semibold text-blue-900"
-            >
-              {reserveringMelding}
-            </div>
-          ) : null}
-
-          <PlaatsbezoekenKaart
-            rijen={zichtbareRijen}
-
-            actieveRijSleutel={
-              actieveKaartRijSleutel
-            }
-            focusVolgnummer={
-              kaartFocusVolgnummer
-            }
-            geselecteerdeRijSleutels={
-              geselecteerdeSleutels
-            }
-          />
-
-          <div className="max-h-[72vh] overflow-auto">
-            <table className="min-w-[4800px] border-collapse text-left text-xs">
+          <div className="h-[72vh] min-h-[520px] overflow-auto bg-white">
+            <table className="min-w-[3300px] border-collapse text-left text-[11px]">
               <thead className="sticky top-0 z-20 bg-slate-100">
                 <tr>
-                  <th className="sticky left-0 z-30 border-b border-r border-slate-300 bg-slate-100 px-3 py-3">
+                  <th className="sticky left-0 z-30 border-b border-r border-slate-300 bg-slate-100 px-1.5 py-2">
                     <label className="flex items-center gap-2 font-bold">
                       <input
                         type="checkbox"
@@ -1292,96 +1791,136 @@ export default function TerreincontroleExcelImport() {
                     </label>
                   </th>
 
-                  <th className="border-b border-slate-300 px-3 py-3">
-                    Google Maps
+                  <th className="border-b border-slate-300 px-1.5 py-2">
+                    {maakKolomKop(
+                      "googleMaps",
+                    )}
                   </th>
 
-                  <th className="border-b border-slate-300 px-3 py-3">
-                    Excelrij
+                  <th className="border-b border-slate-300 px-1.5 py-2">
+                    {maakKolomKop(
+                      "auditeur",
+                    )}
                   </th>
 
-                  <th className="border-b border-slate-300 px-3 py-3">
-                    Auditeur
+                  <th className="border-b border-slate-300 px-1.5 py-2">
+                    {maakKolomKop(
+                      "datumPlaatsbezoek",
+                    )}
                   </th>
 
-                  <th className="border-b border-slate-300 px-3 py-3">
-                    Inspectielocatie
+                  <th className="border-b border-slate-300 px-1.5 py-2">
+                    {maakKolomKop(
+                      "uurPlaatsbezoek",
+                    )}
                   </th>
 
-                  <th className="border-b border-slate-300 px-3 py-3">
-                    Bouwjaar
+                  <th className="border-b border-slate-300 px-1.5 py-2">
+                    {maakKolomKop(
+                      "inspectielocatie",
+                    )}
                   </th>
 
-                  <th className="border-b border-slate-300 px-3 py-3">
-                    Vloeroppervlakte (m²)
+                  <th className="border-b border-slate-300 px-1.5 py-2">
+                    {maakKolomKop(
+                      "bouwjaar",
+                    )}
                   </th>
 
-                  <th className="border-b border-slate-300 px-3 py-3">
-                    Datum plaatsbezoek
+                  <th className="border-b border-slate-300 px-1.5 py-2">
+                    {maakKolomKop(
+                      "vloeroppervlakteM2",
+                    )}
                   </th>
 
-                  <th className="border-b border-slate-300 px-3 py-3">
-                    Uur plaatsbezoek
+                  <th className="border-b border-slate-300 px-1.5 py-2">
+                    {maakKolomKop(
+                      "ovamId",
+                    )}
                   </th>
 
-                  <th className="border-b border-slate-300 px-3 py-3">
-                    Deskundige persoonsid
+                  <th className="border-b border-slate-300 px-1.5 py-2">
+                    {maakKolomKop(
+                      "naamAdi",
+                    )}
                   </th>
 
-                  <th className="border-b border-slate-300 px-3 py-3">
-                    Deskundige naam
+                  <th className="border-b border-slate-300 px-1.5 py-2">
+                    {maakKolomKop(
+                      "attestUrl",
+                    )}
                   </th>
 
-                  <th className="border-b border-slate-300 px-3 py-3">
-                    Deskundige kwaliteitspagina
+                  <th className="border-b border-slate-300 px-1.5 py-2">
+                    {maakKolomKop(
+                      "bedrijfsnaam",
+                    )}
                   </th>
 
-                  <th className="border-b border-slate-300 px-3 py-3">
-                    Naam asbestdeskundig bedrijf
+                  <th className="border-b border-slate-300 px-1.5 py-2">
+                    {maakKolomKop(
+                      "status",
+                    )}
                   </th>
 
-                  <th className="border-b border-slate-300 px-3 py-3">
-                    Status
+                  <th className="border-b border-slate-300 px-1.5 py-2">
+                    {maakKolomKop(
+                      "postcode",
+                    )}
                   </th>
 
-                  <th className="border-b border-slate-300 px-3 py-3">
-                    Postcode
+                  <th className="border-b border-slate-300 px-1.5 py-2">
+                    {maakKolomKop(
+                      "gemeente",
+                    )}
                   </th>
 
-                  <th className="border-b border-slate-300 px-3 py-3">
-                    Gemeente
+                  <th className="border-b border-slate-300 px-1.5 py-2">
+                    {maakKolomKop(
+                      "straat",
+                    )}
                   </th>
 
-                  <th className="border-b border-slate-300 px-3 py-3">
-                    Straat
+                  <th className="border-b border-slate-300 px-1.5 py-2">
+                    {maakKolomKop(
+                      "huisnummer",
+                    )}
                   </th>
 
-                  <th className="border-b border-slate-300 px-3 py-3">
-                    Huisnummer
+                  <th className="border-b border-slate-300 px-1.5 py-2">
+                    {maakKolomKop(
+                      "extraAdresDetails",
+                    )}
                   </th>
 
-                  <th className="border-b border-slate-300 px-3 py-3">
-                    Extra adres details
+                  <th className="border-b border-slate-300 px-1.5 py-2">
+                    {maakKolomKop(
+                      "perceelGemeenteCode",
+                    )}
                   </th>
 
-                  <th className="border-b border-slate-300 px-3 py-3">
-                    Perceel gemeente code
+                  <th className="border-b border-slate-300 px-1.5 py-2">
+                    {maakKolomKop(
+                      "perceelAfdelingscode",
+                    )}
                   </th>
 
-                  <th className="border-b border-slate-300 px-3 py-3">
-                    Perceel afdelingscode
+                  <th className="border-b border-slate-300 px-1.5 py-2">
+                    {maakKolomKop(
+                      "perceelSectieCode",
+                    )}
                   </th>
 
-                  <th className="border-b border-slate-300 px-3 py-3">
-                    Perceel sectie code
+                  <th className="border-b border-slate-300 px-1.5 py-2">
+                    {maakKolomKop(
+                      "attestId",
+                    )}
                   </th>
 
-                  <th className="border-b border-slate-300 px-3 py-3">
-                    Liggingsadres
-                  </th>
-
-                  <th className="border-b border-slate-300 px-3 py-3">
-                    Controle
+                  <th className="border-b border-slate-300 px-1.5 py-2">
+                    {maakKolomKop(
+                      "controle",
+                    )}
                   </th>
                 </tr>
               </thead>
@@ -1448,7 +1987,7 @@ export default function TerreincontroleExcelImport() {
                         );
                       }}
                     >
-                      <td className="sticky left-0 z-10 border-r border-slate-200 bg-inherit px-3 py-3 align-top">
+                      <td className="sticky left-0 z-10 border-r border-slate-200 bg-inherit px-1.5 py-2 align-top">
                         <input
                           type="checkbox"
                           checked={
@@ -1530,7 +2069,7 @@ export default function TerreincontroleExcelImport() {
                         </div>
                       </td>
 
-                      <td className="px-3 py-3 align-top">
+                      <td className="px-1.5 py-2 align-top">
                         {rij.googleMapsUrl ? (
                           <a
                             href={
@@ -1538,7 +2077,7 @@ export default function TerreincontroleExcelImport() {
                             }
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="inline-flex whitespace-nowrap rounded-lg bg-blue-700 px-3 py-2 font-bold text-white hover:bg-blue-800"
+                            className="inline-flex whitespace-nowrap rounded-lg bg-blue-700 px-2 py-1.5 font-bold text-white hover:bg-blue-800"
                           >
                             Open kaart ↗
                           </a>
@@ -1547,90 +2086,49 @@ export default function TerreincontroleExcelImport() {
                         )}
                       </td>
 
-                      <td className="px-3 py-3 align-top font-bold">
-                        {rij.excelRij}
-                      </td>
-
-                      <td className="px-3 py-3 align-top">
-                        <select
-                          value={
-                            rij.auditeur
-                          }
-                          onChange={(
-                            event,
-                          ) =>
-                            wijzigRij(
-                              rij.sleutel,
-                              {
-                                auditeur:
-                                  event
-                                    .target
-                                    .value,
-                              },
-                            )
-                          }
-                          className="h-9 w-52 rounded-lg border border-slate-300 bg-white px-2.5 outline-none focus:border-emerald-600"
-                        >
-                          <option value="">
-                            Kies auditeur
-                          </option>
-
-                          {TERREINCONTROLE_AUDITEURS.map(
-                            (
-                              auditeur,
-                            ) => (
-                              <option
-                                key={
-                                  auditeur
-                                }
-                                value={
-                                  auditeur
-                                }
-                              >
-                                {
-                                  auditeur
-                                }
-                              </option>
-                            ),
+                      <td className="px-1.5 py-2 align-top">
+                        <div className="min-w-36 rounded-lg border border-slate-200 bg-slate-50 px-2 py-1.5 font-semibold text-slate-800">
+                          {toonTekst(
+                            rij.auditeur,
                           )}
-                        </select>
+                        </div>
                       </td>
 
-                      <td className="px-3 py-3 align-top">
-                        <p className="w-72 whitespace-pre-wrap font-medium">
+                      <td className="px-1.5 py-2 align-top whitespace-nowrap">
+                        {toonTekst(
+                          rij.datumPlaatsbezoek,
+                        )}
+                      </td>
+
+                      <td className="px-1.5 py-2 align-top whitespace-nowrap">
+                        {toonTekst(
+                          rij.uurPlaatsbezoek,
+                        )}
+                      </td>
+
+                      <td className="px-1.5 py-2 align-top">
+                        <p className="w-48 whitespace-pre-wrap font-medium">
                           {toonTekst(
                             rij.inspectielocatie,
                           )}
                         </p>
                       </td>
 
-                      <td className="px-3 py-3 align-top">
+                      <td className="px-1.5 py-2 align-top">
                         {toonTekst(
                           rij.bouwjaar,
                         )}
                       </td>
 
-                      <td className="px-3 py-3 align-top">
+                      <td className="px-1.5 py-2 align-top">
                         {toonTekst(
                           rij.vloeroppervlakteM2,
                         )}
                       </td>
 
-                      <td className="px-3 py-3 align-top whitespace-nowrap">
-                        {toonTekst(
-                          rij.datumPlaatsbezoek,
-                        )}
-                      </td>
-
-                      <td className="px-3 py-3 align-top whitespace-nowrap">
-                        {toonTekst(
-                          rij.uurPlaatsbezoek,
-                        )}
-                      </td>
-
-                      <td className="px-3 py-3 align-top">
+                      <td className="px-1.5 py-2 align-top">
                         <span className="whitespace-nowrap font-semibold">
-                          <div className="min-w-56">
+                          <div className="min-w-44">
                           <p className="font-bold text-slate-900">
                             {toonTekst(
                               rij.ovamId,
@@ -1680,15 +2178,15 @@ export default function TerreincontroleExcelImport() {
                         </span>
                       </td>
 
-                      <td className="px-3 py-3 align-top">
-                        <p className="w-52 font-semibold">
+                      <td className="px-1.5 py-2 align-top">
+                        <p className="w-40 font-semibold">
                           {toonTekst(
                             rij.naamAdi,
                           )}
                         </p>
                       </td>
 
-                      <td className="px-3 py-3 align-top">
+                      <td className="px-1.5 py-2 align-top">
                         {rij.attestUrl ? (
                           <a
                             href={
@@ -1696,7 +2194,7 @@ export default function TerreincontroleExcelImport() {
                             }
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="block w-80 break-all font-semibold text-blue-700 hover:underline"
+                            className="block w-56 break-all font-semibold text-blue-700 hover:underline"
                           >
                             {
                               rij.attestUrl
@@ -1707,15 +2205,15 @@ export default function TerreincontroleExcelImport() {
                         )}
                       </td>
 
-                      <td className="px-3 py-3 align-top">
-                        <p className="w-64 font-semibold">
+                      <td className="px-1.5 py-2 align-top">
+                        <p className="w-48 font-semibold">
                           {toonTekst(
                             rij.bedrijfsnaam,
                           )}
                         </p>
                       </td>
 
-                      <td className="px-3 py-3 align-top">
+                      <td className="px-1.5 py-2 align-top">
                         <select
                           value={
                             rij.status ??
@@ -1738,7 +2236,7 @@ export default function TerreincontroleExcelImport() {
                               },
                             )
                           }
-                          className="h-9 w-52 rounded-lg border border-slate-300 bg-white px-2.5 outline-none focus:border-emerald-600"
+                          className="h-8 w-40 rounded-lg border border-slate-300 bg-white px-2.5 outline-none focus:border-emerald-600"
                         >
                           <option value="">
                             Geen status
@@ -1764,13 +2262,13 @@ export default function TerreincontroleExcelImport() {
                         </p>
                       </td>
 
-                      <td className="px-3 py-3 align-top">
+                      <td className="px-1.5 py-2 align-top">
                         {toonTekst(
                           rij.postcode,
                         )}
                       </td>
 
-                      <td className="px-3 py-3 align-top">
+                      <td className="px-1.5 py-2 align-top">
                         <p className="w-44">
                           {toonTekst(
                             rij.gemeente,
@@ -1778,7 +2276,7 @@ export default function TerreincontroleExcelImport() {
                         </p>
                       </td>
 
-                      <td className="px-3 py-3 align-top">
+                      <td className="px-1.5 py-2 align-top">
                         <p className="w-52">
                           {toonTekst(
                             rij.straat,
@@ -1786,46 +2284,46 @@ export default function TerreincontroleExcelImport() {
                         </p>
                       </td>
 
-                      <td className="px-3 py-3 align-top">
+                      <td className="px-1.5 py-2 align-top">
                         {toonTekst(
                           rij.huisnummer,
                         )}
                       </td>
 
-                      <td className="px-3 py-3 align-top">
-                        <p className="w-56 whitespace-pre-wrap">
+                      <td className="px-1.5 py-2 align-top">
+                        <p className="w-44 whitespace-pre-wrap">
                           {toonTekst(
                             rij.extraAdresDetails,
                           )}
                         </p>
                       </td>
 
-                      <td className="px-3 py-3 align-top">
+                      <td className="px-1.5 py-2 align-top">
                         {toonTekst(
                           rij.perceelGemeenteCode,
                         )}
                       </td>
 
-                      <td className="px-3 py-3 align-top">
+                      <td className="px-1.5 py-2 align-top">
                         {toonTekst(
                           rij.perceelAfdelingscode,
                         )}
                       </td>
 
-                      <td className="px-3 py-3 align-top">
+                      <td className="px-1.5 py-2 align-top">
                         {toonTekst(
                           rij.perceelSectieCode,
                         )}
                       </td>
 
-                      <td className="px-3 py-3 align-top">
-                        <span className="block w-72 break-all font-mono text-[10px]">
+                      <td className="px-1.5 py-2 align-top">
+                        <span className="block w-52 break-all font-mono text-[10px]">
                           {rij.attestId ||
                             "Geen Attest-ID gevonden"}
                         </span>
                       </td>
 
-                      <td className="px-3 py-3 align-top">
+                      <td className="px-1.5 py-2 align-top">
                         {rij.waarschuwingen
                           .length ===
                         0 ? (
@@ -1833,7 +2331,7 @@ export default function TerreincontroleExcelImport() {
                             Geldig
                           </span>
                         ) : (
-                          <ul className="w-72 space-y-1 text-[10px] font-medium text-red-700">
+                          <ul className="w-52 space-y-1 text-[10px] font-medium text-red-700">
                             {rij.waarschuwingen.map(
                               (
                                 waarschuwing,
@@ -1864,9 +2362,10 @@ export default function TerreincontroleExcelImport() {
               <div>
                 <p className="text-sm text-slate-600">
                   Selecteer de gewenste
-                  plaatsbezoeken en kies
-                  voor iedere geselecteerde
-                  rij een auditeur.
+                  plaatsbezoeken. De
+                  auditeur wordt automatisch
+                  bepaald op basis van de
+                  ingelogde gebruiker.
                 </p>
 
                 <p className="mt-1 text-xs text-slate-500">
