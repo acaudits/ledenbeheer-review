@@ -14,6 +14,9 @@ import {
 import {
   prisma,
 } from "@/lib/prisma";
+import {
+  normaliseerTelefoonnummer,
+} from "@/lib/telefoonnummer";
 
 export const dynamic =
   "force-dynamic";
@@ -676,6 +679,9 @@ export default async function PersoonscertificaatDetailPage({
           <GegevensVeld
             label="Telefoonnummer"
             waarde={
+              normaliseerTelefoonnummer(
+                persoon.telefoonnummer,
+              ) ??
               persoon.telefoonnummer
             }
           />

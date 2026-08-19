@@ -4,11 +4,15 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { vereisMachtiging } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import {
+  normaliseerTelefoonnummer,
+} from "@/lib/telefoonnummer";
 
 export type LidFormState = {
   message?: string;
   errors?: {
     naamPersoon?: string;
+    telefoonnummer?: string;
     mailadres?: string;
     ovamId?: string;
     certificaatnummer?: string;
@@ -37,10 +41,16 @@ export async function maakLidAan(
     "naamPersoon",
   );
 
-  const telefoonnummer = optioneleTekst(
-    formData,
-    "telefoonnummer",
-  );
+  const telefoonnummerInvoer =
+    optioneleTekst(
+      formData,
+      "telefoonnummer",
+    );
+
+  const telefoonnummer =
+    normaliseerTelefoonnummer(
+      telefoonnummerInvoer,
+    );
 
   const mailadres =
     optioneleTekst(formData, "mailadres")?.toLowerCase() ??
@@ -82,6 +92,14 @@ export async function maakLidAan(
 
   if (!naamPersoon) {
     errors.naamPersoon = "Naam persoon is verplicht.";
+  }
+
+  if (
+    telefoonnummerInvoer &&
+    !telefoonnummer
+  ) {
+    errors.telefoonnummer =
+      "Vul een geldig telefoonnummer in, bijvoorbeeld +32488907867.";
   }
 
   if (!ovamId) {

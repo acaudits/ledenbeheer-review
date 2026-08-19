@@ -3,6 +3,9 @@ import { revalidatePath } from "next/cache";
 import { notFound, redirect } from "next/navigation";
 import { vereisMachtiging } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import {
+  normaliseerTelefoonnummer,
+} from "@/lib/telefoonnummer";
 
 export const dynamic = "force-dynamic";
 
@@ -75,10 +78,16 @@ export default async function BewerkPersoonscertificaatPage({
     await vereisMachtiging("CERTIFICATEN_BEHEREN");
 
     const naamPersoon = tekst(formData, "naamPersoon");
-    const telefoonnummer = optioneleTekst(
-      formData,
-      "telefoonnummer",
-    );
+    const telefoonnummerInvoer =
+      optioneleTekst(
+        formData,
+        "telefoonnummer",
+      );
+
+    const telefoonnummer =
+      normaliseerTelefoonnummer(
+        telefoonnummerInvoer,
+      );
     const mailadres =
       optioneleTekst(formData, "mailadres")?.toLowerCase() ?? null;
     const ovamId = tekst(formData, "ovamId").toUpperCase();
@@ -94,6 +103,17 @@ export default async function BewerkPersoonscertificaatPage({
       formData,
       "certificatiePlatform",
     );
+
+    if (
+      telefoonnummerInvoer &&
+      !telefoonnummer
+    ) {
+      redirect(
+        `/persoonscertificaten/${id}/bewerken?fout=${encodeURIComponent(
+          "Vul een geldig telefoonnummer in, bijvoorbeeld +32488907867.",
+        )}`,
+      );
+    }
 
     if (!naamPersoon || !ovamId || !certificaatnummer) {
       redirect(
@@ -250,7 +270,15 @@ export default async function BewerkPersoonscertificaatPage({
                 id="telefoonnummer"
                 name="telefoonnummer"
                 type="tel"
-                defaultValue={lid.telefoonnummer ?? ""}
+                inputMode="tel"
+                placeholder="+32488907867"
+                defaultValue={
+                  normaliseerTelefoonnummer(
+                    lid.telefoonnummer,
+                  ) ??
+                  lid.telefoonnummer ??
+                  ""
+                }
                 className={invoerStijl}
               />
             </div>

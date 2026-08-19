@@ -193,8 +193,24 @@ export default function LidFormulier({
               name="telefoonnummer"
               type="tel"
               autoComplete="tel"
-              placeholder="+32 ..."
+              inputMode="tel"
+              placeholder="+32488907867"
+              aria-describedby="telefoonnummer-uitleg"
               className={invoerStijl}
+            />
+
+            <p
+              id="telefoonnummer-uitleg"
+              className="mt-1 text-xs text-slate-500"
+            >
+              Internationaal formaat, bijvoorbeeld +32488907867.
+            </p>
+
+            <Foutmelding
+              bericht={
+                state.errors
+                  ?.telefoonnummer
+              }
             />
           </div>
 

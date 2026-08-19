@@ -12,6 +12,9 @@ import {
   prisma,
 } from "@/lib/prisma";
 import {
+  normaliseerTelefoonnummer,
+} from "@/lib/telefoonnummer";
+import {
   leesPersoonscertificaatLijstcontract,
   PERSOONSCERTIFICAAT_SORTERINGEN,
 } from "@/lib/persoonscertificaat-lijstcontract";
@@ -448,6 +451,9 @@ export async function GET(
           controleTargetStatus,
           controleTargetStatusToelichting,
           telefoonnummer:
+            normaliseerTelefoonnummer(
+              lid.telefoonnummer,
+            ) ??
             lid.telefoonnummer,
           mailadres:
             lid.mailadres,
