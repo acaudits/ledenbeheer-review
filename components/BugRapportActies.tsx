@@ -7,8 +7,10 @@ import {
 
 export function BugRapportActies({
   id,
+  isBeheerder,
 }: {
   id: number;
+  isBeheerder: boolean;
 }) {
   return (
     <details className="relative">
@@ -24,8 +26,9 @@ export function BugRapportActies({
           Bewerken
         </Link>
 
-        <form
-          action={verwijderBugRapport}
+        {isBeheerder ? (
+          <form
+            action={verwijderBugRapport}
           onSubmit={(event) => {
             if (
               !window.confirm(
@@ -48,7 +51,8 @@ export function BugRapportActies({
           >
             Verwijderen
           </button>
-        </form>
+          </form>
+        ) : null}
       </div>
     </details>
   );

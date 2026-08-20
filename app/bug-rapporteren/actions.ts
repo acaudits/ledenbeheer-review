@@ -196,6 +196,9 @@ export async function bewerkBugRapport(
       "CERTIFICATEN_BEKIJKEN",
     );
 
+  const isBeheerder =
+    gebruiker.rol === "BEHEERDER";
+
   const id = Number(formData.get("id"));
   const status = String(
     formData.get("status") ?? "",
@@ -207,7 +210,8 @@ export async function bewerkBugRapport(
   if (
     !Number.isInteger(id) ||
     id <= 0 ||
-    !isBugStatus(status) ||
+    (isBeheerder &&
+      !isBugStatus(status)) ||
     fout ||
     !invoer.webpagina
   ) {
@@ -227,6 +231,12 @@ export async function bewerkBugRapport(
         return;
       }
 
+      const opgeslagenStatus =
+        isBeheerder &&
+        isBugStatus(status)
+          ? status
+          : bestaand.status;
+
       await database.bugRapport.update({
         where: { id },
         data: {
@@ -237,7 +247,7 @@ export async function bewerkBugRapport(
           uitleg: invoer.uitleg,
           opmerkingen:
             invoer.opmerkingen,
-          status,
+          status: opgeslagenStatus,
         },
       });
 
@@ -264,7 +274,7 @@ export async function bewerkBugRapport(
               invoer.prioriteit,
             webpagina:
               invoer.webpagina,
-            status,
+            status: opgeslagenStatus,
           },
         },
       );
@@ -284,6 +294,12 @@ export async function wijzigBugStatus(
     await vereisMachtiging(
       "CERTIFICATEN_BEKIJKEN",
     );
+
+  if (gebruiker.rol !== "BEHEERDER") {
+    redirect(
+      "/bug-rapporteren?fout=geen-toegang",
+    );
+  }
 
   const id = Number(formData.get("id"));
   const status = String(
@@ -349,6 +365,12 @@ export async function verwijderBugRapport(
     await vereisMachtiging(
       "CERTIFICATEN_BEKIJKEN",
     );
+
+  if (gebruiker.rol !== "BEHEERDER") {
+    redirect(
+      "/bug-rapporteren?fout=geen-toegang",
+    );
+  }
 
   const id = Number(formData.get("id"));
 

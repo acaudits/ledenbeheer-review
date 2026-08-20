@@ -50,6 +50,20 @@ function prioriteitLabel(
   return "3 — Aanpassing nodig";
 }
 
+function prioriteitTekstStijl(
+  prioriteit: number,
+) {
+  if (prioriteit === 1) {
+    return "border-red-400 bg-red-100 text-red-950";
+  }
+
+  if (prioriteit === 2) {
+    return "border-orange-400 bg-orange-100 text-orange-950";
+  }
+
+  return "border-amber-400 bg-amber-100 text-amber-950";
+}
+
 function statusLabel(
   status: string,
 ) {
@@ -87,9 +101,13 @@ function rijStijl(status: string) {
 export default async function BugRapporterenPage({
   searchParams,
 }: Props) {
-  await vereisMachtiging(
-    "CERTIFICATEN_BEKIJKEN",
-  );
+  const gebruiker =
+    await vereisMachtiging(
+      "CERTIFICATEN_BEKIJKEN",
+    );
+
+  const isBeheerder =
+    gebruiker.rol === "BEHEERDER";
 
   const parameters =
     await searchParams;
@@ -229,6 +247,8 @@ export default async function BugRapporterenPage({
       "De uitleg moet tussen 5 en 10.000 tekens bevatten.",
     status:
       "De status kon niet worden aangepast.",
+    "geen-toegang":
+      "Alleen een beheerder mag de status aanpassen of een bugrapport verwijderen.",
   };
 
   return (
@@ -506,10 +526,16 @@ export default async function BugRapporterenPage({
                         )}
                       </td>
 
-                      <td className="max-w-64 px-4 py-4 font-bold">
-                        {prioriteitLabel(
-                          rapport.prioriteit,
-                        )}
+                      <td className="max-w-64 px-4 py-4">
+                        <span
+                          className={`inline-flex rounded-lg border px-3 py-2 text-sm font-black shadow-sm ${prioriteitTekstStijl(
+                            rapport.prioriteit,
+                          )}`}
+                        >
+                          {prioriteitLabel(
+                            rapport.prioriteit,
+                          )}
+                        </span>
                       </td>
 
                       <td className="max-w-80 px-4 py-4">
@@ -530,47 +556,55 @@ export default async function BugRapporterenPage({
                       </td>
 
                       <td className="min-w-52 px-4 py-4">
-                        <form
-                          action={
-                            wijzigBugStatus
-                          }
-                          className="flex gap-2"
-                        >
-                          <input
-                            type="hidden"
-                            name="id"
-                            value={rapport.id}
-                          />
-
-                          <select
-                            name="status"
-                            defaultValue={
-                              rapport.status
+                        {isBeheerder ? (
+                          <form
+                            action={
+                              wijzigBugStatus
                             }
-                            aria-label={`Status van bugrapport ${rapport.id}`}
-                            className="min-w-36 rounded-lg border border-slate-300 bg-white px-2 py-2 text-xs font-bold"
+                            className="flex gap-2"
                           >
-                            <option value="OPEN">
-                              Open
-                            </option>
-                            <option value="IN_BEHANDELING">
-                              In behandeling
-                            </option>
-                            <option value="BEHANDELD">
-                              Behandeld
-                            </option>
-                            <option value="AFGEWEZEN">
-                              Afgewezen
-                            </option>
-                          </select>
+                            <input
+                              type="hidden"
+                              name="id"
+                              value={rapport.id}
+                            />
 
-                          <button
-                            type="submit"
-                            className="rounded-lg bg-slate-900 px-3 py-2 text-xs font-bold text-white"
-                          >
-                            Opslaan
-                          </button>
-                        </form>
+                            <select
+                              name="status"
+                              defaultValue={
+                                rapport.status
+                              }
+                              aria-label={`Status van bugrapport ${rapport.id}`}
+                              className="min-w-36 rounded-lg border border-slate-300 bg-white px-2 py-2 text-xs font-bold"
+                            >
+                              <option value="OPEN">
+                                Open
+                              </option>
+                              <option value="IN_BEHANDELING">
+                                In behandeling
+                              </option>
+                              <option value="BEHANDELD">
+                                Behandeld
+                              </option>
+                              <option value="AFGEWEZEN">
+                                Afgewezen
+                              </option>
+                            </select>
+
+                            <button
+                              type="submit"
+                              className="rounded-lg bg-slate-900 px-3 py-2 text-xs font-bold text-white"
+                            >
+                              Opslaan
+                            </button>
+                          </form>
+                        ) : (
+                          <span className="inline-flex rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-700">
+                            {statusLabel(
+                              rapport.status,
+                            )}
+                          </span>
+                        )}
 
                         <p className="mt-2 text-xs font-semibold text-slate-600">
                           Huidig:{" "}
@@ -592,6 +626,9 @@ export default async function BugRapporterenPage({
                       <td className="px-4 py-4">
                         <BugRapportActies
                           id={rapport.id}
+                          isBeheerder={
+                            isBeheerder
+                          }
                         />
                       </td>
                     </tr>

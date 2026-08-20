@@ -13,9 +13,13 @@ export default async function BewerkBugRapportPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
-  await vereisMachtiging(
-    "CERTIFICATEN_BEKIJKEN",
-  );
+  const gebruiker =
+    await vereisMachtiging(
+      "CERTIFICATEN_BEKIJKEN",
+    );
+
+  const isBeheerder =
+    gebruiker.rol === "BEHEERDER";
 
   const { id: idWaarde } = await params;
   const id = Number(idWaarde);
@@ -92,27 +96,50 @@ export default async function BewerkBugRapportPage({
             </select>
           </label>
 
-          <label className="text-sm font-bold text-slate-700">
-            Status
-            <select
-              name="status"
-              defaultValue={rapport.status}
-              className="mt-1 block w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 font-normal"
-            >
-              <option value="OPEN">
-                Open
-              </option>
-              <option value="IN_BEHANDELING">
-                In behandeling
-              </option>
-              <option value="BEHANDELD">
-                Behandeld
-              </option>
-              <option value="AFGEWEZEN">
-                Afgewezen
-              </option>
-            </select>
-          </label>
+          {isBeheerder ? (
+            <label className="text-sm font-bold text-slate-700">
+              Status
+              <select
+                name="status"
+                defaultValue={
+                  rapport.status
+                }
+                className="mt-1 block w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 font-normal"
+              >
+                <option value="OPEN">
+                  Open
+                </option>
+                <option value="IN_BEHANDELING">
+                  In behandeling
+                </option>
+                <option value="BEHANDELD">
+                  Behandeld
+                </option>
+                <option value="AFGEWEZEN">
+                  Afgewezen
+                </option>
+              </select>
+            </label>
+          ) : (
+            <div className="text-sm font-bold text-slate-700">
+              Status
+              <p className="mt-1 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 font-normal text-slate-700">
+                {rapport.status ===
+                "IN_BEHANDELING"
+                  ? "In behandeling"
+                  : rapport.status ===
+                      "BEHANDELD"
+                    ? "Behandeld"
+                    : rapport.status ===
+                        "AFGEWEZEN"
+                      ? "Afgewezen"
+                      : "Open"}
+              </p>
+              <p className="mt-1 text-xs font-normal text-slate-500">
+                Alleen een beheerder kan de status aanpassen.
+              </p>
+            </div>
+          )}
 
           <label className="text-sm font-bold text-slate-700 lg:col-span-2">
             Uitleg bug
