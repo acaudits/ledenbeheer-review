@@ -486,21 +486,7 @@ export function LaattijdigePlaatsbezoekenFormulier() {
       </section>
 
       <section className="border-t pt-7">
-        <div className="flex items-center justify-between gap-4">
-          <div>
-            <h2 className="text-lg font-black">
-              Inspectielocaties
-            </h2>
-
-            <p className="mt-1 max-w-2xl text-sm text-slate-600">
-              Wordt een adres niet gevonden?
-              Vul de gemeente, straat en het
-              huisnummer dan handmatig in. De
-              melding kan ook zonder bevestiging
-              door Geopunt worden verstuurd.
-            </p>
-          </div>
-
+        <div className="flex justify-end">
           <button
             type="button"
             disabled={
