@@ -501,7 +501,9 @@ model NaFinalisatie {
 }
 
 model LaattijdigePlaatsbezoekMelding {
-  id Int @id @default(autoincrement())
+  id             Int    @id @default(autoincrement())
+  referentie     String @unique @db.VarChar(35)
+  inzendingToken String @unique @map("inzending_token") @db.Uuid
 
   lidId        Int    @map("lid_id")
   naamAdi      String @map("naam_adi") @db.VarChar(255)
@@ -519,7 +521,8 @@ model LaattijdigePlaatsbezoekMelding {
 }
 
 model LaattijdigPlaatsbezoek {
-  id Int @id @default(autoincrement())
+  id                Int     @id @default(autoincrement())
+  adresGeverifieerd Boolean @default(true) @map("adres_geverifieerd")
 
   meldingId Int @map("melding_id")
 
@@ -725,4 +728,14 @@ model BugRapport {
   @@index([gebruikerId])
   @@index([aangemaaktOp(sort: Desc), id(sort: Desc)])
   @@map("bug_rapporten")
+}
+
+model PubliekeRateLimit {
+  sleutel      String   @id @db.VarChar(64)
+  vensterStart DateTime @map("venster_start")
+  vervaltOp    DateTime @map("vervalt_op")
+  aantal       Int
+
+  @@index([vervaltOp])
+  @@map("publieke_rate_limits")
 }

@@ -28,10 +28,9 @@ export type LaattijdigeMeldingState = {
 };
 
 function maakPubliekeReferentie() {
-  return randomUUID()
+  return `LP-${randomUUID()
     .replaceAll("-", "")
-    .slice(0, 12)
-    .toUpperCase();
+    .toUpperCase()}`;
 }
 
 type BezoekInvoer = {
@@ -276,11 +275,11 @@ export async function meldLaattijdigePlaatsbezoeken(
     await haalClientSleutelOp();
 
   if (
-    !controleerPubliekeRateLimit({
+    !(await controleerPubliekeRateLimit({
       sleutel: `melding:${sleutel}`,
       maximum: 5,
       vensterMs: 60 * 60_000,
-    })
+    }))
   ) {
     return {
       fout:
@@ -298,6 +297,53 @@ export async function meldLaattijdigePlaatsbezoeken(
       referentie:
         maakPubliekeReferentie(),
       aantal: 0,
+    };
+  }
+
+  const inzendingToken =
+    normaliseerTekst(
+      formData.get(
+        "inzendingToken",
+      ),
+    );
+
+  if (
+    !/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+      inzendingToken,
+    )
+  ) {
+    return {
+      fout:
+        "De aanvraag kon niet veilig worden verwerkt. Vernieuw de pagina en probeer opnieuw.",
+    };
+  }
+
+  const bestaandeInzending =
+    await prisma
+      .laattijdigePlaatsbezoekMelding
+      .findUnique({
+        where: {
+          inzendingToken,
+        },
+        select: {
+          referentie: true,
+          _count: {
+            select: {
+              bezoeken: true,
+            },
+          },
+        },
+      });
+
+  if (bestaandeInzending) {
+    return {
+      geslaagd: true,
+      referentie:
+        bestaandeInzending
+          .referentie,
+      aantal:
+        bestaandeInzending
+          ._count.bezoeken,
     };
   }
 
@@ -372,7 +418,10 @@ export async function meldLaattijdigePlaatsbezoeken(
     datum: string;
     tijdstip: string;
     reden: string;
-    locatie: GeopuntLocatie;
+    locatie: GeopuntLocatie | null;
+    gemeente: string;
+    straat: string;
+    huisnummer: string;
     busnummer: string | null;
     extraAdresdetails: string | null;
     gemeenschappelijkeDelen: boolean;
@@ -504,20 +553,32 @@ export async function meldLaattijdigePlaatsbezoeken(
       locatie = null;
     }
 
-    if (!locatie) {
-      return {
-        fout:
-          `Plaatsbezoek ${nummer}: het geselecteerde adres kon niet bevestigd worden.`,
-      };
-    }
+    /*
+     * Wanneer Geopunt het adres niet kan
+     * bevestigen, bewaren we de handmatig
+     * ingevulde adresgegevens. Coördinaten
+     * en Geopunt-ID blijven dan leeg.
+     */
+    const handmatigAdres = [
+      `${straat} ${huisnummer}${
+        busnummer
+          ? ` bus ${busnummer}`
+          : ""
+      }`,
+      gemeente,
+    ].join(", ");
 
     geldigeBezoeken.push({
       inspectielocatie:
-        locatie.geformatteerdAdres,
+        locatie?.geformatteerdAdres ??
+        handmatigAdres,
       datum,
       tijdstip,
       reden,
       locatie,
+      gemeente,
+      straat,
+      huisnummer,
       busnummer:
         busnummer || null,
       extraAdresdetails:
@@ -534,15 +595,20 @@ export async function meldLaattijdigePlaatsbezoeken(
   if (!lid || !lid.bedrijf) {
     return {
       fout:
-        "De ingevoerde naam en bedrijfsnaam komen niet overeen met onze gegevens. Controleer beide velden en probeer opnieuw.",
+        "De ingevoerde gegevens konden niet worden gecontroleerd.",
     };
   }
+
+  const referentie =
+    maakPubliekeReferentie();
 
   const aangemaakteMelding =
     await prisma
       .laattijdigePlaatsbezoekMelding
       .create({
         data: {
+          referentie,
+          inzendingToken,
           lidId: lid.id,
           naamAdi: lid.naamPersoon,
           bedrijfsnaam: lid.bedrijf,
@@ -552,17 +618,25 @@ export async function meldLaattijdigePlaatsbezoeken(
                 (bezoek) => ({
                   inspectielocatie:
                     bezoek.inspectielocatie,
+                  adresGeverifieerd:
+                    bezoek.locatie !==
+                    null,
                   geopuntId:
-                    bezoek.locatie.id,
+                    bezoek.locatie?.id ??
+                    null,
                   straat:
-                    bezoek.locatie.straat,
+                    bezoek.locatie?.straat ??
+                    bezoek.straat,
                   huisnummer:
                     bezoek.locatie
-                      .huisnummer,
+                      ?.huisnummer ??
+                    bezoek.huisnummer,
                   postcode:
-                    bezoek.locatie.postcode,
+                    bezoek.locatie?.postcode ??
+                    null,
                   gemeente:
-                    bezoek.locatie.gemeente,
+                    bezoek.locatie?.gemeente ??
+                    bezoek.gemeente,
                   busnummer:
                     bezoek.busnummer,
                   extraAdresdetails:
@@ -570,9 +644,11 @@ export async function meldLaattijdigePlaatsbezoeken(
                   gemeenschappelijkeDelen:
                     bezoek.gemeenschappelijkeDelen,
                   latitude:
-                    bezoek.locatie.latitude,
+                    bezoek.locatie?.latitude ??
+                    null,
                   longitude:
-                    bezoek.locatie.longitude,
+                    bezoek.locatie?.longitude ??
+                    null,
                   datumPlaatsbezoek:
                     new Date(
                       `${bezoek.datum}T00:00:00.000Z`,
@@ -588,6 +664,7 @@ export async function meldLaattijdigePlaatsbezoeken(
         },
         select: {
           id: true,
+          referentie: true,
           bezoeken: {
             select: {
               id: true,
@@ -626,7 +703,7 @@ export async function meldLaattijdigePlaatsbezoeken(
   return {
     geslaagd: true,
     referentie:
-      maakPubliekeReferentie(),
+      aangemaakteMelding.referentie,
     aantal: geldigeBezoeken.length,
   };
 }

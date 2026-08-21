@@ -19,6 +19,7 @@ import {
 
 export type LaattijdigPlaatsbezoekRij = {
   id: number;
+  referentie: string;
   startMomentIso: string;
   naamAdi: string;
   bedrijfsnaam: string;
@@ -39,6 +40,7 @@ export type LaattijdigPlaatsbezoekRij = {
 };
 
 type KolomSleutel =
+  | "referentie"
   | "timer"
   | "naamAdi"
   | "bedrijfsnaam"
@@ -152,6 +154,12 @@ const kolommen: Array<{
     label: "Aangemeld op",
     breedte: "min-w-48",
   },
+  {
+    sleutel: "referentie",
+    label: "Referentie",
+    breedte: "min-w-40",
+  },
+
 ];
 
 const maanden = [
@@ -712,7 +720,7 @@ export function LaattijdigePlaatsbezoekenTabel({
 
       <div className={BEHEER_TABEL_STIJLEN.kader}>
         <div className={BEHEER_TABEL_STIJLEN.scroll}>
-          <table className={`${BEHEER_TABEL_STIJLEN.tabel} min-w-[2350px] text-sm`}>
+          <table className={`${BEHEER_TABEL_STIJLEN.tabel} min-w-[2500px] text-sm`}>
             <thead className={BEHEER_TABEL_STIJLEN.kop}>
               <tr>
                 {kolommen.map(

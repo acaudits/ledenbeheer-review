@@ -32,13 +32,13 @@ export async function GET(
   request: NextRequest,
 ) {
   if (
-    !controleerPubliekeRateLimit({
+    !(await controleerPubliekeRateLimit({
       sleutel: `adres:${clientSleutel(
         request,
       )}`,
       maximum: 60,
       vensterMs: 60_000,
-    })
+    }))
   ) {
     return NextResponse.json(
       {
@@ -54,7 +54,8 @@ export async function GET(
   const params =
     request.nextUrl.searchParams;
 
-  const type = params.get("type");
+  const type =
+    params.get("type")?.trim() ?? "";
   const q = params.get("q")?.trim() ?? "";
   const gemeente =
     params.get("gemeente")?.trim() ?? "";
@@ -62,6 +63,25 @@ export async function GET(
     params.get("straat")?.trim() ?? "";
   const huisnummer =
     params.get("huisnummer")?.trim() ?? "";
+
+  if (
+    type.length > 20 ||
+    q.length > 100 ||
+    gemeente.length > 100 ||
+    straat.length > 150 ||
+    huisnummer.length > 50
+  ) {
+    return NextResponse.json(
+      {
+        fout:
+          "Een of meer adresparameters zijn te lang.",
+        opties: [],
+      },
+      {
+        status: 400,
+      },
+    );
+  }
 
   try {
     if (type === "gemeente") {

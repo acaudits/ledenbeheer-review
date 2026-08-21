@@ -126,6 +126,11 @@ export function LaattijdigePlaatsbezoekenFormulier() {
     state.geslaagd,
   ]);
 
+  const [inzendingToken] =
+    useState(
+      () => crypto.randomUUID(),
+    );
+
   const [naamAdi, setNaamAdi] =
     useState("");
 
@@ -410,9 +415,19 @@ export function LaattijdigePlaatsbezoekenFormulier() {
 
       <section className="border-t pt-7">
         <div className="flex items-center justify-between gap-4">
-          <h2 className="text-lg font-black">
-            Inspectielocaties
-          </h2>
+          <div>
+            <h2 className="text-lg font-black">
+              Inspectielocaties
+            </h2>
+
+            <p className="mt-1 max-w-2xl text-sm text-slate-600">
+              Wordt een adres niet gevonden?
+              Vul de gemeente, straat en het
+              huisnummer dan handmatig in. De
+              melding kan ook zonder bevestiging
+              door Geopunt worden verstuurd.
+            </p>
+          </div>
 
           <button
             type="button"
@@ -921,6 +936,12 @@ export function LaattijdigePlaatsbezoekenFormulier() {
           )}
         </div>
       </section>
+
+      <input
+        type="hidden"
+        name="inzendingToken"
+        value={inzendingToken}
+      />
 
       <input
         type="hidden"

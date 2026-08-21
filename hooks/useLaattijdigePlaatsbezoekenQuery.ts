@@ -37,6 +37,8 @@ export type LaattijdigePlaatsbezoekenServergegevens = {
 };
 
 const TEKSTFILTERPARAMETERS = {
+  referentie:
+    "filterReferentie",
   timer:
     "filterTimer",
   naamAdi:

@@ -18,6 +18,7 @@ import {
 
 export type LaattijdigPlaatsbezoekSelectieRij = {
   id: number;
+  referentie: string;
   startMomentIso: string;
   naamAdi: string;
   bedrijfsnaam: string;
@@ -60,6 +61,8 @@ const tekstExpressies: Record<
   keyof LaattijdigePlaatsbezoekenTekstfilters,
   Prisma.Sql
 > = {
+  referentie:
+    Prisma.sql`b."referentie"`,
   timer:
     Prisma.sql`b."timerTekst"`,
   naamAdi:
@@ -185,6 +188,7 @@ function maakFiltervoorwaarden({
         Prisma.sql`
           CONCAT_WS(
             ' ',
+            b."referentie",
             b."timerTekst",
             b."naamAdi",
             b."bedrijfsnaam",
@@ -399,6 +403,8 @@ export async function selecteerLaattijdigePlaatsbezoeken({
       "bron" AS (
         SELECT
           p.id,
+          m."referentie"
+            AS "referentie",
           p."datum_plaatsbezoek"
             AS "datumPlaatsbezoek",
           TO_CHAR(
@@ -611,6 +617,7 @@ export async function selecteerLaattijdigePlaatsbezoeken({
       )
     SELECT
       g.id,
+      g."referentie",
       g."startMomentIso",
       g."naamAdi",
       g."bedrijfsnaam",

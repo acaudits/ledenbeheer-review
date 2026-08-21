@@ -1,46 +1,22 @@
 import "server-only";
 
-type LimietRegistratie = {
-  gestartOp: number;
-  vervaltOp: number;
+import { createHash } from "node:crypto";
+
+import { prisma } from "@/lib/prisma";
+
+type RateLimitRij = {
   aantal: number;
 };
 
-const MAXIMAAL_AANTAL_SLEUTELS = 10_000;
-
-const globaleRateLimit =
-  globalThis as typeof globalThis & {
-    publiekeRateLimitRegistraties?: Map<
-      string,
-      LimietRegistratie
-    >;
-  };
-
-const registraties =
-  globaleRateLimit.publiekeRateLimitRegistraties ??
-  new Map<string, LimietRegistratie>();
-
-globaleRateLimit.publiekeRateLimitRegistraties =
-  registraties;
-
-function verwijderVerlopenRegistraties(
-  nu: number,
+export function hashSleutel(
+  sleutel: string,
 ) {
-  if (registraties.size < 1_000) {
-    return;
-  }
-
-  for (const [
-    sleutel,
-    registratie,
-  ] of registraties) {
-    if (registratie.vervaltOp <= nu) {
-      registraties.delete(sleutel);
-    }
-  }
+  return createHash("sha256")
+    .update(sleutel, "utf8")
+    .digest("hex");
 }
 
-export function controleerPubliekeRateLimit({
+export async function controleerPubliekeRateLimit({
   sleutel,
   maximum,
   vensterMs,
@@ -49,38 +25,87 @@ export function controleerPubliekeRateLimit({
   maximum: number;
   vensterMs: number;
 }) {
-  const nu = Date.now();
-
-  verwijderVerlopenRegistraties(nu);
-
-  const bestaand =
-    registraties.get(sleutel);
-
   if (
-    !bestaand ||
-    bestaand.vervaltOp <= nu
+    !sleutel ||
+    !Number.isSafeInteger(maximum) ||
+    maximum < 1 ||
+    !Number.isSafeInteger(vensterMs) ||
+    vensterMs < 1
   ) {
-    if (
-      !bestaand &&
-      registraties.size >=
-        MAXIMAAL_AANTAL_SLEUTELS
-    ) {
-      return false;
-    }
-
-    registraties.set(sleutel, {
-      gestartOp: nu,
-      vervaltOp: nu + vensterMs,
-      aantal: 1,
-    });
-
-    return true;
-  }
-
-  if (bestaand.aantal >= maximum) {
     return false;
   }
 
-  bestaand.aantal += 1;
-  return true;
+  const gehashteSleutel =
+    hashSleutel(sleutel);
+
+  const nu = new Date();
+  const vervaltOp = new Date(
+    nu.getTime() + vensterMs,
+  );
+
+  try {
+    const rijen =
+      await prisma.$queryRaw<RateLimitRij[]>`
+        INSERT INTO
+          "publieke_rate_limits" (
+            "sleutel",
+            "venster_start",
+            "vervalt_op",
+            "aantal"
+          )
+        VALUES (
+          ${gehashteSleutel},
+          ${nu},
+          ${vervaltOp},
+          1
+        )
+        ON CONFLICT ("sleutel")
+        DO UPDATE SET
+          "venster_start" =
+            CASE
+              WHEN
+                "publieke_rate_limits"."vervalt_op" <= ${nu}
+              THEN ${nu}
+              ELSE
+                "publieke_rate_limits"."venster_start"
+            END,
+          "vervalt_op" =
+            CASE
+              WHEN
+                "publieke_rate_limits"."vervalt_op" <= ${nu}
+              THEN ${vervaltOp}
+              ELSE
+                "publieke_rate_limits"."vervalt_op"
+            END,
+          "aantal" =
+            CASE
+              WHEN
+                "publieke_rate_limits"."vervalt_op" <= ${nu}
+              THEN 1
+              ELSE
+                LEAST(
+                  "publieke_rate_limits"."aantal" + 1,
+                  ${maximum + 1}
+                )
+            END
+        RETURNING
+          "aantal"
+      `;
+
+    return (
+      rijen.length === 1 &&
+      rijen[0].aantal <= maximum
+    );
+  } catch (fout) {
+    console.error(
+      "Centrale publieke rate limiting is mislukt.",
+      fout instanceof Error
+        ? fout.message
+        : "Onbekende fout",
+    );
+
+    // Bij een databasefout wordt de publieke actie
+    // uit veiligheid tijdelijk geblokkeerd.
+    return false;
+  }
 }

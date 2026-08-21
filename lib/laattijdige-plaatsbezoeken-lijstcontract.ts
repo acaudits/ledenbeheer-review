@@ -9,6 +9,7 @@ const MAXIMALE_FILTERLENGTE =
   100;
 
 export const LAATTIJDIGE_PLAATSBEZOEKEN_SORTERINGEN = [
+  "referentie",
   "timer",
   "naamAdi",
   "bedrijfsnaam",
@@ -28,6 +29,8 @@ export type LaattijdigePlaatsbezoekenSortering =
   (typeof LAATTIJDIGE_PLAATSBEZOEKEN_SORTERINGEN)[number];
 
 export const LAATTIJDIGE_PLAATSBEZOEKEN_TEKSTFILTERPARAMETERS = {
+  referentie:
+    "filterReferentie",
   timer:
     "filterTimer",
   naamAdi:
