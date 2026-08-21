@@ -271,6 +271,9 @@ export default function AtteststatistiekenClient({
 
         <form
           action={importActie}
+          aria-busy={
+            importBezig
+          }
           className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-end"
         >
           <label className="block flex-1">
@@ -293,10 +296,53 @@ export default function AtteststatistiekenClient({
             className={`${BEHEER_KNOP_KLASSEN.primair} disabled:cursor-wait disabled:opacity-60`}
           >
             {importBezig
-              ? "Importeren..."
+              ? "Excel verwerken…"
               : "Excel importeren"}
           </button>
         </form>
+
+        {importBezig ? (
+          <div
+            className="mt-4 rounded-xl border border-emerald-200 bg-emerald-50 p-4"
+            aria-live="polite"
+          >
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <p className="text-sm font-bold text-emerald-950">
+                  Excelimport wordt uitgevoerd
+                </p>
+
+                <p className="mt-1 text-xs font-medium text-emerald-800">
+                  Het bestand wordt gecontroleerd, verwerkt en veilig in de database opgeslagen.
+                </p>
+              </div>
+
+              <span className="shrink-0 text-xs font-bold text-emerald-800">
+                Even geduld…
+              </span>
+            </div>
+
+            <p
+              className="text-sm font-semibold text-emerald-800"
+              role="status"
+              aria-live="polite"
+            >
+              Het Excelbestand wordt verwerkt. Dit kan enkele minuten duren.
+            </p>
+
+            <div
+              role="progressbar"
+              aria-label="Voortgang van de Excelimport"
+              className="mt-3 h-3 overflow-hidden rounded-full bg-emerald-100 ring-1 ring-inset ring-emerald-200"
+            >
+              <div className="h-full w-full animate-pulse rounded-full bg-gradient-to-r from-emerald-400 via-emerald-700 to-emerald-400" />
+            </div>
+
+            <p className="mt-2 text-xs text-emerald-800">
+              Sluit of vernieuw deze pagina niet totdat de import voltooid is.
+            </p>
+          </div>
+        ) : null}
 
         <div className="mt-4">
           <Melding status={importStatus} />

@@ -30,7 +30,7 @@ const MAXIMALE_BESTANDSGROOTTE =
   15 * 1024 * 1024;
 
 const MAXIMAAL_AANTAL_RIJEN =
-  100_000;
+  200_000;
 
 function normaliseerTekst(
   waarde: unknown,
@@ -440,23 +440,54 @@ export async function importeerAtteststatistieken(
     };
   }
 
-  const werkmap =
+  let werkmap =
     new ExcelJS.Workbook();
 
   try {
     const arrayBuffer =
       await bestandWaarde.arrayBuffer();
 
-    const genormaliseerdBestand =
-      await normaliseerExcelXmlElementPrefixes(
-        new Uint8Array(
-          arrayBuffer,
-        ),
+    const origineelBestand =
+      Buffer.from(
+        arrayBuffer,
       );
 
-    await werkmap.xlsx.load(
-      genormaliseerdBestand as unknown as Parameters<typeof werkmap.xlsx.load>[0],
-    );
+    try {
+      /*
+       * Normale Excelbestanden worden rechtstreeks geopend.
+       * Hierdoor slaan we het relatief dure uitpakken,
+       * controleren en opnieuw comprimeren met JSZip over.
+       */
+      await werkmap.xlsx.load(
+        Buffer.from(
+          origineelBestand,
+        ) as unknown as Parameters<
+          typeof werkmap.xlsx.load
+        >[0],
+      );
+    } catch {
+      /*
+       * Sommige exports bevatten XML-prefixes of ontbrekende
+       * celadressen die ExcelJS niet rechtstreeks ondersteunt.
+       * Alleen voor die bestanden gebruiken we de bestaande
+       * herstelprocedure.
+       */
+      const genormaliseerdBestand =
+        await normaliseerExcelXmlElementPrefixes(
+          new Uint8Array(
+            origineelBestand,
+          ),
+        );
+
+      werkmap =
+        new ExcelJS.Workbook();
+
+      await werkmap.xlsx.load(
+        genormaliseerdBestand as unknown as Parameters<
+          typeof werkmap.xlsx.load
+        >[0],
+      );
+    }
   } catch (fout) {
     console.error(
       "Excelbestand openen mislukt:",
