@@ -9,6 +9,9 @@ import {
   valideerAdres,
   type GeopuntLocatie,
 } from "@/lib/geopunt";
+import {
+  komenPersoonsnamenOvereen,
+} from "@/lib/persoonsnaam";
 import { prisma } from "@/lib/prisma";
 import {
   controleerPubliekeRateLimit,
@@ -190,25 +193,79 @@ async function zoekActiefLid(
   naamAdi: string,
   bedrijfsnaam: string,
 ) {
-  return prisma.lid.findFirst({
-    where: {
-      verwijderdOp: null,
-      naamPersoon: {
-        equals: naamAdi,
-        mode: "insensitive",
+  /*
+   * Eerst worden alle actieve personen
+   * van hetzelfde bedrijf opgehaald.
+   * Binnen deze beperkte selectie zoeken
+   * we eerst exact en daarna op eventueel
+   * ontbrekende middennamen of initialen.
+   */
+  const kandidaten =
+    await prisma.lid.findMany({
+      where: {
+        verwijderdOp: null,
+        bedrijf: {
+          equals: bedrijfsnaam,
+          mode: "insensitive",
+        },
       },
-      bedrijf: {
-        equals: bedrijfsnaam,
-        mode: "insensitive",
+      select: {
+        id: true,
+        naamPersoon: true,
+        bedrijf: true,
+        ovamId: true,
       },
-    },
-    select: {
-      id: true,
-      naamPersoon: true,
-      bedrijf: true,
-      ovamId: true,
-    },
-  });
+    });
+
+  const exacteKandidaten =
+    kandidaten.filter(
+      (kandidaat) =>
+        kandidaat.naamPersoon.localeCompare(
+          naamAdi,
+          "nl-BE",
+          {
+            sensitivity: "accent",
+            usage: "search",
+          },
+        ) === 0,
+    );
+
+  /*
+   * Bij meerdere personen met exact
+   * dezelfde naam en hetzelfde bedrijf
+   * wordt niet willekeurig gekoppeld.
+   */
+  if (
+    exacteKandidaten.length === 1
+  ) {
+    return exacteKandidaten[0];
+  }
+
+  if (
+    exacteKandidaten.length > 1
+  ) {
+    return null;
+  }
+
+  const overeenkomendeKandidaten =
+    kandidaten.filter(
+      (kandidaat) =>
+        komenPersoonsnamenOvereen(
+          naamAdi,
+          kandidaat.naamPersoon,
+        ),
+    );
+
+  /*
+   * Alleen automatisch koppelen wanneer
+   * precies één kandidaat overeenkomt.
+   * Bij nul of meerdere kandidaten wordt
+   * nooit gegokt.
+   */
+  return overeenkomendeKandidaten
+    .length === 1
+    ? overeenkomendeKandidaten[0]
+    : null;
 }
 
 export async function meldLaattijdigePlaatsbezoeken(
