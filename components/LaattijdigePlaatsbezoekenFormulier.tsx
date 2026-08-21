@@ -112,6 +112,13 @@ export function LaattijdigePlaatsbezoekenFormulier() {
   const queryClient =
     useQueryClient();
 
+  const [
+    kopieStatus,
+    setKopieStatus,
+  ] = useState<
+    "gekopieerd" | "mislukt" | null
+  >(null);
+
   useEffect(() => {
     if (!state.geslaagd) {
       return;
@@ -322,11 +329,76 @@ export function LaattijdigePlaatsbezoekenFormulier() {
           plaatsbezoek(en) geregistreerd.
         </p>
 
-        <p className="mt-2 font-bold">
-          Referentie: LP-
-          {String(
-            state.referentie ?? 0,
-          ).padStart(6, "0")}
+        <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
+          <span className="font-bold">
+            Referentie:
+          </span>
+
+          <code className="select-all rounded-lg bg-slate-100 px-3 py-2 font-mono text-sm font-bold text-slate-950">
+            {state.referentie ??
+              "Onbekend"}
+          </code>
+
+          <button
+            type="button"
+            disabled={
+              !state.referentie
+            }
+            onClick={async () => {
+              const referentie =
+                state.referentie;
+
+              if (!referentie) {
+                setKopieStatus(
+                  "mislukt",
+                );
+                return;
+              }
+
+              try {
+                if (
+                  !navigator.clipboard
+                    ?.writeText
+                ) {
+                  throw new Error(
+                    "Klembord niet beschikbaar",
+                  );
+                }
+
+                await navigator.clipboard.writeText(
+                  referentie,
+                );
+
+                setKopieStatus(
+                  "gekopieerd",
+                );
+              } catch {
+                setKopieStatus(
+                  "mislukt",
+                );
+              }
+            }}
+            className="rounded-lg border border-emerald-700 bg-white px-3 py-2 text-sm font-bold text-emerald-800 transition hover:bg-emerald-50 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {kopieStatus ===
+            "gekopieerd"
+              ? "Gekopieerd"
+              : "Kopiëren"}
+          </button>
+        </div>
+
+        <p
+          className="mt-2 min-h-5 text-sm text-slate-600"
+          role="status"
+          aria-live="polite"
+        >
+          {kopieStatus ===
+          "gekopieerd"
+            ? "De referentie is naar het klembord gekopieerd."
+            : kopieStatus ===
+                "mislukt"
+              ? "Kopiëren lukte niet. Selecteer de referentie en kopieer ze handmatig."
+              : ""}
         </p>
 
         <a
