@@ -467,7 +467,7 @@ export default function PlaatsbezoekenKaart({
 
         const marker =
         L.circleMarker(positie, {
-          radius: 9,
+          radius: 4.5,
           color: kleuren.lijn,
           weight: 2,
           fillColor:
@@ -494,7 +494,7 @@ export default function PlaatsbezoekenKaart({
           );
 
         if (moetRuitZijn) {
-          marker.setRadius(16);
+          marker.setRadius(8);
           marker.setStyle({
             weight: 3,
             fillOpacity: 1,
@@ -695,8 +695,8 @@ export default function PlaatsbezoekenKaart({
 
           marker.setRadius(
             isRuit
-              ? 16
-              : 9,
+              ? 8
+              : 4.5,
           );
 
           marker.setStyle({
