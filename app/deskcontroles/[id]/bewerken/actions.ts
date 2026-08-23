@@ -8,7 +8,8 @@ import { prisma } from "@/lib/prisma";
 type DeskcontroleStatusWaarde =
   | "GEEN"
   | "IN_OPMAAK"
-  | "GEACTUALISEERD";
+  | "GEACTUALISEERD"
+  | "AFGEROND";
 
 type DeskcontroleTypeWaarde =
   | "NIEUWE_CONTROLE"
@@ -336,6 +337,7 @@ export async function wijzigDeskcontrole(
       "GEEN",
       "IN_OPMAAK",
       "GEACTUALISEERD",
+      "AFGEROND",
     ];
 
   if (
@@ -345,7 +347,7 @@ export async function wijzigDeskcontrole(
   ) {
     stuurNaarFout(
       id,
-      "Kies Geen, In opmaak of Geactualiseerd.",
+      "Kies Geen, In opmaak, Geactualiseerd of Afgerond.",
     );
   }
 
