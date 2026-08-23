@@ -995,6 +995,29 @@ export function LaattijdigePlaatsbezoekenFormulier() {
         </div>
       </section>
 
+      <label className="flex items-start gap-3 rounded-xl border border-slate-300 bg-slate-50 p-4">
+        <input
+          type="checkbox"
+          name="privacyKennisname"
+          value="gelezen"
+          required
+          className="mt-0.5 size-5 shrink-0"
+        />
+
+        <span className="text-sm font-bold leading-6 text-slate-900">
+          Ik bevestig dat ik de{" "}
+          <a
+            href="https://www.asbest-certificaat.be/privacy-cookies/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-emerald-800 underline underline-offset-2"
+          >
+            privacyverklaring
+          </a>{" "}
+          heb gelezen. *
+        </span>
+      </label>
+
       <input
         type="hidden"
         name="inzendingToken"

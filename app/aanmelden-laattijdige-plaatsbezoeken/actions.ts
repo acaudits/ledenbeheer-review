@@ -300,6 +300,22 @@ export async function meldLaattijdigePlaatsbezoeken(
     };
   }
 
+  const privacyKennisname =
+    normaliseerTekst(
+      formData.get(
+        "privacyKennisname",
+      ),
+    );
+
+  if (
+    privacyKennisname !== "gelezen"
+  ) {
+    return {
+      fout:
+        "Bevestig dat je de privacyverklaring hebt gelezen.",
+    };
+  }
+
   const inzendingToken =
     normaliseerTekst(
       formData.get(
