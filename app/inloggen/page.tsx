@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import {
@@ -16,32 +16,6 @@ export default function InloggenPage() {
   const [bezig, setBezig] = useState(false);
   const [fout, setFout] = useState<string | null>(null);
 
-  useEffect(() => {
-    const parameters =
-      new URLSearchParams(
-        window.location.search,
-      );
-
-    if (
-      parameters.get("fout") !==
-      "inactief"
-    ) {
-      return;
-    }
-
-    const timer = window.setTimeout(
-      () => {
-        setFout(
-          "Je bent uitgelogd omdat je de webapp 4 uur niet hebt gebruikt. Log opnieuw in.",
-        );
-      },
-      0,
-    );
-
-    return () => {
-      window.clearTimeout(timer);
-    };
-  }, []);
 
   async function inloggen(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();

@@ -67,7 +67,7 @@ export function InactiviteitBewaker({
         });
       } finally {
         window.location.replace(
-          "/inloggen?fout=inactief",
+          "/inloggen",
         );
       }
     }

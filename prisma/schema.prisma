@@ -296,6 +296,7 @@ model ToegestaneGebruiker {
   bijgewerktOp        DateTime      @updatedAt @map("bijgewerkt_op")
   wachtwoordWijzigen  Boolean       @default(true)
   laatsteActiviteitOp DateTime?     @map("laatste_activiteit_op")
+  authSessionId       String?       @map("auth_session_id") @db.VarChar(255)
   isIngelogd          Boolean       @default(false) @map("is_ingelogd")
 
   deskcontroles                Deskcontrole[]               @relation("DeskcontroleAuditeur")

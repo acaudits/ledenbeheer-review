@@ -1,6 +1,9 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import {
+  MAXIMALE_INACTIVITEIT_MS,
+} from "@/lib/inactiviteit";
 
 const MAXIMALE_PUBLIEKE_POST_GROOTTE =
   128 * 1024;
@@ -8,6 +11,7 @@ const MAXIMALE_PUBLIEKE_POST_GROOTTE =
 function isPubliekeRoute(pathname: string) {
   return (
     pathname === "/inloggen" ||
+    pathname === "/robots.txt" ||
     pathname === "/manifest.webmanifest" ||
     pathname === "/sw.js" ||
     pathname === "/wachtwoord-vergeten" ||
@@ -147,6 +151,12 @@ export async function proxy(request: NextRequest) {
       ? claims.sub
       : "";
 
+  const authSessionId =
+    typeof claims?.session_id ===
+    "string"
+      ? claims.session_id
+      : "";
+
   /*
    * Login, wachtwoordherstel en callbacks moeten ook zonder
    * actieve sessie bereikbaar zijn.
@@ -160,7 +170,8 @@ export async function proxy(request: NextRequest) {
    */
   if (
     !emailClaim ||
-    !authUserId
+    !authUserId ||
+    !authSessionId
   ) {
     if (request.nextUrl.pathname.startsWith("/api/")) {
       return NextResponse.json(
@@ -189,6 +200,8 @@ export async function proxy(request: NextRequest) {
           id: true,
           actief: true,
           authUserId: true,
+          authSessionId: true,
+          laatsteActiviteitOp: true,
           wachtwoordWijzigen: true,
           profielVoltooidOp: true,
         },
@@ -213,6 +226,66 @@ export async function proxy(request: NextRequest) {
 
       return NextResponse.redirect(
         maakLoginUrl(request, "geen-toegang"),
+      );
+    }
+
+    /*
+     * Een nieuwe Supabase-sessie ontstaat pas na een nieuwe
+     * succesvolle aanmelding. Initialiseer in dat geval de
+     * server-side activiteitstijd.
+     */
+    if (
+      toegestaneGebruiker.authSessionId !==
+        authSessionId ||
+      !toegestaneGebruiker.laatsteActiviteitOp
+    ) {
+      await prisma.toegestaneGebruiker.update({
+        where: {
+          id: toegestaneGebruiker.id,
+        },
+        data: {
+          authSessionId,
+          laatsteActiviteitOp:
+            new Date(),
+          isIngelogd: true,
+        },
+      });
+    } else if (
+      Date.now() -
+        toegestaneGebruiker
+          .laatsteActiviteitOp
+          .getTime() >=
+        MAXIMALE_INACTIVITEIT_MS
+    ) {
+      await prisma.toegestaneGebruiker.update({
+        where: {
+          id: toegestaneGebruiker.id,
+        },
+        data: {
+          isIngelogd: false,
+        },
+      });
+
+      await supabase.auth.signOut();
+
+      if (
+        request.nextUrl.pathname.startsWith(
+          "/api/",
+        )
+      ) {
+        return NextResponse.json(
+          {
+            message:
+              "Je sessie is verlopen.",
+          },
+          {
+            status: 401,
+          },
+        );
+      }
+
+      return NextResponse.redirect(
+        maakLoginUrl(request),
       );
     }
 
