@@ -675,6 +675,7 @@ export async function leesTerreincontrolesUitExcel(
           by: ["ovamId"],
           where: {
             verwijderdOp: null,
+            afwezigOp: null,
             ovamId: {
               in: ovamIds,
               mode: "insensitive",
