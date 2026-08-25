@@ -72,6 +72,27 @@ function leesStatus(
   return "ONGELDIG";
 }
 
+function leesFactuurVerzonden(
+  waarde: string,
+):
+  | boolean
+  | null
+  | "ONGELDIG" {
+  if (waarde === "JA") {
+    return true;
+  }
+
+  if (waarde === "NEE") {
+    return false;
+  }
+
+  if (waarde === "NVT") {
+    return null;
+  }
+
+  return "ONGELDIG";
+}
+
 function leesDatum(
   waarde: string,
 ) {
@@ -407,6 +428,24 @@ export async function wijzigTerreincontrole(
     };
   }
 
+  const factuurVerzonden =
+    leesFactuurVerzonden(
+      leesTekst(
+        formData,
+        "factuurVerzonden",
+      ),
+    );
+
+  if (
+    factuurVerzonden ===
+    "ONGELDIG"
+  ) {
+    return {
+      fout:
+        "Selecteer een geldige factuurstatus.",
+    };
+  }
+
   const adres = maakAdres({
     inspectielocatie,
     straat,
@@ -426,11 +465,7 @@ export async function wijzigTerreincontrole(
           auditeur,
           status,
 
-          factuurVerzonden:
-            leesTekst(
-              formData,
-              "factuurVerzonden",
-            ) === "JA",
+          factuurVerzonden,
 
           inspectielocatie,
           bouwjaar,

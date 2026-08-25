@@ -30,7 +30,8 @@ type StatusSelectProps = {
 
 type FactuurSelectProps = {
   id: number;
-  beginwaarde: boolean;
+  beginwaarde:
+    boolean | null;
 };
 
 export function TerreincontroleStatusSelect({
@@ -183,8 +184,13 @@ export function TerreincontroleFactuurSelect({
     const vorigeWaarde =
       factuurVerzonden;
 
-    const nieuweWaarde =
-      waarde === "JA";
+    const nieuweWaarde:
+      boolean | null =
+      waarde === "JA"
+        ? true
+        : waarde === "NEE"
+          ? false
+          : null;
 
     setFactuurVerzonden(
       nieuweWaarde,
@@ -228,9 +234,12 @@ export function TerreincontroleFactuurSelect({
     <div className="min-w-24">
       <select
         value={
-          factuurVerzonden
-            ? "JA"
-            : "NEE"
+          factuurVerzonden ===
+          null
+            ? "NVT"
+            : factuurVerzonden
+              ? "JA"
+              : "NEE"
         }
         onChange={(event) =>
           wijzigFactuur(
@@ -247,6 +256,10 @@ export function TerreincontroleFactuurSelect({
 
         <option value="NEE">
           Nee
+        </option>
+
+        <option value="NVT">
+          NVT
         </option>
       </select>
 

@@ -453,9 +453,13 @@ export async function GET() {
 
         factuurVerzonden:
           terreincontrole
-            .factuurVerzonden
-            ? "Ja"
-            : "Nee",
+            .factuurVerzonden ===
+          null
+            ? "NVT"
+            : terreincontrole
+                  .factuurVerzonden
+              ? "Ja"
+              : "Nee",
 
         opmerkingen:
           terreincontrole

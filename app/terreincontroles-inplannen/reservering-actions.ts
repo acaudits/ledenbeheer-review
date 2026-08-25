@@ -13,7 +13,9 @@ export type PlaatsbezoekBeschikbaarheid =
   | "BESCHIKBAAR"
   | "DOOR_MIJ"
   | "DOOR_ANDER"
-  | "INGEPLAND";
+  | "INGEPLAND"
+  | "AFWEZIG"
+  | "VERWIJDERD";
 
 export type PlaatsbezoekBeschikbaarheidRij = {
   attestId: string;
@@ -22,6 +24,7 @@ export type PlaatsbezoekBeschikbaarheidRij = {
   gereserveerdDoor: string | null;
   reserveringVerlooptOp: string | null;
   ingeplandDoor: string | null;
+  ingeplandAdres?: string | null;
 };
 
 export type ReserveerResultaat = {
@@ -32,6 +35,7 @@ export type ReserveerResultaat = {
   gereserveerdDoor: string | null;
   reserveringVerlooptOp: string | null;
   ingeplandDoor: string | null;
+  ingeplandAdres?: string | null;
   message: string;
 };
 
@@ -70,6 +74,59 @@ function gebruikersnaam(gebruiker: {
     gebruiker.naam?.trim() ||
     gebruiker.email
   );
+}
+
+type BestaandPlaatsbezoek = {
+  verwijderdOp: Date | null;
+  afwezigOp: Date | null;
+  inspectielocatie: string | null;
+  adres: string | null;
+};
+
+function bepaalBestaandeBeschikbaarheid(
+  bezoek: BestaandPlaatsbezoek,
+): PlaatsbezoekBeschikbaarheid {
+  if (bezoek.verwijderdOp) {
+    return "VERWIJDERD";
+  }
+
+  if (bezoek.afwezigOp) {
+    return "AFWEZIG";
+  }
+
+  return "INGEPLAND";
+}
+
+function bepaalBestaandAdres(
+  bezoek: BestaandPlaatsbezoek,
+) {
+  return (
+    bezoek.inspectielocatie?.trim() ||
+    bezoek.adres?.trim() ||
+    null
+  );
+}
+
+function maakDatabaseMelding({
+  beschikbaarheid,
+  eigenaar,
+  adres,
+}: {
+  beschikbaarheid:
+    PlaatsbezoekBeschikbaarheid;
+  eigenaar: string | null;
+  adres: string | null;
+}) {
+  const basis =
+    beschikbaarheid === "AFWEZIG"
+      ? `Bij afwezigen${eigenaar ? ` – ${eigenaar}` : ""}`
+      : beschikbaarheid === "VERWIJDERD"
+        ? `Verwijderd${eigenaar ? ` – ${eigenaar}` : ""}`
+        : eigenaar
+          ? `Reeds ingepland door ${eigenaar}`
+          : "Reeds ingepland";
+
+  return `${basis}. Op adres ${adres || "onbekend"}.`;
 }
 
 function isUniekheidsfout(
@@ -128,6 +185,10 @@ async function reserveerEen(
             },
             select: {
               auditeur: true,
+              verwijderdOp: true,
+              afwezigOp: true,
+              inspectielocatie: true,
+              adres: true,
               auditeurGebruiker: {
                 select: {
                   naam: true,
@@ -147,18 +208,33 @@ async function reserveerEen(
                 )
               : ingepland.auditeur;
 
+          const beschikbaarheid =
+            bepaalBestaandeBeschikbaarheid(
+              ingepland,
+            );
+
+          const ingeplandAdres =
+            bepaalBestaandAdres(
+              ingepland,
+            );
+
           return {
             attestId,
             succes: false,
-            beschikbaarheid:
-              "INGEPLAND" as const,
+            beschikbaarheid,
             gereserveerdDoor: null,
             reserveringVerlooptOp: null,
             ingeplandDoor:
               eigenaar || null,
-            message: eigenaar
-              ? `Reeds ingepland door ${eigenaar}.`
-              : "Dit plaatsbezoek is reeds ingepland.",
+            ingeplandAdres,
+            message:
+              maakDatabaseMelding({
+                beschikbaarheid,
+                eigenaar:
+                  eigenaar || null,
+                adres:
+                  ingeplandAdres,
+              }),
           };
         }
 
@@ -483,6 +559,10 @@ export async function haalPlaatsbezoekBeschikbaarheidOp(
       select: {
         attestId: true,
         auditeur: true,
+        verwijderdOp: true,
+        afwezigOp: true,
+        inspectielocatie: true,
+        adres: true,
         auditeurGebruiker: {
           select: {
             naam: true,
@@ -546,7 +626,9 @@ export async function haalPlaatsbezoekBeschikbaarheidOp(
       return {
         attestId,
         beschikbaarheid:
-          "INGEPLAND",
+          bepaalBestaandeBeschikbaarheid(
+            ingepland,
+          ),
         gereserveerdDoor: null,
         reserveringVerlooptOp: null,
         ingeplandDoor:
@@ -555,6 +637,10 @@ export async function haalPlaatsbezoekBeschikbaarheidOp(
                 ingepland.auditeurGebruiker,
               )
             : ingepland.auditeur,
+        ingeplandAdres:
+          bepaalBestaandAdres(
+            ingepland,
+          ),
       };
     }
 
@@ -629,6 +715,10 @@ export async function controleerReserveringenVoorOpslaan(
       select: {
         attestId: true,
         auditeur: true,
+        verwijderdOp: true,
+        afwezigOp: true,
+        inspectielocatie: true,
+        adres: true,
       },
     });
 
@@ -636,9 +726,18 @@ export async function controleerReserveringenVoorOpslaan(
     return {
       succes: false,
       message:
-        bestaand.auditeur
-          ? `Een plaatsbezoek is reeds ingepland door ${bestaand.auditeur}.`
-          : "Een plaatsbezoek is reeds ingepland.",
+        maakDatabaseMelding({
+          beschikbaarheid:
+            bepaalBestaandeBeschikbaarheid(
+              bestaand,
+            ),
+          eigenaar:
+            bestaand.auditeur,
+          adres:
+            bepaalBestaandAdres(
+              bestaand,
+            ),
+        }),
     };
   }
 

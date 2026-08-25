@@ -20,7 +20,8 @@ export type BewerkbareTerreincontrole = {
   auditeur: string;
   status:
     TerreincontroleStatus;
-  factuurVerzonden: boolean;
+  factuurVerzonden:
+    boolean | null;
 
   inspectielocatie: string;
   bouwjaar: string;
@@ -222,9 +223,13 @@ export default function TerreincontroleBewerkFormulier({
               name="factuurVerzonden"
               defaultValue={
                 terreincontrole
-                  .factuurVerzonden
-                  ? "JA"
-                  : "NEE"
+                  .factuurVerzonden ===
+                null
+                  ? "NVT"
+                  : terreincontrole
+                        .factuurVerzonden
+                    ? "JA"
+                    : "NEE"
               }
               className={invoerStijl}
             >
@@ -234,6 +239,10 @@ export default function TerreincontroleBewerkFormulier({
 
               <option value="NEE">
                 Nee
+              </option>
+
+              <option value="NVT">
+                NVT
               </option>
             </select>
           </label>

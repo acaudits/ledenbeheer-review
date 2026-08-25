@@ -365,9 +365,13 @@ export default async function TerreincontroleDetailPage({
               label="Factuur verzonden"
               waarde={
                 terreincontrole
-                  .factuurVerzonden
-                  ? "Ja"
-                  : "Nee"
+                  .factuurVerzonden ===
+                null
+                  ? "NVT"
+                  : terreincontrole
+                        .factuurVerzonden
+                    ? "Ja"
+                    : "Nee"
               }
             />
 

@@ -43,10 +43,13 @@ export type TerreincontroleExcelRij =
       | "BESCHIKBAAR"
       | "DOOR_MIJ"
       | "DOOR_ANDER"
-      | "INGEPLAND";
+      | "INGEPLAND"
+      | "AFWEZIG"
+      | "VERWIJDERD";
     gereserveerdDoor: string | null;
     reserveringVerlooptOp: string | null;
     ingeplandDoor: string | null;
+    ingeplandAdres?: string | null;
   };
 
 export type TerreincontroleExcelState =

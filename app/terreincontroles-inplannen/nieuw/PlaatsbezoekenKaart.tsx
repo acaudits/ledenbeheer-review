@@ -192,9 +192,13 @@ function beschikbaarheidTekst(
         : "Tijdelijk gereserveerd door een andere gebruiker";
 
     case "INGEPLAND":
-      return rij.ingeplandDoor
-        ? `Reeds ingepland door ${rij.ingeplandDoor}`
-        : "Reeds ingepland";
+      return `Reeds ingepland${rij.ingeplandDoor ? ` door ${rij.ingeplandDoor}` : ""}. Op adres ${rij.ingeplandAdres?.trim() || "onbekend"}.`;
+
+    case "AFWEZIG":
+      return `Bij afwezigen${rij.ingeplandDoor ? ` – ${rij.ingeplandDoor}` : ""}. Op adres ${rij.ingeplandAdres?.trim() || "onbekend"}.`;
+
+    case "VERWIJDERD":
+      return `Verwijderd${rij.ingeplandDoor ? ` – ${rij.ingeplandDoor}` : ""}. Op adres ${rij.ingeplandAdres?.trim() || "onbekend"}.`;
 
     default:
       return "Beschikbaar";
@@ -1133,7 +1137,13 @@ export default function PlaatsbezoekenKaart({
                       : detailRij.beschikbaarheid ===
                           "INGEPLAND"
                         ? "Reeds ingepland"
-                        : "Niet beschikbaar"}
+                        : detailRij.beschikbaarheid ===
+                            "AFWEZIG"
+                          ? "Bij afwezigen"
+                          : detailRij.beschikbaarheid ===
+                              "VERWIJDERD"
+                            ? "Verwijderd"
+                            : "Niet beschikbaar"}
               </button>
             </footer>
           </aside>

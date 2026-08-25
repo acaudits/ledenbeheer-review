@@ -14,7 +14,8 @@ type TerreincontroleStatus =
 export type TerreincontroleRij = {
   id: number;
   auditeur: string | null;
-  factuurVerzonden: boolean;
+  factuurVerzonden:
+    boolean | null;
   status:
     TerreincontroleStatus;
   inspectielocatie:

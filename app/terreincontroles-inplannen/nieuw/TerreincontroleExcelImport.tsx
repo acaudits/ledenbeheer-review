@@ -1287,6 +1287,8 @@ export default function TerreincontroleExcelImport() {
                     resultaat.reserveringVerlooptOp,
                   ingeplandDoor:
                     resultaat.ingeplandDoor,
+                  ingeplandAdres:
+                    resultaat.ingeplandAdres,
                 }
               : rij;
           },
@@ -1435,6 +1437,8 @@ export default function TerreincontroleExcelImport() {
                       resultaat.reserveringVerlooptOp,
                     ingeplandDoor:
                       resultaat.ingeplandDoor,
+                    ingeplandAdres:
+                      resultaat.ingeplandAdres,
                   }
                 : huidigeRij,
           ),
@@ -1999,10 +2003,10 @@ export default function TerreincontroleExcelImport() {
                             );
                           }}
                           disabled={
-                            rij.beschikbaarheid ===
-                              "DOOR_ANDER" ||
-                            rij.beschikbaarheid ===
-                              "INGEPLAND" ||
+                            (rij.beschikbaarheid !==
+                              "BESCHIKBAAR" &&
+                              rij.beschikbaarheid !==
+                                "DOOR_MIJ") ||
                             reserveringBezig.has(
                               rij.sleutel,
                             )
@@ -2054,12 +2058,26 @@ export default function TerreincontroleExcelImport() {
                                 "een andere auditeur"}
                             </span>
                           ) : rij.beschikbaarheid ===
-                            "INGEPLAND" ? (
-                            <span className="inline-flex rounded-full bg-slate-200 px-2 py-1 text-[10px] font-bold text-slate-800">
-                              Reeds ingepland
+                              "INGEPLAND" ||
+                            rij.beschikbaarheid ===
+                              "AFWEZIG" ||
+                            rij.beschikbaarheid ===
+                              "VERWIJDERD" ? (
+                            <span className="inline-flex max-w-80 rounded-xl bg-slate-200 px-2 py-1 text-[10px] font-bold text-slate-800">
+                              {rij.beschikbaarheid ===
+                              "AFWEZIG"
+                                ? "Bij afwezigen"
+                                : rij.beschikbaarheid ===
+                                    "VERWIJDERD"
+                                  ? "Verwijderd"
+                                  : "Reeds ingepland"}
                               {rij.ingeplandDoor
-                                ? ` door ${rij.ingeplandDoor}`
+                                ? rij.beschikbaarheid ===
+                                  "INGEPLAND"
+                                  ? ` door ${rij.ingeplandDoor}`
+                                  : ` – ${rij.ingeplandDoor}`
                                 : ""}
+                              {`. Op adres ${rij.ingeplandAdres?.trim() || "onbekend"}.`}
                             </span>
                           ) : (
                             <span className="text-[10px] font-semibold text-slate-500">

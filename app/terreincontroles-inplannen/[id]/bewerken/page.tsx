@@ -107,8 +107,7 @@ export default async function TerreincontroleBewerkenPage({
 
     factuurVerzonden:
       terreincontrole
-        .factuurVerzonden ??
-      false,
+        .factuurVerzonden,
 
     inspectielocatie:
       terreincontrole

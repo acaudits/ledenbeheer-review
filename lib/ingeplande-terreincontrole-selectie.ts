@@ -20,7 +20,8 @@ import {
 export type IngeplandeTerreincontroleSelectieRij = {
   id: number;
   auditeur: string | null;
-  factuurVerzonden: boolean;
+  factuurVerzonden:
+    boolean | null;
   status:
     | "GEARCHIVEERD_ATTEST"
     | "ACTUEEL_ATTEST"
@@ -87,12 +88,15 @@ const statusExpressie =
 const factuurExpressie =
   Prisma.sql`
     CASE
-      WHEN COALESCE(
-        t."factuur_verzonden",
-        FALSE
-      )
+      WHEN
+        t."factuur_verzonden"
+          IS TRUE
       THEN 'Ja'
-      ELSE 'Nee'
+      WHEN
+        t."factuur_verzonden"
+          IS FALSE
+      THEN 'Nee'
+      ELSE 'NVT'
     END
   `;
 
@@ -447,10 +451,8 @@ export function laadIngeplandeTerreincontroleSelectie({
       SELECT
         t.id,
         t."auditeur",
-        COALESCE(
-          t."factuur_verzonden",
-          FALSE
-        ) AS "factuurVerzonden",
+        t."factuur_verzonden"
+          AS "factuurVerzonden",
         t."status",
         t."inspectielocatie",
         t."bouwjaar",
@@ -596,10 +598,8 @@ export async function laadIngeplandeTerreincontroleDashboardTellingen() {
           AS "actueelAttest",
         COUNT(*) FILTER (
           WHERE
-            COALESCE(
-              t."factuur_verzonden",
-              FALSE
-            ) = FALSE
+            t."factuur_verzonden"
+              IS FALSE
         )::integer
           AS "nietVerzondenFacturen"
       FROM

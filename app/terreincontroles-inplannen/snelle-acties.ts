@@ -123,7 +123,8 @@ export async function wijzigTerreincontroleStatus(
 
 export async function wijzigTerreincontroleFactuur(
   id: number,
-  factuurVerzonden: boolean,
+  factuurVerzonden:
+    boolean | null,
 ): Promise<SnelleActieResultaat> {
   await vereisMachtiging("TERREINCONTROLES_BEHEREN");
 
@@ -136,6 +137,21 @@ export async function wijzigTerreincontroleFactuur(
       succes: false,
       message:
         "Ongeldige terreincontrole.",
+    };
+  }
+
+  if (
+    factuurVerzonden !==
+      true &&
+    factuurVerzonden !==
+      false &&
+    factuurVerzonden !==
+      null
+  ) {
+    return {
+      succes: false,
+      message:
+        "Ongeldige factuurstatus.",
     };
   }
 

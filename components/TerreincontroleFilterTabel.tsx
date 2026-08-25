@@ -837,7 +837,11 @@ export function TerreincontroleFilterTabel({
       "factuur"
     ) {
       const verzonden =
-        Boolean(waarde);
+        waarde === true
+          ? true
+          : waarde === false
+            ? false
+            : null;
 
       if (
         magBeheren &&
@@ -853,9 +857,11 @@ export function TerreincontroleFilterTabel({
         );
       }
 
-      return verzonden
-        ? "Ja"
-        : "Nee";
+      return verzonden === null
+        ? "NVT"
+        : verzonden
+          ? "Ja"
+          : "Nee";
     }
 
     if (

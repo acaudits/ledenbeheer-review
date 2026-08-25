@@ -68,7 +68,7 @@ export default function AanmeldenLaattijdigePlaatsbezoekenPage() {
             <aside className="rounded-xl border border-amber-300 bg-amber-50 p-4 text-amber-950">
               <p>
                 <strong>Opgelet:</strong>{" "}
-                Het niet of laattijdig melden van een plaatsbezoek is een categorie III-non-conformiteit en kan leiden tot een voorwaardelijke opheffing van uw persoonscertificaat.
+                Het niet of niet tijdig melden van een plaatsbezoek wordt beschouwd als een categorie III-non-conformiteit en kan aanleiding geven tot een voorwaardelijke opheffing van uw persoonscertificaat.
               </p>
             </aside>
           </div>
