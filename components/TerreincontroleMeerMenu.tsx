@@ -8,6 +8,7 @@ import {
   useQueryClient,
 } from "@tanstack/react-query";
 import {
+  useRef,
   useState,
   useTransition,
 } from "react";
@@ -18,6 +19,9 @@ import {
 import {
   verwijderTerreincontrole,
 } from "@/app/terreincontroles-inplannen/verwijder-acties";
+import {
+  OpvolgingSanctieKnop,
+} from "@/components/OpvolgingSanctieKnop";
 import {
   AFWEZIGE_TERREINCONTROLES_QUERY_SLEUTEL,
 } from "@/hooks/useAfwezigeTerreincontrolesQuery";
@@ -37,6 +41,11 @@ export default function TerreincontroleMeerMenu({
 
   const queryClient =
     useQueryClient();
+
+  const menuRef =
+    useRef<HTMLDetailsElement>(
+      null,
+    );
 
   const [
     dialoogOpen,
@@ -71,6 +80,13 @@ export default function TerreincontroleMeerMenu({
     ]);
 
     router.refresh();
+  }
+
+  function sluitMeerMenu() {
+    if (menuRef.current) {
+      menuRef.current.open =
+        false;
+    }
   }
 
   function openAfwezigDialoog() {
@@ -172,6 +188,7 @@ export default function TerreincontroleMeerMenu({
         }}
       >
         <details
+          ref={menuRef}
           className="group"
           data-terreincontrole-meer-menu="true"
           onToggle={(event) => {
@@ -207,6 +224,14 @@ export default function TerreincontroleMeerMenu({
             >
               Bewerken
             </Link>
+
+            <OpvolgingSanctieKnop
+              bronType="INGEPLANDE_TERREINCONTROLE"
+              bronId={id}
+              sluitMeerMenu={
+                sluitMeerMenu
+              }
+            />
 
             <button
               type="button"

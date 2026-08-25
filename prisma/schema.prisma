@@ -78,6 +78,7 @@ model Terreincontrole {
   id                   Int                    @id @default(autoincrement())
   auditeur             String?
   factuurVerzonden     Boolean?               @default(false) @map("factuur_verzonden")
+  afgerond             Boolean                @default(false)
   status               TerreincontroleStatus?
   attestUrl            String?                @map("attest_url")
   opmerkingen          String?
@@ -600,6 +601,7 @@ model PushVerzending {
 enum OpvolgingSanctieBron {
   DESKCONTROLE
   TERREINCONTROLE
+  INGEPLANDE_TERREINCONTROLE
   NA_FINALISATIE
 }
 

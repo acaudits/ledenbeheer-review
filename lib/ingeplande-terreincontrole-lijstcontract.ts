@@ -9,6 +9,7 @@ const MAXIMALE_FILTERLENGTE =
   100;
 
 export const INGEPLANDE_TERREINCONTROLE_SORTERINGEN = [
+  "afgerond",
   "status",
   "auditeur",
   "factuurVerzonden",
@@ -37,6 +38,7 @@ export type IngeplandeTerreincontroleSortering =
   (typeof INGEPLANDE_TERREINCONTROLE_SORTERINGEN)[number];
 
 export const INGEPLANDE_TERREINCONTROLE_TEKSTFILTERPARAMETERS = {
+  afgerond: "filterAfgerond",
   status: "filterStatus",
   auditeur: "filterAuditeur",
   factuurVerzonden:

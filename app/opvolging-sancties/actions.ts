@@ -191,6 +191,61 @@ async function haalBronMomentopnameOp(
     };
   }
 
+  if (
+    bronType ===
+    "INGEPLANDE_TERREINCONTROLE"
+  ) {
+    const bron =
+      await prisma.terreincontrole.findFirst({
+        where: {
+          id: bronId,
+          verwijderdOp: null,
+          afwezigOp: null,
+        },
+        select: {
+          auditeur: true,
+          auditeurGebruiker: {
+            select: {
+              id: true,
+              actief: true,
+              rol: true,
+            },
+          },
+          naamAdi: true,
+          attestUrl: true,
+          bedrijfsnaam: true,
+          ovamId: true,
+          opmerkingen: true,
+        },
+      });
+
+    if (!bron) {
+      return null;
+    }
+
+    const actieveAuditeur =
+      bron.auditeurGebruiker?.actief &&
+      bron.auditeurGebruiker.rol ===
+        "AUDITEUR"
+        ? bron.auditeurGebruiker.id
+        : null;
+
+    return {
+      auditeur: bron.auditeur,
+      auditeurGebruikerId:
+        actieveAuditeur,
+      naamAdi: bron.naamAdi,
+      linkAttest:
+        bron.attestUrl,
+      attestnummer: null,
+      bedrijfsnaam:
+        bron.bedrijfsnaam,
+      ovamId: bron.ovamId,
+      opmerkingen:
+        bron.opmerkingen,
+    };
+  }
+
   const bron =
     await prisma.naFinalisatie.findFirst({
       where: {

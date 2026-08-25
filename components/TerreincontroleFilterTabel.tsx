@@ -19,6 +19,7 @@ import {
 import TerreincontroleMeerMenu from "@/components/TerreincontroleMeerMenu";
 import { OpvolgingRijMeerMenu } from "@/components/OpvolgingRijMeerMenu";
 import {
+  TerreincontroleAfgerondSelectievak,
   TerreincontroleFactuurSelect,
   TerreincontroleStatusSelect,
 } from "@/components/TerreincontroleSnelleVelden";
@@ -48,6 +49,7 @@ export type FilterTabelKolom = {
     | "url"
     | "status"
     | "factuur"
+    | "afgerond"
     | "acties"
     | "maps";
 };
@@ -834,6 +836,32 @@ export function TerreincontroleFilterTabel({
 
     if (
       kolom.type ===
+      "afgerond"
+    ) {
+      const afgerond =
+        waarde === true;
+
+      if (
+        magBeheren &&
+        modus === "planning"
+      ) {
+        return (
+          <TerreincontroleAfgerondSelectievak
+            id={rij.id}
+            beginwaarde={
+              afgerond
+            }
+          />
+        );
+      }
+
+      return afgerond
+        ? "Ja"
+        : "Nee";
+    }
+
+    if (
+      kolom.type ===
       "factuur"
     ) {
       const verzonden =
@@ -1190,11 +1218,15 @@ export function TerreincontroleFilterTabel({
                     }
                     className={`group cursor-pointer align-top outline-none transition focus-visible:ring-2 focus-visible:ring-inset ${
                       modus ===
-                        "afwezig" &&
-                      rij.ovamIdRood ===
-                        true
-                        ? "bg-red-50 text-red-950 hover:bg-red-100/80 focus-visible:ring-red-600"
-                        : "bg-white hover:bg-emerald-50/40 focus-visible:ring-emerald-600"
+                        "planning" &&
+                      rij.afgerond === true
+                        ? "bg-emerald-100 text-emerald-950 hover:bg-emerald-200/80 focus-visible:ring-emerald-700"
+                        : modus ===
+                            "afwezig" &&
+                          rij.ovamIdRood ===
+                            true
+                          ? "bg-red-50 text-red-950 hover:bg-red-100/80 focus-visible:ring-red-600"
+                          : "bg-white hover:bg-emerald-50/40 focus-visible:ring-emerald-600"
                     }`}
                   >
                     {kolommen.map(
@@ -1208,11 +1240,16 @@ export function TerreincontroleFilterTabel({
                             "acties"
                               ? `sticky right-0 w-20 min-w-20 z-10 has-[details[open]]:z-50 whitespace-nowrap border-l border-slate-200 px-3 py-3 align-top has-[details[open]]:z-[70] ${
                                   modus ===
-                                    "afwezig" &&
-                                  rij.ovamIdRood ===
+                                    "planning" &&
+                                  rij.afgerond ===
                                     true
-                                    ? "bg-red-50 group-hover:bg-red-100/80"
-                                    : "bg-white group-hover:bg-[#f7fcfa]"
+                                    ? "bg-emerald-100 group-hover:bg-emerald-200/80"
+                                    : modus ===
+                                        "afwezig" &&
+                                      rij.ovamIdRood ===
+                                        true
+                                      ? "bg-red-50 group-hover:bg-red-100/80"
+                                      : "bg-white group-hover:bg-[#f7fcfa]"
                                 }`
                               : `max-w-72 whitespace-pre-wrap break-words px-3 py-2 text-xs ${
                                   modus ===

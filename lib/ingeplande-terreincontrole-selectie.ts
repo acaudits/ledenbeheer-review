@@ -19,6 +19,7 @@ import {
 
 export type IngeplandeTerreincontroleSelectieRij = {
   id: number;
+  afgerond: boolean;
   auditeur: string | null;
   factuurVerzonden:
     boolean | null;
@@ -100,6 +101,15 @@ const factuurExpressie =
     END
   `;
 
+const afgerondExpressie =
+  Prisma.sql`
+    CASE
+      WHEN t."afgerond" IS TRUE
+      THEN 'Ja'
+      ELSE 'Nee'
+    END
+  `;
+
 const datumSorteerExpressie =
   Prisma.sql`
     TO_CHAR(
@@ -120,6 +130,8 @@ const tekstExpressies: Record<
   keyof IngeplandeTerreincontroleTekstfilters,
   Prisma.Sql
 > = {
+  afgerond:
+    afgerondExpressie,
   status:
     statusExpressie,
   auditeur:
@@ -219,6 +231,7 @@ function maakFiltervoorwaarden({
         CONCAT_WS(
           ' ',
           t."auditeur",
+          ${afgerondExpressie},
           ${factuurExpressie},
           ${statusExpressie},
           t."inspectielocatie",
@@ -450,6 +463,7 @@ export function laadIngeplandeTerreincontroleSelectie({
     WITH "gefilterd" AS (
       SELECT
         t.id,
+        t."afgerond",
         t."auditeur",
         t."factuur_verzonden"
           AS "factuurVerzonden",
@@ -533,6 +547,7 @@ export function laadIngeplandeTerreincontroleSelectie({
     )
     SELECT
       g.id,
+      g."afgerond",
       g."auditeur",
       g."factuurVerzonden",
       g."status",

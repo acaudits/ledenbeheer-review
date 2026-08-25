@@ -9,6 +9,7 @@ import {
 } from "react";
 
 import {
+  wijzigTerreincontroleAfgerond,
   wijzigTerreincontroleFactuur,
   wijzigTerreincontroleStatus,
 } from "@/app/terreincontroles-inplannen/snelle-acties";
@@ -32,6 +33,11 @@ type FactuurSelectProps = {
   id: number;
   beginwaarde:
     boolean | null;
+};
+
+type AfgerondSelectievakProps = {
+  id: number;
+  beginwaarde: boolean;
 };
 
 export function TerreincontroleStatusSelect({
@@ -273,6 +279,128 @@ export function TerreincontroleFactuurSelect({
         <p className="mt-1 text-[10px] font-semibold text-red-600">
           {fout}
         </p>
+      ) : null}
+    </div>
+  );
+}
+
+export function TerreincontroleAfgerondSelectievak({
+  id,
+  beginwaarde,
+}: AfgerondSelectievakProps) {
+  const queryClient =
+    useQueryClient();
+
+  const [
+    aangevinkt,
+    setAangevinkt,
+  ] = useState(beginwaarde);
+
+  const [
+    fout,
+    setFout,
+  ] = useState("");
+
+  const [
+    isBezig,
+    startTransition,
+  ] = useTransition();
+
+  function wijzigSelectievak() {
+    const vorigeWaarde =
+      aangevinkt;
+
+    const nieuweWaarde =
+      !aangevinkt;
+
+    setAangevinkt(
+      nieuweWaarde,
+    );
+
+    setFout("");
+
+    startTransition(
+      async () => {
+        try {
+          const resultaat =
+            await wijzigTerreincontroleAfgerond(
+              id,
+              nieuweWaarde,
+            );
+
+          if (!resultaat.succes) {
+            setAangevinkt(
+              vorigeWaarde,
+            );
+
+            setFout(
+              resultaat.message ??
+                "De wijziging kon niet worden opgeslagen.",
+            );
+
+            return;
+          }
+
+          await queryClient
+            .invalidateQueries({
+              queryKey:
+                INGEPLANDE_TERREINCONTROLES_QUERY_SLEUTEL,
+            });
+        } catch (fout) {
+          setAangevinkt(
+            vorigeWaarde,
+          );
+
+          setFout(
+            fout instanceof Error
+              ? fout.message
+              : "De wijziging kon niet worden opgeslagen.",
+          );
+        }
+      },
+    );
+  }
+
+  return (
+    <div className="flex min-w-24 flex-col gap-1">
+      <label
+        className={[
+          "inline-flex w-fit items-center gap-2 rounded-lg border px-2.5 py-1.5 text-xs font-semibold transition",
+          isBezig
+            ? "cursor-wait opacity-60"
+            : "cursor-pointer",
+          aangevinkt
+            ? "border-emerald-200 bg-emerald-50 text-emerald-800"
+            : "border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100",
+        ].join(" ")}
+      >
+        <input
+          type="checkbox"
+          checked={aangevinkt}
+          onChange={
+            wijzigSelectievak
+          }
+          disabled={isBezig}
+          aria-label={`Afgerond terreincontrole ${id}`}
+          className="size-4 rounded border-slate-300 text-emerald-700 focus:ring-emerald-600"
+        />
+
+        <span>
+          {isBezig
+            ? "Opslaan..."
+            : aangevinkt
+              ? "Ja"
+              : "Nee"}
+        </span>
+      </label>
+
+      {fout ? (
+        <span
+          role="alert"
+          className="max-w-48 text-[10px] text-red-700"
+        >
+          {fout}
+        </span>
       ) : null}
     </div>
   );

@@ -36,6 +36,7 @@ export type IngeplandeTerreincontroleServergegevens = {
 };
 
 const TEKSTFILTERPARAMETERS = {
+  afgerond: "filterAfgerond",
   status: "filterStatus",
   auditeur: "filterAuditeur",
   factuurVerzonden:

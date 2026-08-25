@@ -1,6 +1,7 @@
 export const OPVOLGING_BRONNEN = [
   "DESKCONTROLE",
   "TERREINCONTROLE",
+  "INGEPLANDE_TERREINCONTROLE",
   "NA_FINALISATIE",
 ] as const;
 
@@ -67,6 +68,9 @@ export function opvolgingBronLabel(
 
     case "TERREINCONTROLE":
       return "Terreincontrole";
+
+    case "INGEPLANDE_TERREINCONTROLE":
+      return "Ingeplande terreincontrole";
 
     case "NA_FINALISATIE":
       return "Na finalisatie";

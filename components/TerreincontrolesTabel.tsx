@@ -13,6 +13,7 @@ type TerreincontroleStatus =
 
 export type TerreincontroleRij = {
   id: number;
+  afgerond: boolean;
   auditeur: string | null;
   factuurVerzonden:
     boolean | null;
@@ -61,6 +62,11 @@ const kolommen:
       sleutel: "googleMaps",
       label: "Google Maps",
       type: "maps",
+    },
+    {
+      sleutel: "afgerond",
+      label: "Afgerond",
+      type: "afgerond",
     },
     {
       sleutel: "status",
