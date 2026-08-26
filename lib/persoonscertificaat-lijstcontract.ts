@@ -47,10 +47,14 @@ export type PersoonscertificaatLijstcontract = {
   uitgereiktMaand: number | null;
 };
 
+export type PersoonscertificaatSorteercriterium = {
+  sleutel: PersoonscertificaatSortering;
+  richting: Sorteerrichting;
+};
+
 type ContractMetSortering = {
   contract: PersoonscertificaatLijstcontract;
-  sortering: PersoonscertificaatSortering;
-  richting: Sorteerrichting;
+  sorteringen: PersoonscertificaatSorteercriterium[];
 };
 
 const TEKSTFILTERPARAMETERS = {
@@ -130,9 +134,84 @@ function isSortering(waarde: string): waarde is PersoonscertificaatSortering {
   );
 }
 
+function leesSorteringen(
+  url: URL,
+  standaardRichting: Sorteerrichting,
+): PersoonscertificaatSorteercriterium[] {
+  const parameter = url.searchParams.get("sorteringen");
+
+  if (!parameter) {
+    const oudeSortering = url.searchParams.get("sortering") ?? "naamPersoon";
+
+    if (!isSortering(oudeSortering)) {
+      throw new OngeldigePagineringFout("De gekozen sortering is ongeldig.");
+    }
+
+    const oudeRichting = url.searchParams.get("richting") ?? standaardRichting;
+
+    if (oudeRichting !== "asc" && oudeRichting !== "desc") {
+      throw new OngeldigePagineringFout(
+        "De gekozen sorteerrichting is ongeldig.",
+      );
+    }
+
+    return [
+      {
+        sleutel: oudeSortering,
+        richting: oudeRichting,
+      },
+    ];
+  }
+
+  if (parameter.length > 1000) {
+    throw new OngeldigePagineringFout("De gekozen sorteringen zijn te lang.");
+  }
+
+  const gezien = new Set<PersoonscertificaatSortering>();
+
+  const sorteringen = parameter
+    .split(",")
+    .map((onderdeel, index): PersoonscertificaatSorteercriterium => {
+      const [sleutel, richting, ...rest] = onderdeel.split(":");
+
+      if (
+        rest.length > 0 ||
+        !sleutel ||
+        !isSortering(sleutel) ||
+        (richting !== "asc" && richting !== "desc")
+      ) {
+        throw new OngeldigePagineringFout(
+          `Sortering ${index + 1} is ongeldig.`,
+        );
+      }
+
+      if (gezien.has(sleutel)) {
+        throw new OngeldigePagineringFout(
+          "Een kolom mag maar één keer in de sortering voorkomen.",
+        );
+      }
+
+      gezien.add(sleutel);
+
+      return {
+        sleutel,
+        richting,
+      };
+    });
+
+  if (
+    sorteringen.length === 0 ||
+    sorteringen.length > PERSOONSCERTIFICAAT_SORTERINGEN.length
+  ) {
+    throw new OngeldigePagineringFout("Het aantal sorteringen is ongeldig.");
+  }
+
+  return sorteringen;
+}
+
 export function leesPersoonscertificaatLijstcontract(
   url: URL,
-  richting: Sorteerrichting,
+  standaardRichting: Sorteerrichting,
 ): ContractMetSortering {
   const tekstfilters = Object.fromEntries(
     Object.entries(TEKSTFILTERPARAMETERS).map(([sleutel, parameter]) => [
@@ -141,30 +220,8 @@ export function leesPersoonscertificaatLijstcontract(
     ]),
   ) as PersoonscertificaatTekstfilters;
 
-  const sorteerparameter = url.searchParams.get("sortering");
-
-  if (sorteerparameter !== null && !isSortering(sorteerparameter)) {
-    throw new OngeldigePagineringFout("De gekozen sortering is ongeldig.");
-  }
-
-  const richtingParameter = url.searchParams.get("richting");
-
-  if (
-    richtingParameter !== null &&
-    richtingParameter !== "asc" &&
-    richtingParameter !== "desc"
-  ) {
-    throw new OngeldigePagineringFout(
-      "De gekozen sorteerrichting is ongeldig.",
-    );
-  }
-
-  const sortering: PersoonscertificaatSortering =
-    sorteerparameter ?? "naamPersoon";
-
   return {
-    sortering,
-    richting,
+    sorteringen: leesSorteringen(url, standaardRichting),
     contract: {
       targetStatus: leesTargetStatus(url.searchParams.get("targetStatus")),
       tekstfilters,

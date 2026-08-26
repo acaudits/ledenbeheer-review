@@ -7,10 +7,10 @@ import { type CertificaatRij } from "@/components/CertificatenTabel";
 
 type Sorteerrichting = "oplopend" | "aflopend";
 
-type Sortering = {
+export type PersoonscertificaatCardSortering = {
   sleutel: string;
   richting: Sorteerrichting;
-} | null;
+};
 
 type DatumFilter = {
   jaar: string;
@@ -22,7 +22,7 @@ type PersoonscertificatenQueryInvoer = {
   zoekterm: string;
   kolomFilters: Record<string, string>;
   datumFilters: Record<string, DatumFilter>;
-  sortering: Sortering;
+  sorteringen: PersoonscertificaatCardSortering[];
 };
 
 type PersoonscertificatenPagina = {
@@ -86,7 +86,7 @@ export function usePersoonscertificatenQuery({
   zoekterm,
   kolomFilters,
   datumFilters,
-  sortering,
+  sorteringen,
 }: PersoonscertificatenQueryInvoer) {
   const [uitgesteldeZoekterm, setUitgesteldeZoekterm] = useState(zoekterm);
 
@@ -113,13 +113,13 @@ export function usePersoonscertificatenQuery({
       zoekterm: uitgesteldeZoekterm.trim(),
       kolomFilters: uitgesteldeKolomFilters,
       datumFilters: uitgesteldeDatumFilters,
-      sortering,
+      sorteringen,
     }),
     [
       uitgesteldeZoekterm,
       uitgesteldeKolomFilters,
       uitgesteldeDatumFilters,
-      sortering,
+      sorteringen,
     ],
   );
 
@@ -161,11 +161,17 @@ export function usePersoonscertificatenQuery({
         parameters.set("uitgereiktMaand", datumFilter.maand);
       }
 
-      if (sortering) {
-        parameters.set("sortering", sortering.sleutel);
+      if (aanvraagSleutel.sorteringen.length > 0) {
         parameters.set(
-          "richting",
-          sortering.richting === "oplopend" ? "asc" : "desc",
+          "sorteringen",
+          aanvraagSleutel.sorteringen
+            .map(
+              (sortering) =>
+                `${sortering.sleutel}:${
+                  sortering.richting === "oplopend" ? "asc" : "desc"
+                }`,
+            )
+            .join(","),
         );
       }
 

@@ -321,72 +321,87 @@ function KolomMenu({
         </span>
       </summary>
 
-      <div className="absolute left-0 right-0 top-full z-[120] mt-1 max-h-[min(28rem,calc(100vh-1rem))] min-w-60 overflow-y-auto rounded-xl border border-slate-200 bg-white p-2.5 shadow-2xl ring-1 ring-slate-900/5">
-        <p className="text-[11px] font-black uppercase tracking-wide text-slate-500">
-          {kolom.label}
-        </p>
+      <div className="absolute left-0 right-0 top-full z-[120] mt-1 flex max-h-[min(28rem,calc(100vh-1rem))] min-w-60 flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-2xl ring-1 ring-slate-900/5">
+        <div className="shrink-0 border-b border-slate-200 bg-white p-2.5">
+          <p className="text-[11px] font-black uppercase tracking-wide text-slate-500">
+            {kolom.label}
+          </p>
 
-        <div className="mt-3 grid grid-cols-2 gap-2">
-          <button
-            type="button"
-            onClick={() => {
-              onSorteren("oplopend");
-              sluitMenu();
-            }}
-            className={`rounded-lg border px-2 py-1.5 text-left text-[11px] font-bold transition ${
-              sortering?.richting === "oplopend"
-                ? "border-emerald-500 bg-emerald-100 text-emerald-900"
-                : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
-            }`}
-          >
-            ↑ Oplopend
-          </button>
+          <div className="mt-3 grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                onSorteren("oplopend");
+                sluitMenu();
+              }}
+              className={`rounded-lg border px-2 py-1.5 text-left text-[11px] font-bold transition ${
+                sortering?.richting === "oplopend"
+                  ? "border-emerald-500 bg-emerald-100 text-emerald-900"
+                  : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
+              }`}
+            >
+              ↑ Oplopend
+            </button>
 
-          <button
-            type="button"
-            onClick={() => {
-              onSorteren("aflopend");
-              sluitMenu();
-            }}
-            className={`rounded-lg border px-2 py-1.5 text-left text-[11px] font-bold transition ${
-              sortering?.richting === "aflopend"
-                ? "border-emerald-500 bg-emerald-100 text-emerald-900"
-                : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
-            }`}
-          >
-            ↓ Aflopend
-          </button>
+            <button
+              type="button"
+              onClick={() => {
+                onSorteren("aflopend");
+                sluitMenu();
+              }}
+              className={`rounded-lg border px-2 py-1.5 text-left text-[11px] font-bold transition ${
+                sortering?.richting === "aflopend"
+                  ? "border-emerald-500 bg-emerald-100 text-emerald-900"
+                  : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
+              }`}
+            >
+              ↓ Aflopend
+            </button>
+          </div>
+
+          {sortering ? (
+            <div className="mt-2 rounded-lg border border-slate-200 bg-slate-50 p-2">
+              <p className="text-[11px] font-bold text-slate-600">
+                Sorteerprioriteit {prioriteit}
+              </p>
+
+              <div className="mt-2 grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  disabled={prioriteit === 1}
+                  onClick={() => onSorteringVerplaatsen(-1)}
+                  className="rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-[11px] font-bold text-slate-700 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  ← Eerder
+                </button>
+
+                <button
+                  type="button"
+                  disabled={prioriteit === aantalSorteringen}
+                  onClick={() => onSorteringVerplaatsen(1)}
+                  className="rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-[11px] font-bold text-slate-700 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  Later →
+                </button>
+              </div>
+            </div>
+          ) : null}
+
+          {sortering ? (
+            <button
+              type="button"
+              onClick={() => {
+                onSorteringVerwijderen();
+                sluitMenu();
+              }}
+              className="mt-2 w-full rounded-lg border border-red-200 bg-red-50 px-2.5 py-1.5 text-left text-[11px] font-bold text-red-700 hover:bg-red-100"
+            >
+              Sortering wissen
+            </button>
+          ) : null}
         </div>
 
-        {sortering ? (
-          <div className="mt-2 rounded-lg border border-slate-200 bg-slate-50 p-2">
-            <p className="text-[11px] font-bold text-slate-600">
-              Sorteerprioriteit {prioriteit}
-            </p>
-
-            <div className="mt-2 grid grid-cols-2 gap-2">
-              <button
-                type="button"
-                disabled={prioriteit === 1}
-                onClick={() => onSorteringVerplaatsen(-1)}
-                className="rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-[11px] font-bold text-slate-700 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40"
-              >
-                ← Eerder
-              </button>
-
-              <button
-                type="button"
-                disabled={prioriteit === aantalSorteringen}
-                onClick={() => onSorteringVerplaatsen(1)}
-                className="rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-[11px] font-bold text-slate-700 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40"
-              >
-                Later →
-              </button>
-            </div>
-          </div>
-        ) : null}
-
-        <div className="mt-2 border-t border-slate-200 pt-2">
+        <div className="min-h-0 flex-1 overflow-y-auto p-2.5">
           <label className="block">
             <span className="sr-only">
               Zoek in de waarden van {kolom.label}
@@ -463,8 +478,10 @@ function KolomMenu({
               ))
             )}
           </div>
+        </div>
 
-          <div className="mt-2 grid grid-cols-2 gap-1.5">
+        <div className="shrink-0 border-t border-slate-200 bg-white p-2.5">
+          <div className="grid grid-cols-2 gap-1.5">
             <button
               type="button"
               onClick={() => {
@@ -487,29 +504,17 @@ function KolomMenu({
               Annuleren
             </button>
           </div>
-        </div>
 
-        <div className="mt-2 flex flex-wrap gap-1.5 border-t border-slate-200 pt-2">
           {filter ? (
             <button
               type="button"
-              onClick={() => onFilterWijzigen("")}
-              className="rounded-lg border border-amber-300 bg-amber-50 px-2.5 py-1.5 text-[11px] font-bold text-amber-900 hover:bg-amber-100"
-            >
-              Filter wissen
-            </button>
-          ) : null}
-
-          {sortering ? (
-            <button
-              type="button"
               onClick={() => {
-                onSorteringVerwijderen();
+                onFilterWijzigen("");
                 sluitMenu();
               }}
-              className="rounded-lg border border-red-200 bg-red-50 px-2.5 py-1.5 text-[11px] font-bold text-red-700 hover:bg-red-100"
+              className="mt-1.5 w-full rounded-lg border border-amber-300 bg-amber-50 px-2.5 py-1.5 text-left text-[11px] font-bold text-amber-900 hover:bg-amber-100"
             >
-              Sortering wissen
+              Filter wissen
             </button>
           ) : null}
         </div>

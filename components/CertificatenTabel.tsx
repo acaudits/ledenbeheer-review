@@ -385,12 +385,16 @@ export function CertificatenTabel({
 
   const [sortering, setSortering] = useState<Sortering>(null);
 
+  const [persoonsSorteringen, setPersoonsSorteringen] = useState<
+    Array<Exclude<Sortering, null>>
+  >([]);
+
   const persoonscertificatenQuery = usePersoonscertificatenQuery({
     ingeschakeld: serverModus && soort === "persoon",
     zoekterm,
     kolomFilters,
     datumFilters,
-    sortering,
+    sorteringen: persoonsSorteringen,
   });
 
   const procescertificatenQuery = useProcescertificatenQuery({
@@ -782,12 +786,15 @@ export function CertificatenTabel({
               )}
             </div>
 
-            {(heeftActieveFilters || sortering) && (
+            {(heeftActieveFilters ||
+              sortering ||
+              persoonsSorteringen.length > 0) && (
               <button
                 type="button"
                 onClick={() => {
                   wisAlleFilters();
                   setSortering(null);
+                  setPersoonsSorteringen([]);
                 }}
                 className="h-11 shrink-0 rounded-xl border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-700 transition hover:border-red-300 hover:bg-red-50 hover:text-red-700"
               >
@@ -802,19 +809,60 @@ export function CertificatenTabel({
         <PersoonscertificaatKaartKolombalk
           kolommen={zichtbareKolommen}
           filters={kolomFilters}
-          sorteringen={sortering ? [sortering] : []}
+          sorteringen={persoonsSorteringen}
           onFilterWijzigen={wijzigKolomFilter}
           onSorteren={(sleutel, richting) => {
-            setSortering({
-              sleutel,
-              richting,
+            setPersoonsSorteringen((huidige) => {
+              const index = huidige.findIndex(
+                (sortering) => sortering.sleutel === sleutel,
+              );
+
+              if (index < 0) {
+                return [
+                  ...huidige,
+                  {
+                    sleutel,
+                    richting,
+                  },
+                ];
+              }
+
+              return huidige.map((sortering, huidigIndex) =>
+                huidigIndex === index
+                  ? {
+                      ...sortering,
+                      richting,
+                    }
+                  : sortering,
+              );
             });
           }}
-          onSorteringVerwijderen={() => {
-            setSortering(null);
+          onSorteringVerwijderen={(sleutel) => {
+            setPersoonsSorteringen((huidige) =>
+              huidige.filter((sortering) => sortering.sleutel !== sleutel),
+            );
           }}
-          onSorteringVerplaatsen={() => {
-            // Meervoudige sorteerprioriteiten volgen in fase 2C.
+          onSorteringVerplaatsen={(sleutel, verschil) => {
+            setPersoonsSorteringen((huidige) => {
+              const index = huidige.findIndex(
+                (sortering) => sortering.sleutel === sleutel,
+              );
+
+              const doelIndex = index + verschil;
+
+              if (index < 0 || doelIndex < 0 || doelIndex >= huidige.length) {
+                return huidige;
+              }
+
+              const volgende = [...huidige];
+
+              [volgende[index], volgende[doelIndex]] = [
+                volgende[doelIndex],
+                volgende[index],
+              ];
+
+              return volgende;
+            });
           }}
         />
       ) : null}

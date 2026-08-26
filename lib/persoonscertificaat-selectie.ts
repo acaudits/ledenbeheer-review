@@ -5,9 +5,9 @@ import { prisma } from "@/lib/prisma";
 import { OngeldigePagineringFout } from "@/lib/server-paginering";
 import {
   type PersoonscertificaatLijstcontract,
+  type PersoonscertificaatSorteercriterium,
   type PersoonscertificaatSortering,
 } from "@/lib/persoonscertificaat-lijstcontract";
-import { type Sorteerrichting } from "@/lib/server-paginering";
 import { type TargetStatus } from "@/lib/persoonscertificaat-targetselectie";
 
 export type PersoonscertificaatSelectieRij = {
@@ -19,8 +19,7 @@ export type PersoonscertificaatSelectieRij = {
 type SelectieInvoer = {
   zoekterm: string;
   contract: PersoonscertificaatLijstcontract;
-  sortering: PersoonscertificaatSortering;
-  richting: Sorteerrichting;
+  sorteringen: PersoonscertificaatSorteercriterium[];
   limiet: number;
   cursorId: number | null;
 };
@@ -272,7 +271,7 @@ function sorteerExpressie(sortering: PersoonscertificaatSortering) {
 
 function valideerInvoer({
   zoekterm,
-  richting,
+  sorteringen,
   limiet,
   cursorId,
 }: SelectieInvoer) {
@@ -280,8 +279,16 @@ function valideerInvoer({
     throw new Error("Ongeldige zoekterm in serverselectie.");
   }
 
-  if (richting !== "asc" && richting !== "desc") {
-    throw new Error("Ongeldige sorteerrichting in serverselectie.");
+  if (
+    !Array.isArray(sorteringen) ||
+    sorteringen.length === 0 ||
+    sorteringen.length > 10 ||
+    sorteringen.some(
+      (sortering) =>
+        sortering.richting !== "asc" && sortering.richting !== "desc",
+    )
+  ) {
+    throw new Error("Ongeldige sorteringen in serverselectie.");
   }
 
   if (!Number.isInteger(limiet) || limiet < 1 || limiet > 50) {
@@ -296,12 +303,45 @@ function valideerInvoer({
 export async function laadPersoonscertificaatSelectie(invoer: SelectieInvoer) {
   valideerInvoer(invoer);
 
-  const { zoekterm, contract, sortering, richting, limiet, cursorId } = invoer;
+  const { zoekterm, contract, sorteringen, limiet, cursorId } = invoer;
 
   const { tekstfilters, targetStatus, uitgereiktJaar, uitgereiktMaand } =
     contract;
 
-  const sorteerwaarde = sorteerExpressie(sortering);
+  const sorteerSelecties = Prisma.join(
+    sorteringen.map((sortering, index) => {
+      const alias = Prisma.raw(`"sorteerWaarde${index}"`);
+
+      return Prisma.sql`
+        ${sorteerExpressie(sortering.sleutel)}
+        AS ${alias}
+      `;
+    }),
+    ",",
+  );
+
+  const sorteerVolgorde = Prisma.join(
+    sorteringen.flatMap((sortering, index) => {
+      const alias = Prisma.raw(`"sorteerWaarde${index}"`);
+
+      const richtingSql =
+        sortering.richting === "asc" ? Prisma.sql`ASC` : Prisma.sql`DESC`;
+
+      return [
+        Prisma.sql`
+          CASE
+            WHEN ${alias} IS NULL
+              THEN 1
+            ELSE 0
+          END ASC
+        `,
+        Prisma.sql`
+          ${alias} ${richtingSql}
+        `,
+      ];
+    }),
+    ",",
+  );
 
   const algemeenZoekfilter = zoekterm
     ? Prisma.sql`
@@ -401,55 +441,14 @@ export async function laadPersoonscertificaatSelectie(invoer: SelectieInvoer) {
             ${targetStatus}
         `;
 
-  const richtingSql = richting === "asc" ? Prisma.sql`ASC` : Prisma.sql`DESC`;
-
-  const waardeVergelijking =
-    richting === "asc"
-      ? Prisma.sql`
-          g."sorteerWaarde" >
-            a."sorteerWaarde"
-        `
-      : Prisma.sql`
-          g."sorteerWaarde" <
-            a."sorteerWaarde"
-        `;
-
-  const idVergelijking =
-    richting === "asc"
-      ? Prisma.sql`
-          g.id > a.id
-        `
-      : Prisma.sql`
-          g.id < a.id
-        `;
-
-  const cursorJoin =
+  const cursorVoorwaarde =
     cursorId === null
       ? Prisma.empty
       : Prisma.sql`
-          CROSS JOIN cursoranker a
-        `;
-
-  const cursorFilter =
-    cursorId === null
-      ? Prisma.empty
-      : Prisma.sql`
-          WHERE (
-            g."isLeeg" >
-              a."isLeeg"
-            OR (
-              g."isLeeg" =
-                a."isLeeg"
-              AND (
-                ${waardeVergelijking}
-                OR (
-                  g."sorteerWaarde"
-                    IS NOT DISTINCT FROM
-                  a."sorteerWaarde"
-                  AND ${idVergelijking}
-                )
-              )
-            )
+          WHERE g."positie" > (
+            SELECT anker."positie"
+            FROM gerangschikt anker
+            WHERE anker.id = ${cursorId}
           )
         `;
 
@@ -467,8 +466,7 @@ export async function laadPersoonscertificaatSelectie(invoer: SelectieInvoer) {
         l."aansluiting",
         l."opmerking",
         l."certificatie_platform",
-        ${sorteerwaarde}
-          AS "sorteerWaarde",
+        ${sorteerSelecties},
         COALESCE(
           aps."aantal_attesten",
           0
@@ -612,43 +610,29 @@ export async function laadPersoonscertificaatSelectie(invoer: SelectieInvoer) {
         END AS "targetStatus"
       FROM controletellingen
     ),
-    gefilterd AS (
+    gerangschikt AS (
       SELECT
         id,
         "targetStatus",
-        "sorteerWaarde",
-        CASE
-          WHEN "sorteerWaarde"
-            IS NULL
-            THEN 1
-          ELSE 0
-        END AS "isLeeg",
         COUNT(*) OVER ()::integer
-          AS "aantalTotaal"
+          AS "aantalTotaal",
+        ROW_NUMBER() OVER (
+          ORDER BY
+            ${sorteerVolgorde},
+            id ASC
+        ) AS "positie"
       FROM statussen
       WHERE TRUE
       ${targetFilter}
-    ),
-    cursoranker AS (
-      SELECT
-        id,
-        "sorteerWaarde",
-        "isLeeg"
-      FROM gefilterd
-      WHERE id = ${cursorId ?? -1}
     )
     SELECT
       g.id,
       g."targetStatus",
       g."aantalTotaal"
-    FROM gefilterd g
-    ${cursorJoin}
-    ${cursorFilter}
+    FROM gerangschikt g
+    ${cursorVoorwaarde}
     ORDER BY
-      g."isLeeg" ASC,
-      g."sorteerWaarde"
-        ${richtingSql},
-      g.id ${richtingSql}
+      g."positie" ASC
     LIMIT ${limiet + 1}
   `;
 

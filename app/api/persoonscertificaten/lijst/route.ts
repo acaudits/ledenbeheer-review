@@ -153,14 +153,15 @@ export async function GET(verzoek: Request) {
       );
     }
 
-    const { contract, sortering, richting } =
-      leesPersoonscertificaatLijstcontract(url, aanvraag.richting);
+    const { contract, sorteringen } = leesPersoonscertificaatLijstcontract(
+      url,
+      aanvraag.richting,
+    );
 
     const selectie = await laadPersoonscertificaatSelectie({
       zoekterm: aanvraag.zoekterm,
       contract,
-      sortering,
-      richting,
+      sorteringen,
       limiet: aanvraag.limiet,
       cursorId: aanvraag.cursor?.id ?? null,
     });
