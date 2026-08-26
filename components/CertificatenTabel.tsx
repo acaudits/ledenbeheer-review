@@ -5,6 +5,7 @@ import { VerwijderButton as BasisVerwijderButton } from "@/components/Certificaa
 import { CopyButton } from "@/components/CopyButton";
 import { OpmerkingDialog } from "@/components/OpmerkingDialog";
 import { PersoonscertificaatKaartKolombalk } from "@/components/PersoonscertificaatKaartKolombalk";
+import { ProcescertificaatKaartKolombalk } from "@/components/ProcescertificaatKaartKolombalk";
 import { usePersoonscertificatenQuery } from "@/hooks/usePersoonscertificatenQuery";
 import { useProcescertificatenQuery } from "@/hooks/useProcescertificatenQuery";
 import NextLink from "next/link";
@@ -369,6 +370,8 @@ export function CertificatenTabel({
 
   const persoonsKaartModus = kaartWeergave && soort === "persoon";
 
+  const procesKaartModus = kaartWeergave && soort === "proces";
+
   const [openKaartId, setOpenKaartId] = useState<number | null>(null);
 
   const [zoekterm, setZoekterm] = useState("");
@@ -389,6 +392,10 @@ export function CertificatenTabel({
     Array<Exclude<Sortering, null>>
   >([]);
 
+  const [procesSorteringen, setProcesSorteringen] = useState<
+    Array<Exclude<Sortering, null>>
+  >([]);
+
   const persoonscertificatenQuery = usePersoonscertificatenQuery({
     ingeschakeld: serverModus && soort === "persoon",
     zoekterm,
@@ -402,7 +409,7 @@ export function CertificatenTabel({
     zoekterm,
     kolomFilters,
     datumFilters,
-    sortering,
+    sorteringen: procesSorteringen,
   });
 
   const serverQuery =
@@ -434,6 +441,12 @@ export function CertificatenTabel({
 
   const zichtbareKolommen = kolommen.filter(
     (kolom) => kolom.type !== "statusbol",
+  );
+
+  const procesKaartKolommen = zichtbareKolommen.filter((kolom) =>
+    ["bedrijf", "kboNummer", "certificaatnummer", "ondernemingstype"].includes(
+      kolom.sleutel,
+    ),
   );
 
   const aantalTekstFilters = Object.values(kolomFilters).filter((waarde) =>
@@ -788,13 +801,15 @@ export function CertificatenTabel({
 
             {(heeftActieveFilters ||
               sortering ||
-              persoonsSorteringen.length > 0) && (
+              persoonsSorteringen.length > 0 ||
+              procesSorteringen.length > 0) && (
               <button
                 type="button"
                 onClick={() => {
                   wisAlleFilters();
                   setSortering(null);
                   setPersoonsSorteringen([]);
+                  setProcesSorteringen([]);
                 }}
                 className="h-11 shrink-0 rounded-xl border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-700 transition hover:border-red-300 hover:bg-red-50 hover:text-red-700"
               >
@@ -867,7 +882,69 @@ export function CertificatenTabel({
         />
       ) : null}
 
-      {actieveFilterKolom && !persoonsKaartModus && (
+      {procesKaartModus ? (
+        <ProcescertificaatKaartKolombalk
+          kolommen={procesKaartKolommen}
+          filters={kolomFilters}
+          sorteringen={procesSorteringen}
+          onFilterWijzigen={wijzigKolomFilter}
+          onSorteren={(sleutel, richting) => {
+            setProcesSorteringen((huidige) => {
+              const index = huidige.findIndex(
+                (sortering) => sortering.sleutel === sleutel,
+              );
+
+              if (index < 0) {
+                return [
+                  ...huidige,
+                  {
+                    sleutel,
+                    richting,
+                  },
+                ];
+              }
+
+              return huidige.map((sortering, huidigIndex) =>
+                huidigIndex === index
+                  ? {
+                      ...sortering,
+                      richting,
+                    }
+                  : sortering,
+              );
+            });
+          }}
+          onSorteringVerwijderen={(sleutel) => {
+            setProcesSorteringen((huidige) =>
+              huidige.filter((sortering) => sortering.sleutel !== sleutel),
+            );
+          }}
+          onSorteringVerplaatsen={(sleutel, verschil) => {
+            setProcesSorteringen((huidige) => {
+              const index = huidige.findIndex(
+                (sortering) => sortering.sleutel === sleutel,
+              );
+
+              const doelIndex = index + verschil;
+
+              if (index < 0 || doelIndex < 0 || doelIndex >= huidige.length) {
+                return huidige;
+              }
+
+              const volgende = [...huidige];
+
+              [volgende[index], volgende[doelIndex]] = [
+                volgende[doelIndex],
+                volgende[index],
+              ];
+
+              return volgende;
+            });
+          }}
+        />
+      ) : null}
+
+      {actieveFilterKolom && !persoonsKaartModus && !procesKaartModus && (
         <div className="border-b border-emerald-200 bg-emerald-50/70 px-4 py-3 sm:px-5">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
             <div className="min-w-0 flex-1">
@@ -989,55 +1066,57 @@ export function CertificatenTabel({
         </div>
       )}
 
-      {aantalActieveKolomFilters > 0 && !persoonsKaartModus && (
-        <div className="flex flex-wrap items-center gap-2 border-b border-slate-200 bg-slate-50 px-4 py-2.5 sm:px-5">
-          <span className="text-xs font-bold uppercase tracking-wider text-slate-500">
-            Actieve filters:
-          </span>
+      {aantalActieveKolomFilters > 0 &&
+        !persoonsKaartModus &&
+        !procesKaartModus && (
+          <div className="flex flex-wrap items-center gap-2 border-b border-slate-200 bg-slate-50 px-4 py-2.5 sm:px-5">
+            <span className="text-xs font-bold uppercase tracking-wider text-slate-500">
+              Actieve filters:
+            </span>
 
-          {kolommen.map((kolom) => {
-            const tekstFilter = kolomFilters[kolom.sleutel]?.trim();
+            {kolommen.map((kolom) => {
+              const tekstFilter = kolomFilters[kolom.sleutel]?.trim();
 
-            const datumFilter = datumFilters[kolom.sleutel];
+              const datumFilter = datumFilters[kolom.sleutel];
 
-            if (!tekstFilter && !datumFilter?.jaar && !datumFilter?.maand) {
-              return null;
-            }
-
-            let filterTekst = tekstFilter ?? "";
-
-            if (isDatumKolom(kolom)) {
-              const delen: string[] = [];
-
-              if (datumFilter?.jaar) {
-                delen.push(datumFilter.jaar);
+              if (!tekstFilter && !datumFilter?.jaar && !datumFilter?.maand) {
+                return null;
               }
 
-              if (datumFilter?.maand) {
-                delen.push(naamVanMaand(datumFilter.maand));
+              let filterTekst = tekstFilter ?? "";
+
+              if (isDatumKolom(kolom)) {
+                const delen: string[] = [];
+
+                if (datumFilter?.jaar) {
+                  delen.push(datumFilter.jaar);
+                }
+
+                if (datumFilter?.maand) {
+                  delen.push(naamVanMaand(datumFilter.maand));
+                }
+
+                filterTekst = delen.join(" · ");
               }
 
-              filterTekst = delen.join(" · ");
-            }
+              return (
+                <button
+                  key={kolom.sleutel}
+                  type="button"
+                  onClick={() => wisKolomFilter(kolom.sleutel)}
+                  title={`${kolom.label}-filter verwijderen`}
+                  className="inline-flex max-w-xs items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-800 transition hover:border-red-200 hover:bg-red-50 hover:text-red-700"
+                >
+                  <span className="truncate">
+                    {kolom.label}: {filterTekst}
+                  </span>
 
-            return (
-              <button
-                key={kolom.sleutel}
-                type="button"
-                onClick={() => wisKolomFilter(kolom.sleutel)}
-                title={`${kolom.label}-filter verwijderen`}
-                className="inline-flex max-w-xs items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-800 transition hover:border-red-200 hover:bg-red-50 hover:text-red-700"
-              >
-                <span className="truncate">
-                  {kolom.label}: {filterTekst}
-                </span>
-
-                <span aria-hidden="true">×</span>
-              </button>
-            );
-          })}
-        </div>
-      )}
+                  <span aria-hidden="true">×</span>
+                </button>
+              );
+            })}
+          </div>
+        )}
 
       {toontEersteServerlading ? (
         <div
@@ -1048,7 +1127,9 @@ export function CertificatenTabel({
           <div className="size-9 animate-spin rounded-full border-4 border-emerald-100 border-t-emerald-700" />
 
           <h3 className="mt-5 text-lg font-bold text-slate-950">
-            Persoonscertificaten laden
+            {soort === "persoon"
+              ? "Persoonscertificaten laden"
+              : "Procescertificaten laden"}
           </h3>
 
           <p className="mt-2 text-sm text-slate-500">
@@ -1065,7 +1146,9 @@ export function CertificatenTabel({
           </div>
 
           <h3 className="mt-5 text-xl font-bold text-slate-950">
-            Persoonscertificaten konden niet worden geladen
+            {soort === "persoon"
+              ? "Persoonscertificaten konden niet worden geladen"
+              : "Procescertificaten konden niet worden geladen"}
           </h3>
 
           <p className="mt-2 max-w-md text-sm leading-6 text-slate-500">
@@ -1394,6 +1477,215 @@ export function CertificatenTabel({
                             </div>
                           ) : null}
                         </div>
+                      </div>
+                    ) : null}
+                  </article>
+                );
+              })}
+            </div>
+          ) : procesKaartModus ? (
+            <div className="space-y-2 p-3">
+              {gefilterdeEnGesorteerdeRijen.map((rij) => {
+                const geopend = openKaartId === rij.id;
+
+                const bedrijf = String(
+                  rij.bedrijf ?? `procescertificaat ${rij.id}`,
+                ).trim();
+
+                const kboNummer = String(rij.kboNummer ?? "").trim();
+                const certificaatnummer = String(
+                  rij.certificaatnummer ?? "",
+                ).trim();
+                const ondernemingstype = String(
+                  rij.ondernemingstype ?? "",
+                ).trim();
+                const uitgereiktOp = String(rij.uitgereiktOp ?? "").trim();
+                const oneDrive = String(rij.oneDrive ?? "").trim();
+                const opmerking = String(rij.opmerking ?? "").trim();
+
+                const oneDriveUrl = /^https?:\/\//i.test(oneDrive)
+                  ? oneDrive
+                  : null;
+
+                return (
+                  <article
+                    key={rij.id}
+                    role="button"
+                    tabIndex={0}
+                    aria-expanded={geopend}
+                    aria-label={`Procescertificaat van ${bedrijf}`}
+                    onClick={(event) => {
+                      if (
+                        event.target instanceof Element &&
+                        event.target.closest(
+                          "a, button, input, select, textarea",
+                        )
+                      ) {
+                        return;
+                      }
+
+                      setOpenKaartId((huidig) =>
+                        huidig === rij.id ? null : rij.id,
+                      );
+                    }}
+                    onKeyDown={(event) => {
+                      if (
+                        event.target !== event.currentTarget ||
+                        (event.key !== "Enter" && event.key !== " ")
+                      ) {
+                        return;
+                      }
+
+                      event.preventDefault();
+
+                      setOpenKaartId((huidig) =>
+                        huidig === rij.id ? null : rij.id,
+                      );
+                    }}
+                    className={`group relative z-0 cursor-pointer rounded-xl border border-slate-200 bg-white shadow-sm outline-none transition hover:border-emerald-300 hover:shadow-md focus-within:z-40 has-[details[open]]:z-50 focus-visible:ring-4 focus-visible:ring-emerald-200 ${
+                      geopend
+                        ? "border-emerald-400 ring-1 ring-emerald-200"
+                        : ""
+                    }`}
+                  >
+                    <div className="relative p-3 pr-11">
+                      <span
+                        aria-hidden="true"
+                        className={`absolute right-3 top-3 inline-flex size-7 items-center justify-center rounded-full bg-white/80 text-sm font-black text-slate-600 shadow-sm transition ${
+                          geopend
+                            ? "rotate-180 bg-emerald-100 text-emerald-800"
+                            : ""
+                        }`}
+                      >
+                        ↓
+                      </span>
+
+                      <dl className="grid gap-x-5 gap-y-3 sm:grid-cols-2 lg:grid-cols-4 lg:items-start">
+                        <CertificaatKaartWaarde
+                          label="Bedrijf"
+                          waarde={bedrijf}
+                          sterk
+                        />
+
+                        <CertificaatKaartWaarde
+                          label="Ondernemingsnummer / EU-btw-nummer"
+                          waarde={kboNummer}
+                          sterk
+                        />
+
+                        <CertificaatKaartWaarde
+                          label="Certificaatnummer"
+                          waarde={certificaatnummer}
+                          sterk
+                        />
+
+                        <CertificaatKaartWaarde
+                          label="Type"
+                          waarde={ondernemingstype}
+                          sterk
+                        />
+                      </dl>
+                    </div>
+
+                    {geopend ? (
+                      <div className="border-t border-slate-200 bg-slate-50/70 p-3">
+                        <p className="mb-3 text-xs font-black uppercase tracking-wider text-slate-600">
+                          Overige gegevens
+                        </p>
+
+                        <dl className="grid gap-x-5 gap-y-3 sm:grid-cols-2 lg:grid-cols-3">
+                          <CertificaatKaartWaarde
+                            label="Uitgereikt op"
+                            waarde={uitgereiktOp}
+                          />
+
+                          <div>
+                            <dt className="text-[11px] font-bold uppercase tracking-wide text-slate-500">
+                              OneDrive
+                            </dt>
+
+                            <dd className="mt-1 flex items-start gap-1.5 text-sm font-medium text-slate-900">
+                              {oneDriveUrl ? (
+                                <a
+                                  href={oneDriveUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="min-w-0 flex-1 break-all font-semibold text-sky-700 hover:text-sky-900 hover:underline"
+                                >
+                                  OneDrive openen
+                                </a>
+                              ) : (
+                                <span className="min-w-0 flex-1 break-all">
+                                  {oneDrive || "—"}
+                                </span>
+                              )}
+
+                              <CopyButton
+                                waarde={oneDrive || null}
+                                label="OneDrive kopiëren"
+                              />
+                            </dd>
+                          </div>
+
+                          <div className="sm:col-span-2 lg:col-span-1">
+                            <dt className="text-[11px] font-bold uppercase tracking-wide text-slate-500">
+                              Opmerking
+                            </dt>
+
+                            <dd className="mt-1 flex items-start gap-1.5 text-sm font-medium text-slate-900">
+                              <span className="min-w-0 flex-1 whitespace-pre-wrap break-words">
+                                {opmerking || "—"}
+                              </span>
+
+                              <CopyButton
+                                waarde={opmerking || null}
+                                label="Opmerking kopiëren"
+                              />
+
+                              {magBeheren ? (
+                                <span
+                                  data-voorkom-rij-navigatie
+                                  onClick={(event) => {
+                                    event.stopPropagation();
+                                  }}
+                                  onKeyDown={(event) => {
+                                    event.stopPropagation();
+                                  }}
+                                >
+                                  <OpmerkingDialog
+                                    id={rij.id}
+                                    soort="proces"
+                                    tekst={opmerking}
+                                    compact
+                                  />
+                                </span>
+                              ) : null}
+                            </dd>
+                          </div>
+                        </dl>
+
+                        {magBeheren ? (
+                          <div
+                            className="mt-4 flex justify-end border-t border-slate-200 pt-3"
+                            onClick={(event) => {
+                              event.stopPropagation();
+                            }}
+                            onKeyDown={(event) => {
+                              event.stopPropagation();
+                            }}
+                          >
+                            <CertificaatRijMeerMenu
+                              bewerkenHref={`${bewerkBasisHref}/${rij.id}/bewerken`}
+                            >
+                              <BeheerVerwijderButton
+                                magBeheren={magBeheren}
+                                id={rij.id}
+                                soort="proces"
+                                naam={bedrijf}
+                              />
+                            </CertificaatRijMeerMenu>
+                          </div>
+                        ) : null}
                       </div>
                     ) : null}
                   </article>

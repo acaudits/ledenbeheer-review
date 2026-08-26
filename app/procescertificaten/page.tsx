@@ -15,8 +15,7 @@ const kolommen: CertificaatKolom[] = [
   },
   {
     sleutel: "kboNummer",
-    label:
-      "Ondernemingsnummer / EU-btw-nummer",
+    label: "Ondernemingsnummer / EU-btw-nummer",
   },
   {
     sleutel: "certificaatnummer",
@@ -44,15 +43,9 @@ const kolommen: CertificaatKolom[] = [
 ];
 
 export default async function ProcescertificatenPage() {
-  const gebruiker =
-    await vereisMachtiging(
-      "CERTIFICATEN_BEKIJKEN",
-    );
+  const gebruiker = await vereisMachtiging("CERTIFICATEN_BEKIJKEN");
 
-  const magBeheren = heeftMachtiging(
-    gebruiker.rol,
-    "CERTIFICATEN_BEHEREN",
-  );
+  const magBeheren = heeftMachtiging(gebruiker.rol, "CERTIFICATEN_BEHEREN");
 
   return (
     <div className="space-y-4">
@@ -60,31 +53,18 @@ export default async function ProcescertificatenPage() {
         compact
         titel="Procescertificaten"
         beschrijving="Actieve procescertificaten"
-        actieTekst={
-          magBeheren
-            ? "Nieuw procescertificaat"
-            : undefined
-        }
-        actieHref={
-          magBeheren
-            ? "/procescertificaten/nieuw"
-            : undefined
-        }
-        secundaireActieTekst={
-          magBeheren
-            ? "Verwijderde"
-            : undefined
-        }
+        actieTekst={magBeheren ? "Nieuw procescertificaat" : undefined}
+        actieHref={magBeheren ? "/procescertificaten/nieuw" : undefined}
+        secundaireActieTekst={magBeheren ? "Verwijderde" : undefined}
         secundaireActieHref={
-          magBeheren
-            ? "/procescertificaten/verwijderd"
-            : undefined
+          magBeheren ? "/procescertificaten/verwijderd" : undefined
         }
       />
 
       <CertificatenTabel
         rijen={[]}
         serverModus
+        kaartWeergave
         kolommen={kolommen}
         zoekPlaceholder="Zoeken in procescertificaten..."
         legeTitel="Nog geen procescertificaten"

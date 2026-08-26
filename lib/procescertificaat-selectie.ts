@@ -1,18 +1,14 @@
 import "server-only";
 
+import { Prisma } from "../generated/prisma/client";
+import { prisma } from "@/lib/prisma";
 import {
-  Prisma,
-} from "../generated/prisma/client";
-import {
-  prisma,
-} from "@/lib/prisma";
-import {
+  PROCESCERTIFICAAT_SORTERINGEN,
   type ProcescertificaatLijstcontract,
+  type ProcescertificaatSorteercriterium,
   type ProcescertificaatSortering,
 } from "@/lib/procescertificaat-lijstcontract";
-import {
-  type Sorteerrichting,
-} from "@/lib/server-paginering";
+import { OngeldigePagineringFout } from "@/lib/server-paginering";
 
 export type ProcescertificaatSelectieRij = {
   id: number;
@@ -21,19 +17,13 @@ export type ProcescertificaatSelectieRij = {
 
 type SelectieInvoer = {
   zoekterm: string;
-  contract:
-    ProcescertificaatLijstcontract;
-  sortering:
-    ProcescertificaatSortering;
-  richting: Sorteerrichting;
+  contract: ProcescertificaatLijstcontract;
+  sorteringen: ProcescertificaatSorteercriterium[];
   limiet: number;
   cursorId: number | null;
 };
 
-function tekstBevat(
-  expressie: Prisma.Sql,
-  waarde: string,
-) {
+function tekstBevat(expressie: Prisma.Sql, waarde: string) {
   return Prisma.sql`
     STRPOS(
       LOWER(
@@ -47,9 +37,7 @@ function tekstBevat(
   `;
 }
 
-function normaliseerOndernemingsnummerExpressie(
-  expressie: Prisma.Sql,
-) {
+function normaliseerOndernemingsnummerExpressie(expressie: Prisma.Sql) {
   const compact = Prisma.sql`
     REGEXP_REPLACE(
       UPPER(
@@ -90,19 +78,13 @@ function normaliseerOndernemingsnummerExpressie(
   `;
 }
 
-function ondernemingsnummerBevat(
-  expressie: Prisma.Sql,
-  waarde: string,
-) {
+function ondernemingsnummerBevat(expressie: Prisma.Sql, waarde: string) {
   const genormaliseerdeExpressie =
-    normaliseerOndernemingsnummerExpressie(
-      expressie,
-    );
+    normaliseerOndernemingsnummerExpressie(expressie);
 
-  const genormaliseerdeWaarde =
-    normaliseerOndernemingsnummerExpressie(
-      Prisma.sql`${waarde}`,
-    );
+  const genormaliseerdeWaarde = normaliseerOndernemingsnummerExpressie(
+    Prisma.sql`${waarde}`,
+  );
 
   return Prisma.sql`
     STRPOS(
@@ -112,18 +94,146 @@ function ondernemingsnummerBevat(
   `;
 }
 
-function maakTekstfilter(
-  expressie: Prisma.Sql,
-  waarde: string,
-) {
-  return waarde
-    ? Prisma.sql`
-        AND ${tekstBevat(
-          expressie,
-          waarde,
-        )}
-      `
-    : Prisma.empty;
+const EXCEL_FILTER_PREFIX = "__excel__";
+
+type ExcelWaardeFilter = {
+  modus: "insluiten" | "uitsluiten";
+  waarden: string[];
+  legeCellenGeselecteerd: boolean;
+};
+
+function leesExcelWaardeFilter(waarde: string): ExcelWaardeFilter | null {
+  if (!waarde.startsWith(EXCEL_FILTER_PREFIX)) {
+    return null;
+  }
+
+  try {
+    const inhoud = JSON.parse(
+      decodeURIComponent(waarde.slice(EXCEL_FILTER_PREFIX.length)),
+    ) as unknown;
+
+    if (typeof inhoud !== "object" || inhoud === null) {
+      throw new Error("Ongeldige filterinhoud.");
+    }
+
+    const kandidaat = inhoud as Record<string, unknown>;
+
+    if (
+      (kandidaat.modus !== "insluiten" && kandidaat.modus !== "uitsluiten") ||
+      !Array.isArray(kandidaat.waarden) ||
+      typeof kandidaat.legeCellenGeselecteerd !== "boolean"
+    ) {
+      throw new Error("Ongeldige filtervelden.");
+    }
+
+    if (kandidaat.waarden.length > 250) {
+      throw new Error("Te veel filterwaarden.");
+    }
+
+    const waarden = kandidaat.waarden.map((item) => {
+      if (typeof item !== "string" || item.length > 500) {
+        throw new Error("Ongeldige filterwaarde.");
+      }
+
+      return item.trim();
+    });
+
+    return {
+      modus: kandidaat.modus,
+      waarden: Array.from(new Set(waarden.filter((item) => item !== ""))),
+      legeCellenGeselecteerd: kandidaat.legeCellenGeselecteerd,
+    };
+  } catch {
+    throw new OngeldigePagineringFout(
+      "De gekozen Excel-filterwaarden zijn ongeldig.",
+    );
+  }
+}
+
+function maakTekstfilter(expressie: Prisma.Sql, waarde: string) {
+  if (!waarde) {
+    return Prisma.empty;
+  }
+
+  const excelFilter = leesExcelWaardeFilter(waarde);
+
+  if (!excelFilter) {
+    return Prisma.sql`
+      AND ${tekstBevat(expressie, waarde)}
+    `;
+  }
+
+  const genormaliseerdeExpressie = Prisma.sql`
+      COALESCE(
+        NULLIF(
+          BTRIM(
+            (${expressie})::text
+          ),
+          ''
+        ),
+        ''
+      )
+    `;
+
+  if (excelFilter.modus === "insluiten") {
+    const voorwaarden: Prisma.Sql[] = [];
+
+    if (excelFilter.waarden.length > 0) {
+      voorwaarden.push(
+        Prisma.sql`
+          ${genormaliseerdeExpressie}
+          IN (${Prisma.join(excelFilter.waarden)})
+        `,
+      );
+    }
+
+    if (excelFilter.legeCellenGeselecteerd) {
+      voorwaarden.push(
+        Prisma.sql`
+          ${genormaliseerdeExpressie} = ''
+        `,
+      );
+    }
+
+    if (voorwaarden.length === 0) {
+      return Prisma.sql`AND FALSE`;
+    }
+
+    return Prisma.sql`
+      AND (
+        ${Prisma.join(voorwaarden, " OR ")}
+      )
+    `;
+  }
+
+  const voorwaarden: Prisma.Sql[] = [];
+
+  if (excelFilter.waarden.length > 0) {
+    voorwaarden.push(
+      Prisma.sql`
+        ${genormaliseerdeExpressie}
+        NOT IN (${Prisma.join(excelFilter.waarden)})
+      `,
+    );
+  }
+
+  if (!excelFilter.legeCellenGeselecteerd) {
+    voorwaarden.push(
+      Prisma.sql`
+        ${genormaliseerdeExpressie} <> ''
+      `,
+    );
+  }
+
+  if (voorwaarden.length === 0) {
+    return Prisma.empty;
+  }
+
+  return Prisma.sql`
+    AND (
+      ${Prisma.join(voorwaarden, " AND ")}
+    )
+  `;
 }
 
 function ondernemingstypeExpressie() {
@@ -138,10 +248,7 @@ function ondernemingstypeExpressie() {
   `;
 }
 
-function sorteerExpressie(
-  sortering:
-    ProcescertificaatSortering,
-) {
+function sorteerExpressie(sortering: ProcescertificaatSortering) {
   switch (sortering) {
     case "bedrijf":
       return Prisma.sql`
@@ -204,59 +311,63 @@ function sorteerExpressie(
 }
 
 function valideerInvoer({
+  sorteringen,
   limiet,
   cursorId,
-}: Pick<
-  SelectieInvoer,
-  "limiet" | "cursorId"
->) {
-  if (
-    !Number.isInteger(limiet) ||
-    limiet < 1 ||
-    limiet > 50
-  ) {
+}: Pick<SelectieInvoer, "sorteringen" | "limiet" | "cursorId">) {
+  if (!Number.isInteger(limiet) || limiet < 1 || limiet > 50) {
     throw new Error(
       "De interne paginalimiet voor procescertificaten is ongeldig.",
     );
   }
 
   if (
-    cursorId !== null &&
-    (
-      !Number.isInteger(cursorId) ||
-      cursorId < 1
-    )
+    sorteringen.length < 1 ||
+    sorteringen.length > PROCESCERTIFICAAT_SORTERINGEN.length
   ) {
     throw new Error(
-      "De interne cursor voor procescertificaten is ongeldig.",
+      "De interne sortering voor procescertificaten is ongeldig.",
     );
+  }
+
+  const gezien = new Set<ProcescertificaatSortering>();
+
+  for (const sortering of sorteringen) {
+    if (
+      !PROCESCERTIFICAAT_SORTERINGEN.includes(sortering.sleutel) ||
+      (sortering.richting !== "asc" && sortering.richting !== "desc") ||
+      gezien.has(sortering.sleutel)
+    ) {
+      throw new Error(
+        "De interne sortering voor procescertificaten is ongeldig.",
+      );
+    }
+
+    gezien.add(sortering.sleutel);
+  }
+
+  if (cursorId !== null && (!Number.isInteger(cursorId) || cursorId < 1)) {
+    throw new Error("De interne cursor voor procescertificaten is ongeldig.");
   }
 }
 
 export function laadProcescertificaatSelectie({
   zoekterm,
   contract,
-  sortering,
-  richting,
+  sorteringen,
   limiet,
   cursorId,
 }: SelectieInvoer) {
   valideerInvoer({
+    sorteringen,
     limiet,
     cursorId,
   });
 
-  const sorteerWaarde =
-    sorteerExpressie(
-      sortering,
-    );
+  const typeExpressie = ondernemingstypeExpressie();
 
-  const typeExpressie =
-    ondernemingstypeExpressie();
-
-  const algemeneZoekfilter =
-    zoekterm
-      ? Prisma.sql`
+  const algemeneZoekfilter = zoekterm
+    ? Prisma.sql`
           AND (
             ${tekstBevat(
               Prisma.sql`
@@ -303,31 +414,24 @@ export function laadProcescertificaatSelectie({
               zoekterm,
             )}
             OR
-            ${tekstBevat(
-              typeExpressie,
-              zoekterm,
-            )}
+            ${tekstBevat(typeExpressie, zoekterm)}
           )
         `
-      : Prisma.empty;
+    : Prisma.empty;
 
-  const {
-    tekstfilters,
-    uitgereiktJaar,
-    uitgereiktMaand,
-  } = contract;
+  const { tekstfilters, uitgereiktJaar, uitgereiktMaand } = contract;
 
-  const kboFilter =
-    tekstfilters.kboNummer
-      ? Prisma.sql`
-          AND ${ondernemingsnummerBevat(
-            Prisma.sql`
-              p."kbo_nummer"
-            `,
-            tekstfilters.kboNummer,
-          )}
-        `
-      : Prisma.empty;
+  const kboExpressie = Prisma.sql`
+      p."kbo_nummer"
+    `;
+
+  const kboFilter = !tekstfilters.kboNummer
+    ? Prisma.empty
+    : leesExcelWaardeFilter(tekstfilters.kboNummer)
+      ? maakTekstfilter(kboExpressie, tekstfilters.kboNummer)
+      : Prisma.sql`
+            AND ${ondernemingsnummerBevat(kboExpressie, tekstfilters.kboNummer)}
+          `;
 
   const jaarFilter =
     uitgereiktJaar === null
@@ -335,7 +439,7 @@ export function laadProcescertificaatSelectie({
       : Prisma.sql`
           AND EXTRACT(
             YEAR FROM
-            p."uitgereikt_op"
+              p."uitgereikt_op"
           ) = ${uitgereiktJaar}
         `;
 
@@ -345,93 +449,57 @@ export function laadProcescertificaatSelectie({
       : Prisma.sql`
           AND EXTRACT(
             MONTH FROM
-            p."uitgereikt_op"
+              p."uitgereikt_op"
           ) = ${uitgereiktMaand}
         `;
 
-  const richtingSql =
-    richting === "asc"
-      ? Prisma.sql`ASC`
-      : Prisma.sql`DESC`;
+  const sorteerDelen = sorteringen.map((sortering) => {
+    const expressie = sorteerExpressie(sortering.sleutel);
 
-  const idVergelijking =
-    richting === "asc"
-      ? Prisma.sql`
-          g.id > ca.id
-        `
-      : Prisma.sql`
-          g.id < ca.id
+    const richting =
+      sortering.richting === "asc" ? Prisma.sql`ASC` : Prisma.sql`DESC`;
+
+    return Prisma.sql`
+          CASE
+            WHEN
+              ${expressie} IS NULL
+              OR BTRIM(
+                (${expressie})::text
+              ) = ''
+            THEN 1
+            ELSE 0
+          END ASC,
+          ${expressie} ${richting}
         `;
+  });
 
-  const waardeVergelijking =
-    richting === "asc"
-      ? Prisma.sql`
-          g."sorteerWaarde" >
-          ca."sorteerWaarde"
-        `
-      : Prisma.sql`
-          g."sorteerWaarde" <
-          ca."sorteerWaarde"
-        `;
+  const sorteerVolgorde = Prisma.join(sorteerDelen, ", ");
 
-  const cursorJoin =
+  const cursorVoorwaarde =
     cursorId === null
       ? Prisma.empty
       : Prisma.sql`
-          CROSS JOIN
-            cursoranker ca
-        `;
-
-  const cursorFilter =
-    cursorId === null
-      ? Prisma.empty
-      : Prisma.sql`
-          WHERE (
-            g."isLeeg" >
-              ca."isLeeg"
-            OR (
-              g."isLeeg" =
-                ca."isLeeg"
-              AND (
-                (
-                  g."isLeeg" = 1
-                  AND ${idVergelijking}
-                )
-                OR (
-                  g."isLeeg" = 0
-                  AND (
-                    ${waardeVergelijking}
-                    OR (
-                      g."sorteerWaarde"
-                        IS NOT DISTINCT FROM
-                      ca."sorteerWaarde"
-                      AND ${idVergelijking}
-                    )
-                  )
-                )
-              )
-            )
+          WHERE g."positie" > (
+            SELECT
+              anker."positie"
+            FROM
+              gerangschikt anker
+            WHERE
+              anker.id = ${cursorId}
           )
         `;
 
   const query = Prisma.sql`
-    WITH gefilterd AS (
+    WITH gerangschikt AS (
       SELECT
         p.id AS id,
-        ${sorteerWaarde}
-          AS "sorteerWaarde",
-        CASE
-          WHEN
-            ${sorteerWaarde}
-              IS NULL
-            OR BTRIM(
-              (${sorteerWaarde})::text
-            ) = ''
-          THEN 1
-          ELSE 0
-        END AS "isLeeg",
         COUNT(*) OVER()::integer
-          AS "aantalTotaal"
+          AS "aantalTotaal",
+        ROW_NUMBER() OVER (
+          ORDER BY
+            ${sorteerVolgorde},
+            p.id ASC
+        ) AS "positie"
       FROM
         "procescertificaten" p
       WHERE
@@ -462,39 +530,84 @@ export function laadProcescertificaatSelectie({
           `,
           tekstfilters.opmerking,
         )}
-        ${maakTekstfilter(
-          typeExpressie,
-          tekstfilters.ondernemingstype,
-        )}
+        ${maakTekstfilter(typeExpressie, tekstfilters.ondernemingstype)}
         ${jaarFilter}
         ${maandFilter}
-    ),
-    cursoranker AS (
-      SELECT
-        g.id,
-        g."sorteerWaarde",
-        g."isLeeg"
-      FROM
-        gefilterd g
-      WHERE
-        g.id = ${cursorId ?? -1}
     )
     SELECT
       g.id AS id,
       g."aantalTotaal"
     FROM
-      gefilterd g
-    ${cursorJoin}
-    ${cursorFilter}
+      gerangschikt g
+    ${cursorVoorwaarde}
     ORDER BY
-      g."isLeeg" ASC,
-      g."sorteerWaarde"
-        ${richtingSql},
-      g.id ${richtingSql}
+      g."positie" ASC
     LIMIT ${limiet + 1}
   `;
 
-  return prisma.$queryRaw<
-    ProcescertificaatSelectieRij[]
-  >(query);
+  return prisma.$queryRaw<ProcescertificaatSelectieRij[]>(query);
+}
+
+export type ProcescertificaatFilterwaarde = {
+  waarde: string;
+  aantal: number;
+};
+
+type FilterwaardenInvoer = {
+  kolom: "bedrijf" | "kboNummer" | "certificaatnummer" | "ondernemingstype";
+  zoekterm: string;
+};
+
+export async function laadProcescertificaatFilterwaarden({
+  kolom,
+  zoekterm,
+}: FilterwaardenInvoer) {
+  const expressie =
+    kolom === "bedrijf"
+      ? Prisma.sql`
+          p."naam_bedrijf"
+        `
+      : kolom === "kboNummer"
+        ? Prisma.sql`
+            p."kbo_nummer"
+          `
+        : kolom === "certificaatnummer"
+          ? Prisma.sql`
+              p."certificaatnummer"
+            `
+          : ondernemingstypeExpressie();
+
+  const zoekfilter = zoekterm
+    ? Prisma.sql`
+          AND ${tekstBevat(expressie, zoekterm)}
+        `
+    : Prisma.empty;
+
+  return prisma.$queryRaw<ProcescertificaatFilterwaarde[]>(Prisma.sql`
+    SELECT
+      BTRIM(
+        (${expressie})::text
+      ) AS waarde,
+      COUNT(*)::integer AS aantal
+    FROM
+      "procescertificaten" p
+    WHERE
+      p."verwijderd_op" IS NULL
+      AND NULLIF(
+        BTRIM(
+          (${expressie})::text
+        ),
+        ''
+      ) IS NOT NULL
+      ${zoekfilter}
+    GROUP BY
+      BTRIM(
+        (${expressie})::text
+      )
+    ORDER BY
+      BTRIM(
+        (${expressie})::text
+      ) ASC
+    LIMIT 251
+  `);
 }
