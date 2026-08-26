@@ -1,21 +1,14 @@
 import "server-only";
 
-import {
-  Prisma,
-} from "../generated/prisma/client";
-import {
-  prisma,
-} from "@/lib/prisma";
+import { Prisma } from "../generated/prisma/client";
+import { prisma } from "@/lib/prisma";
+import { OngeldigePagineringFout } from "@/lib/server-paginering";
 import {
   type PersoonscertificaatLijstcontract,
   type PersoonscertificaatSortering,
 } from "@/lib/persoonscertificaat-lijstcontract";
-import {
-  type Sorteerrichting,
-} from "@/lib/server-paginering";
-import {
-  type TargetStatus,
-} from "@/lib/persoonscertificaat-targetselectie";
+import { type Sorteerrichting } from "@/lib/server-paginering";
+import { type TargetStatus } from "@/lib/persoonscertificaat-targetselectie";
 
 export type PersoonscertificaatSelectieRij = {
   id: number;
@@ -25,19 +18,14 @@ export type PersoonscertificaatSelectieRij = {
 
 type SelectieInvoer = {
   zoekterm: string;
-  contract:
-    PersoonscertificaatLijstcontract;
-  sortering:
-    PersoonscertificaatSortering;
+  contract: PersoonscertificaatLijstcontract;
+  sortering: PersoonscertificaatSortering;
   richting: Sorteerrichting;
   limiet: number;
   cursorId: number | null;
 };
 
-function tekstBevat(
-  expressie: Prisma.Sql,
-  waarde: string,
-) {
+function tekstBevat(expressie: Prisma.Sql, waarde: string) {
   return Prisma.sql`
     STRPOS(
       LOWER(
@@ -51,24 +39,151 @@ function tekstBevat(
   `;
 }
 
-function maakTekstfilter(
-  expressie: Prisma.Sql,
-  waarde: string,
-) {
-  return waarde
-    ? Prisma.sql`
-        AND ${tekstBevat(
-          expressie,
-          waarde,
-        )}
-      `
-    : Prisma.empty;
+const EXCEL_FILTER_PREFIX = "__excel__";
+
+type ExcelWaardeFilter = {
+  modus: "insluiten" | "uitsluiten";
+  waarden: string[];
+  legeCellenGeselecteerd: boolean;
+};
+
+function leesExcelWaardeFilter(waarde: string): ExcelWaardeFilter | null {
+  if (!waarde.startsWith(EXCEL_FILTER_PREFIX)) {
+    return null;
+  }
+
+  try {
+    const inhoud = JSON.parse(
+      decodeURIComponent(waarde.slice(EXCEL_FILTER_PREFIX.length)),
+    ) as unknown;
+
+    if (typeof inhoud !== "object" || inhoud === null) {
+      throw new Error("Ongeldige Excel-filterinhoud.");
+    }
+
+    const kandidaat = inhoud as Record<string, unknown>;
+
+    if (
+      (kandidaat.modus !== "insluiten" && kandidaat.modus !== "uitsluiten") ||
+      !Array.isArray(kandidaat.waarden) ||
+      typeof kandidaat.legeCellenGeselecteerd !== "boolean"
+    ) {
+      throw new Error("Ongeldige Excel-filtervelden.");
+    }
+
+    if (kandidaat.waarden.length > 2000) {
+      throw new Error("Te veel Excel-filterwaarden.");
+    }
+
+    const waarden = kandidaat.waarden.map((item) => {
+      if (typeof item !== "string" || item.length > 500) {
+        throw new Error("Ongeldige Excel-filterwaarde.");
+      }
+
+      return item.trim();
+    });
+
+    return {
+      modus: kandidaat.modus,
+      waarden: Array.from(new Set(waarden.filter((item) => item !== ""))),
+      legeCellenGeselecteerd: kandidaat.legeCellenGeselecteerd,
+    };
+  } catch {
+    throw new OngeldigePagineringFout(
+      "De gekozen Excel-filterwaarden zijn ongeldig.",
+    );
+  }
 }
 
-function sorteerExpressie(
-  sortering:
-    PersoonscertificaatSortering,
-) {
+function maakTekstfilter(expressie: Prisma.Sql, waarde: string) {
+  if (!waarde) {
+    return Prisma.empty;
+  }
+
+  const excelFilter = leesExcelWaardeFilter(waarde);
+
+  if (!excelFilter) {
+    return Prisma.sql`
+      AND ${tekstBevat(expressie, waarde)}
+    `;
+  }
+
+  const genormaliseerdeExpressie = Prisma.sql`
+    COALESCE(
+      NULLIF(
+        BTRIM(
+          (${expressie})::text
+        ),
+        ''
+      ),
+      ''
+    )
+  `;
+
+  if (excelFilter.modus === "insluiten") {
+    const voorwaarden: Prisma.Sql[] = [];
+
+    if (excelFilter.waarden.length > 0) {
+      voorwaarden.push(
+        Prisma.sql`
+          ${genormaliseerdeExpressie}
+          IN (${Prisma.join(excelFilter.waarden)})
+        `,
+      );
+    }
+
+    if (excelFilter.legeCellenGeselecteerd) {
+      voorwaarden.push(
+        Prisma.sql`
+          ${genormaliseerdeExpressie} = ''
+        `,
+      );
+    }
+
+    if (voorwaarden.length === 0) {
+      return Prisma.sql`
+        AND FALSE
+      `;
+    }
+
+    return Prisma.sql`
+      AND (
+        ${Prisma.join(voorwaarden, " OR ")}
+      )
+    `;
+  }
+
+  const voorwaarden: Prisma.Sql[] = [];
+
+  if (excelFilter.waarden.length > 0) {
+    voorwaarden.push(
+      Prisma.sql`
+        ${genormaliseerdeExpressie}
+        NOT IN (${Prisma.join(excelFilter.waarden)})
+      `,
+    );
+  }
+
+  if (!excelFilter.legeCellenGeselecteerd) {
+    voorwaarden.push(
+      Prisma.sql`
+        ${genormaliseerdeExpressie} <> ''
+      `,
+    );
+  }
+
+  if (voorwaarden.length === 0) {
+    return Prisma.empty;
+  }
+
+  return Prisma.sql`
+    AND (
+      ${Prisma.join(voorwaarden, " AND ")}
+    )
+  `;
+}
+
+function sorteerExpressie(sortering: PersoonscertificaatSortering) {
   switch (sortering) {
     case "naamPersoon":
       return Prisma.sql`
@@ -161,76 +276,35 @@ function valideerInvoer({
   limiet,
   cursorId,
 }: SelectieInvoer) {
-  if (
-    typeof zoekterm !== "string" ||
-    zoekterm.length > 100
-  ) {
-    throw new Error(
-      "Ongeldige zoekterm in serverselectie.",
-    );
+  if (typeof zoekterm !== "string" || zoekterm.length > 100) {
+    throw new Error("Ongeldige zoekterm in serverselectie.");
   }
 
-  if (
-    richting !== "asc" &&
-    richting !== "desc"
-  ) {
-    throw new Error(
-      "Ongeldige sorteerrichting in serverselectie.",
-    );
+  if (richting !== "asc" && richting !== "desc") {
+    throw new Error("Ongeldige sorteerrichting in serverselectie.");
   }
 
-  if (
-    !Number.isInteger(limiet) ||
-    limiet < 1 ||
-    limiet > 50
-  ) {
-    throw new Error(
-      "Ongeldige limiet in serverselectie.",
-    );
+  if (!Number.isInteger(limiet) || limiet < 1 || limiet > 50) {
+    throw new Error("Ongeldige limiet in serverselectie.");
   }
 
-  if (
-    cursorId !== null &&
-    (
-      !Number.isInteger(cursorId) ||
-      cursorId <= 0
-    )
-  ) {
-    throw new Error(
-      "Ongeldige cursor-ID in serverselectie.",
-    );
+  if (cursorId !== null && (!Number.isInteger(cursorId) || cursorId <= 0)) {
+    throw new Error("Ongeldige cursor-ID in serverselectie.");
   }
 }
 
-export async function laadPersoonscertificaatSelectie(
-  invoer: SelectieInvoer,
-) {
+export async function laadPersoonscertificaatSelectie(invoer: SelectieInvoer) {
   valideerInvoer(invoer);
 
-  const {
-    zoekterm,
-    contract,
-    sortering,
-    richting,
-    limiet,
-    cursorId,
-  } = invoer;
+  const { zoekterm, contract, sortering, richting, limiet, cursorId } = invoer;
 
-  const {
-    tekstfilters,
-    targetStatus,
-    uitgereiktJaar,
-    uitgereiktMaand,
-  } = contract;
+  const { tekstfilters, targetStatus, uitgereiktJaar, uitgereiktMaand } =
+    contract;
 
-  const sorteerwaarde =
-    sorteerExpressie(
-      sortering,
-    );
+  const sorteerwaarde = sorteerExpressie(sortering);
 
-  const algemeenZoekfilter =
-    zoekterm
-      ? Prisma.sql`
+  const algemeenZoekfilter = zoekterm
+    ? Prisma.sql`
           AND (
             ${tekstBevat(
               Prisma.sql`
@@ -297,7 +371,7 @@ export async function laadPersoonscertificaatSelectie(
             )}
           )
         `
-      : Prisma.empty;
+    : Prisma.empty;
 
   const jaarFilter =
     uitgereiktJaar === null
@@ -327,10 +401,7 @@ export async function laadPersoonscertificaatSelectie(
             ${targetStatus}
         `;
 
-  const richtingSql =
-    richting === "asc"
-      ? Prisma.sql`ASC`
-      : Prisma.sql`DESC`;
+  const richtingSql = richting === "asc" ? Prisma.sql`ASC` : Prisma.sql`DESC`;
 
   const waardeVergelijking =
     richting === "asc"
@@ -476,6 +547,15 @@ export async function laadPersoonscertificaatSelectie(
       )}
       ${maakTekstfilter(
         Prisma.sql`
+          TO_CHAR(
+            l."uitgereikt_op",
+            'YYYY-MM-DD'
+          )
+        `,
+        tekstfilters.uitgereiktOp,
+      )}
+      ${maakTekstfilter(
+        Prisma.sql`
           l."bedrijf"
         `,
         tekstfilters.bedrijf,
@@ -572,7 +652,82 @@ export async function laadPersoonscertificaatSelectie(
     LIMIT ${limiet + 1}
   `;
 
-  return prisma.$queryRaw<
-    PersoonscertificaatSelectieRij[]
-  >(query);
+  return prisma.$queryRaw<PersoonscertificaatSelectieRij[]>(query);
+}
+
+export type PersoonscertificaatFilterwaarde = {
+  waarde: string;
+  aantal: number;
+};
+
+export async function laadPersoonscertificaatFilterwaarden({
+  kolom,
+  zoekterm,
+}: {
+  kolom: PersoonscertificaatSortering;
+  zoekterm: string;
+}) {
+  const expressie = sorteerExpressie(kolom);
+
+  const zoekvoorwaarde = zoekterm
+    ? Prisma.sql`
+        AND ${tekstBevat(expressie, zoekterm)}
+      `
+    : Prisma.empty;
+
+  const limiet = kolom === "uitgereiktOp" ? 2000 : 300;
+
+  return prisma.$queryRaw<PersoonscertificaatFilterwaarde[]>(Prisma.sql`
+    SELECT
+      COALESCE(
+        NULLIF(
+          BTRIM(
+            (${expressie})::text
+          ),
+          ''
+        ),
+        ''
+      ) AS "waarde",
+      COUNT(*)::integer AS "aantal"
+    FROM "leden" l
+    WHERE
+      l."verwijderd_op" IS NULL
+      ${zoekvoorwaarde}
+    GROUP BY
+      COALESCE(
+        NULLIF(
+          BTRIM(
+            (${expressie})::text
+          ),
+          ''
+        ),
+        ''
+      )
+    ORDER BY
+      CASE
+        WHEN COALESCE(
+          NULLIF(
+            BTRIM(
+              (${expressie})::text
+            ),
+            ''
+          ),
+          ''
+        ) = ''
+        THEN 0
+        ELSE 1
+      END,
+      LOWER(
+        COALESCE(
+          NULLIF(
+            BTRIM(
+              (${expressie})::text
+            ),
+            ''
+          ),
+          ''
+        )
+      ) ASC
+    LIMIT ${limiet}
+  `);
 }

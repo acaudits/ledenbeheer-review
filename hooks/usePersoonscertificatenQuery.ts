@@ -1,21 +1,11 @@
 "use client";
 
-import {
-  useInfiniteQuery,
-} from "@tanstack/react-query";
-import {
-  useEffect,
-  useMemo,
-  useState,
-} from "react";
+import { useInfiniteQuery } from "@tanstack/react-query";
+import { useEffect, useMemo, useState } from "react";
 
-import {
-  type CertificaatRij,
-} from "@/components/CertificatenTabel";
+import { type CertificaatRij } from "@/components/CertificatenTabel";
 
-type Sorteerrichting =
-  | "oplopend"
-  | "aflopend";
+type Sorteerrichting = "oplopend" | "aflopend";
 
 type Sortering = {
   sleutel: string;
@@ -30,10 +20,8 @@ type DatumFilter = {
 type PersoonscertificatenQueryInvoer = {
   ingeschakeld?: boolean;
   zoekterm: string;
-  kolomFilters:
-    Record<string, string>;
-  datumFilters:
-    Record<string, DatumFilter>;
+  kolomFilters: Record<string, string>;
+  datumFilters: Record<string, DatumFilter>;
   sortering: Sortering;
 };
 
@@ -48,75 +36,42 @@ export const PERSOONSCERTIFICATEN_QUERY_SLEUTEL = [
   "persoonscertificaten",
 ] as const;
 
-const FILTERPARAMETERS:
-  Record<string, string> = {
-    naamPersoon:
-      "filterNaamPersoon",
-    telefoonnummer:
-      "filterTelefoonnummer",
-    mailadres:
-      "filterMailadres",
-    ovamId:
-      "filterOvamId",
-    certificaatnummer:
-      "filterCertificaatnummer",
-    bedrijf:
-      "filterBedrijf",
-    aansluiting:
-      "filterAansluiting",
-    opmerking:
-      "filterOpmerking",
-    certificatiePlatform:
-      "filterCertificatiePlatform",
-  };
+const FILTERPARAMETERS: Record<string, string> = {
+  naamPersoon: "filterNaamPersoon",
+  telefoonnummer: "filterTelefoonnummer",
+  mailadres: "filterMailadres",
+  ovamId: "filterOvamId",
+  certificaatnummer: "filterCertificaatnummer",
+  uitgereiktOp: "filterUitgereiktOp",
+  bedrijf: "filterBedrijf",
+  aansluiting: "filterAansluiting",
+  opmerking: "filterOpmerking",
+  certificatiePlatform: "filterCertificatiePlatform",
+};
 
-function isPagina(
-  waarde: unknown,
-): waarde is PersoonscertificatenPagina {
-  if (
-    typeof waarde !== "object" ||
-    waarde === null
-  ) {
+function isPagina(waarde: unknown): waarde is PersoonscertificatenPagina {
+  if (typeof waarde !== "object" || waarde === null) {
     return false;
   }
 
-  const pagina =
-    waarde as Record<
-      string,
-      unknown
-    >;
+  const pagina = waarde as Record<string, unknown>;
 
   return (
     Array.isArray(pagina.rijen) &&
-    (
-      typeof pagina.volgendeCursor ===
-        "string" ||
-      pagina.volgendeCursor === null
-    ) &&
-    typeof pagina.heeftVolgendePagina ===
-      "boolean" &&
-    (
-      typeof pagina.aantalTotaal ===
-        "number" ||
-      pagina.aantalTotaal === null
-    )
+    (typeof pagina.volgendeCursor === "string" ||
+      pagina.volgendeCursor === null) &&
+    typeof pagina.heeftVolgendePagina === "boolean" &&
+    (typeof pagina.aantalTotaal === "number" || pagina.aantalTotaal === null)
   );
 }
 
-async function leesFoutmelding(
-  antwoord: Response,
-) {
+async function leesFoutmelding(antwoord: Response) {
   try {
-    const inhoud =
-      await antwoord.json() as {
-        fout?: unknown;
-      };
+    const inhoud = (await antwoord.json()) as {
+      fout?: unknown;
+    };
 
-    if (
-      typeof inhoud.fout ===
-        "string" &&
-      inhoud.fout.trim()
-    ) {
+    if (typeof inhoud.fout === "string" && inhoud.fout.trim()) {
       return inhoud.fout;
     }
   } catch {
@@ -133,293 +88,147 @@ export function usePersoonscertificatenQuery({
   datumFilters,
   sortering,
 }: PersoonscertificatenQueryInvoer) {
-  const [
-    uitgesteldeZoekterm,
-    setUitgesteldeZoekterm,
-  ] = useState(
-    zoekterm,
-  );
+  const [uitgesteldeZoekterm, setUitgesteldeZoekterm] = useState(zoekterm);
 
-  const [
-    uitgesteldeKolomFilters,
-    setUitgesteldeKolomFilters,
-  ] = useState(
-    kolomFilters,
-  );
+  const [uitgesteldeKolomFilters, setUitgesteldeKolomFilters] =
+    useState(kolomFilters);
 
-  const [
-    uitgesteldeDatumFilters,
-    setUitgesteldeDatumFilters,
-  ] = useState(
-    datumFilters,
-  );
+  const [uitgesteldeDatumFilters, setUitgesteldeDatumFilters] =
+    useState(datumFilters);
 
   useEffect(() => {
-    const timer =
-      window.setTimeout(() => {
-        setUitgesteldeZoekterm(
-          zoekterm,
-        );
-        setUitgesteldeKolomFilters(
-          kolomFilters,
-        );
-        setUitgesteldeDatumFilters(
-          datumFilters,
-        );
-      }, 300);
+    const timer = window.setTimeout(() => {
+      setUitgesteldeZoekterm(zoekterm);
+      setUitgesteldeKolomFilters(kolomFilters);
+      setUitgesteldeDatumFilters(datumFilters);
+    }, 300);
 
     return () => {
       window.clearTimeout(timer);
     };
-  }, [
-    zoekterm,
-    kolomFilters,
-    datumFilters,
-  ]);
+  }, [zoekterm, kolomFilters, datumFilters]);
 
-  const aanvraagSleutel =
-    useMemo(
-      () => ({
-        zoekterm:
-          uitgesteldeZoekterm
-            .trim(),
-        kolomFilters:
-          uitgesteldeKolomFilters,
-        datumFilters:
-          uitgesteldeDatumFilters,
-        sortering,
-      }),
-      [
-        uitgesteldeZoekterm,
-        uitgesteldeKolomFilters,
-        uitgesteldeDatumFilters,
-        sortering,
-      ],
-    );
+  const aanvraagSleutel = useMemo(
+    () => ({
+      zoekterm: uitgesteldeZoekterm.trim(),
+      kolomFilters: uitgesteldeKolomFilters,
+      datumFilters: uitgesteldeDatumFilters,
+      sortering,
+    }),
+    [
+      uitgesteldeZoekterm,
+      uitgesteldeKolomFilters,
+      uitgesteldeDatumFilters,
+      sortering,
+    ],
+  );
 
-  const query =
-    useInfiniteQuery({
-      enabled:
-        ingeschakeld,
-      queryKey: [
-        ...PERSOONSCERTIFICATEN_QUERY_SLEUTEL,
-        aanvraagSleutel,
-      ],
-      initialPageParam:
-        null as string | null,
-      queryFn: async ({
-        pageParam,
-        signal,
-      }) => {
-        const parameters =
-          new URLSearchParams();
+  const query = useInfiniteQuery({
+    enabled: ingeschakeld,
+    queryKey: [...PERSOONSCERTIFICATEN_QUERY_SLEUTEL, aanvraagSleutel],
+    initialPageParam: null as string | null,
+    queryFn: async ({ pageParam, signal }) => {
+      const parameters = new URLSearchParams();
 
-        parameters.set(
-          "limiet",
-          "50",
-        );
+      parameters.set("limiet", "50");
 
-        if (
-          aanvraagSleutel
-            .zoekterm
-        ) {
-          parameters.set(
-            "q",
-            aanvraagSleutel
-              .zoekterm,
-          );
-        }
+      if (aanvraagSleutel.zoekterm) {
+        parameters.set("q", aanvraagSleutel.zoekterm);
+      }
 
-        const targetStatus =
-          aanvraagSleutel
-            .kolomFilters
-            .controleTargetStatus
-            ?.trim();
+      const targetStatus =
+        aanvraagSleutel.kolomFilters.controleTargetStatus?.trim();
 
-        if (targetStatus) {
-          parameters.set(
-            "targetStatus",
-            targetStatus,
-          );
-        }
+      if (targetStatus) {
+        parameters.set("targetStatus", targetStatus);
+      }
 
-        for (
-          const [
-            sleutel,
-            parameter,
-          ] of Object.entries(
-            FILTERPARAMETERS,
-          )
-        ) {
-          const waarde =
-            aanvraagSleutel
-              .kolomFilters[
-                sleutel
-              ]?.trim();
+      for (const [sleutel, parameter] of Object.entries(FILTERPARAMETERS)) {
+        const waarde = aanvraagSleutel.kolomFilters[sleutel]?.trim();
 
-          if (waarde) {
-            parameters.set(
-              parameter,
-              waarde,
-            );
-          }
-        }
-
-        const datumFilter =
-          aanvraagSleutel
-            .datumFilters
-            .uitgereiktOp;
-
-        if (
-          datumFilter?.jaar
-        ) {
-          parameters.set(
-            "uitgereiktJaar",
-            datumFilter.jaar,
-          );
-        }
-
-        if (
-          datumFilter?.maand
-        ) {
-          parameters.set(
-            "uitgereiktMaand",
-            datumFilter.maand,
-          );
-        }
-
-        if (sortering) {
-          parameters.set(
-            "sortering",
-            sortering.sleutel,
-          );
-          parameters.set(
-            "richting",
-            sortering.richting ===
-              "oplopend"
-              ? "asc"
-              : "desc",
-          );
-        }
-
-        if (pageParam) {
-          parameters.set(
-            "cursor",
-            pageParam,
-          );
-        }
-
-        const antwoord =
-          await fetch(
-            `/api/persoonscertificaten/lijst?${parameters.toString()}`,
-            {
-              method: "GET",
-              credentials:
-                "include",
-              cache: "no-store",
-              signal,
-              headers: {
-                Accept:
-                  "application/json",
-              },
-            },
-          );
-
-        if (!antwoord.ok) {
-          throw new Error(
-            await leesFoutmelding(
-              antwoord,
-            ),
-          );
-        }
-
-        const inhoud:
-          unknown =
-            await antwoord.json();
-
-        if (!isPagina(inhoud)) {
-          throw new Error(
-            "De server gaf een ongeldig antwoord.",
-          );
-        }
-
-        return inhoud;
-      },
-      getNextPageParam: (
-        laatstePagina,
-      ) =>
-        laatstePagina
-          .heeftVolgendePagina
-          ? (
-              laatstePagina
-                .volgendeCursor ??
-              undefined
-            )
-          : undefined,
-    });
-
-  const rijen =
-    useMemo(() => {
-      const perId =
-        new Map<
-          number,
-          CertificaatRij
-        >();
-
-      for (
-        const pagina of
-        query.data?.pages ?? []
-      ) {
-        for (
-          const rij of
-          pagina.rijen
-        ) {
-          perId.set(
-            rij.id,
-            rij,
-          );
+        if (waarde) {
+          parameters.set(parameter, waarde);
         }
       }
 
-      return Array.from(
-        perId.values(),
+      const datumFilter = aanvraagSleutel.datumFilters.uitgereiktOp;
+
+      if (datumFilter?.jaar) {
+        parameters.set("uitgereiktJaar", datumFilter.jaar);
+      }
+
+      if (datumFilter?.maand) {
+        parameters.set("uitgereiktMaand", datumFilter.maand);
+      }
+
+      if (sortering) {
+        parameters.set("sortering", sortering.sleutel);
+        parameters.set(
+          "richting",
+          sortering.richting === "oplopend" ? "asc" : "desc",
+        );
+      }
+
+      if (pageParam) {
+        parameters.set("cursor", pageParam);
+      }
+
+      const antwoord = await fetch(
+        `/api/persoonscertificaten/lijst?${parameters.toString()}`,
+        {
+          method: "GET",
+          credentials: "include",
+          cache: "no-store",
+          signal,
+          headers: {
+            Accept: "application/json",
+          },
+        },
       );
-    }, [query.data]);
+
+      if (!antwoord.ok) {
+        throw new Error(await leesFoutmelding(antwoord));
+      }
+
+      const inhoud: unknown = await antwoord.json();
+
+      if (!isPagina(inhoud)) {
+        throw new Error("De server gaf een ongeldig antwoord.");
+      }
+
+      return inhoud;
+    },
+    getNextPageParam: (laatstePagina) =>
+      laatstePagina.heeftVolgendePagina
+        ? (laatstePagina.volgendeCursor ?? undefined)
+        : undefined,
+  });
+
+  const rijen = useMemo(() => {
+    const perId = new Map<number, CertificaatRij>();
+
+    for (const pagina of query.data?.pages ?? []) {
+      for (const rij of pagina.rijen) {
+        perId.set(rij.id, rij);
+      }
+    }
+
+    return Array.from(perId.values());
+  }, [query.data]);
 
   const aantalTotaal =
     query.data?.pages
-      .map(
-        (pagina) =>
-          pagina.aantalTotaal,
-      )
-      .find(
-        (aantal):
-          aantal is number =>
-            typeof aantal ===
-            "number",
-      ) ?? null;
+      .map((pagina) => pagina.aantalTotaal)
+      .find((aantal): aantal is number => typeof aantal === "number") ?? null;
 
   return {
     rijen,
     aantalTotaal,
-    fout:
-      query.error instanceof Error
-        ? query.error.message
-        : null,
-    isEersteKeerLaden:
-      ingeschakeld &&
-      query.isPending,
-    isVolgendePaginaLaden:
-      ingeschakeld &&
-      query.isFetchingNextPage,
-    heeftVolgendePagina:
-      ingeschakeld &&
-      Boolean(
-        query.hasNextPage,
-      ),
-    laadVolgendePagina:
-      query.fetchNextPage,
-    opnieuwLaden:
-      query.refetch,
+    fout: query.error instanceof Error ? query.error.message : null,
+    isEersteKeerLaden: ingeschakeld && query.isPending,
+    isVolgendePaginaLaden: ingeschakeld && query.isFetchingNextPage,
+    heeftVolgendePagina: ingeschakeld && Boolean(query.hasNextPage),
+    laadVolgendePagina: query.fetchNextPage,
+    opnieuwLaden: query.refetch,
   };
 }

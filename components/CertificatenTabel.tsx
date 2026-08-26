@@ -4,6 +4,7 @@ import { BEHEER_TABEL_STIJLEN } from "@/components/BeheerTabelOnderdelen";
 import { VerwijderButton as BasisVerwijderButton } from "@/components/CertificaatStatusButton";
 import { CopyButton } from "@/components/CopyButton";
 import { OpmerkingDialog } from "@/components/OpmerkingDialog";
+import { PersoonscertificaatKaartKolombalk } from "@/components/PersoonscertificaatKaartKolombalk";
 import { usePersoonscertificatenQuery } from "@/hooks/usePersoonscertificatenQuery";
 import { useProcescertificatenQuery } from "@/hooks/useProcescertificatenQuery";
 import NextLink from "next/link";
@@ -365,6 +366,8 @@ export function CertificatenTabel({
   kaartWeergave = false,
 }: CertificatenTabelProps) {
   const router = useRouter();
+
+  const persoonsKaartModus = kaartWeergave && soort === "persoon";
 
   const [openKaartId, setOpenKaartId] = useState<number | null>(null);
 
@@ -795,7 +798,28 @@ export function CertificatenTabel({
         </div>
       </div>
 
-      {actieveFilterKolom && (
+      {persoonsKaartModus ? (
+        <PersoonscertificaatKaartKolombalk
+          kolommen={zichtbareKolommen}
+          filters={kolomFilters}
+          sorteringen={sortering ? [sortering] : []}
+          onFilterWijzigen={wijzigKolomFilter}
+          onSorteren={(sleutel, richting) => {
+            setSortering({
+              sleutel,
+              richting,
+            });
+          }}
+          onSorteringVerwijderen={() => {
+            setSortering(null);
+          }}
+          onSorteringVerplaatsen={() => {
+            // Meervoudige sorteerprioriteiten volgen in fase 2C.
+          }}
+        />
+      ) : null}
+
+      {actieveFilterKolom && !persoonsKaartModus && (
         <div className="border-b border-emerald-200 bg-emerald-50/70 px-4 py-3 sm:px-5">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
             <div className="min-w-0 flex-1">
@@ -917,7 +941,7 @@ export function CertificatenTabel({
         </div>
       )}
 
-      {aantalActieveKolomFilters > 0 && (
+      {aantalActieveKolomFilters > 0 && !persoonsKaartModus && (
         <div className="flex flex-wrap items-center gap-2 border-b border-slate-200 bg-slate-50 px-4 py-2.5 sm:px-5">
           <span className="text-xs font-bold uppercase tracking-wider text-slate-500">
             Actieve filters:
