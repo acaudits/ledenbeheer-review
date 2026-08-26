@@ -1,10 +1,8 @@
 import Link from "next/link";
-import type {
-  ReactNode,
-} from "react";
+import type { ReactNode } from "react";
 
 type HeaderProps = {
-  bovenTitel: string;
+  bovenTitel?: string;
   titel: string;
   omschrijving?: ReactNode;
   acties?: ReactNode;
@@ -13,11 +11,7 @@ type HeaderProps = {
 type ActieLinkProps = {
   href: string;
   kinderen: ReactNode;
-  variant?:
-    | "primair"
-    | "secundair"
-    | "neutraal"
-    | "gevaar";
+  variant?: "primair" | "secundair" | "neutraal" | "gevaar";
   plusIcoon?: boolean;
 };
 
@@ -52,18 +46,22 @@ export function BeheerOverzichtHeader({
     <header className="relative rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
       <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
         <div className="min-w-0">
-          <p className="text-xs font-bold uppercase tracking-[0.16em] text-emerald-700">
-            {bovenTitel}
-          </p>
+          {bovenTitel ? (
+            <p className="text-xs font-bold uppercase tracking-[0.16em] text-emerald-700">
+              {bovenTitel}
+            </p>
+          ) : null}
 
-          <h1 className="mt-1 text-2xl font-black tracking-tight text-slate-950 sm:text-3xl">
+          <h1
+            className={`text-2xl font-black tracking-tight text-slate-950 sm:text-3xl ${
+              bovenTitel ? "mt-1" : ""
+            }`}
+          >
             {titel}
           </h1>
 
           {omschrijving ? (
-            <div className="mt-1.5 text-sm text-slate-500">
-              {omschrijving}
-            </div>
+            <div className="mt-1.5 text-sm text-slate-500">{omschrijving}</div>
           ) : null}
         </div>
 
@@ -84,10 +82,7 @@ export function BeheerActieLink({
   plusIcoon = false,
 }: ActieLinkProps) {
   return (
-    <Link
-      href={href}
-      className={BEHEER_KNOP_KLASSEN[variant]}
-    >
+    <Link href={href} className={BEHEER_KNOP_KLASSEN[variant]}>
       {plusIcoon ? (
         <svg
           viewBox="0 0 24 24"

@@ -7,6 +7,7 @@ import AfwezigeTerreincontroleHerstelKnop from "@/components/AfwezigeTerreincont
 import { BEHEER_TABEL_STIJLEN } from "@/components/BeheerTabelOnderdelen";
 import { TerreincontroleDossierVerwijderKnop } from "@/components/TerreincontroleDossierVerwijderKnop";
 import { TerreincontroleKaartKolombalk } from "@/components/TerreincontroleKaartKolombalk";
+import { TerreincontrolePlanningKaart } from "@/components/TerreincontrolePlanningKaart";
 import TerreincontroleMeerMenu from "@/components/TerreincontroleMeerMenu";
 import { OpvolgingRijMeerMenu } from "@/components/OpvolgingRijMeerMenu";
 import {
@@ -382,7 +383,7 @@ export function TerreincontroleFilterTabel({
     filters,
     datumJaar,
     datumMaand,
-    sortering,
+    sorteringen: cardSorteringen,
   });
 
   const afwezigServerQuery = useAfwezigeTerreincontrolesQuery({
@@ -873,11 +874,20 @@ export function TerreincontroleFilterTabel({
           </div>
         </div>
 
-        {kaartWeergave ? (
+        {kaartWeergave &&
+        (modus === "terreincontrole" || modus === "planning") ? (
           <TerreincontroleKaartKolombalk
             kolommen={kolommen}
             filters={filters}
             sorteringen={cardSorteringen}
+            filterwaardenEndpoint={
+              modus === "planning"
+                ? "/api/terreincontroles-inplannen/lijst"
+                : "/api/terreincontroles/lijst"
+            }
+            datumSleutel={
+              modus === "planning" ? "datumPlaatsbezoek" : "datumControle"
+            }
             onFilterWijzigen={(sleutel, waarde) =>
               setFilters((huidig) => ({
                 ...huidig,
@@ -924,6 +934,20 @@ export function TerreincontroleFilterTabel({
         <div className="space-y-2 p-3">
           {zichtbareRijen.map((rij) => {
             const geopend = openKaartId === rij.id;
+
+            if (modus === "planning") {
+              return (
+                <TerreincontrolePlanningKaart
+                  key={rij.id}
+                  rij={rij}
+                  kolommen={kolommen}
+                  geopend={geopend}
+                  magBeheren={magBeheren}
+                  renderCel={renderCel}
+                  onWissel={wisselKaart}
+                />
+              );
+            }
 
             return (
               <article

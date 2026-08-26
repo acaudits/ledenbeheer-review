@@ -1,41 +1,27 @@
 import "server-only";
 
-import {
-  Prisma,
-} from "../generated/prisma/client";
+import { Prisma } from "../generated/prisma/client";
 
 import {
   type IngeplandeTerreincontroleLijstcontract,
+  type IngeplandeTerreincontroleSorteercriterium,
   type IngeplandeTerreincontroleSortering,
   type IngeplandeTerreincontroleTekstfilters,
 } from "@/lib/ingeplande-terreincontrole-lijstcontract";
-import {
-  prisma,
-} from "@/lib/prisma";
-import {
-  OngeldigePagineringFout,
-  type Sorteerrichting,
-} from "@/lib/server-paginering";
+import { prisma } from "@/lib/prisma";
+import { OngeldigePagineringFout } from "@/lib/server-paginering";
 
 export type IngeplandeTerreincontroleSelectieRij = {
   id: number;
   afgerond: boolean;
   auditeur: string | null;
-  factuurVerzonden:
-    boolean | null;
-  status:
-    | "GEARCHIVEERD_ATTEST"
-    | "ACTUEEL_ATTEST"
-    | "IN_OPMAAK"
-    | null;
+  factuurVerzonden: boolean | null;
+  status: "GEARCHIVEERD_ATTEST" | "ACTUEEL_ATTEST" | "IN_OPMAAK" | null;
   inspectielocatie: string | null;
   bouwjaar: number | null;
-  vloeroppervlakteM2:
-    string | null;
-  datumPlaatsbezoek:
-    string | null;
-  uurPlaatsbezoek:
-    string | null;
+  vloeroppervlakteM2: string | null;
+  datumPlaatsbezoek: string | null;
+  uurPlaatsbezoek: string | null;
   ovamId: string | null;
   naamAdi: string | null;
   attestUrl: string | null;
@@ -44,14 +30,10 @@ export type IngeplandeTerreincontroleSelectieRij = {
   gemeente: string | null;
   straat: string | null;
   huisnummer: string | null;
-  extraAdresDetails:
-    string | null;
-  perceelGemeenteCode:
-    string | null;
-  perceelAfdelingscode:
-    string | null;
-  perceelSectieCode:
-    string | null;
+  extraAdresDetails: string | null;
+  perceelGemeenteCode: string | null;
+  perceelAfdelingscode: string | null;
+  perceelSectieCode: string | null;
   attestId: string;
   opmerkingen: string | null;
   aantalTotaal: number;
@@ -62,32 +44,25 @@ export type IngeplandeTerreincontroleDashboardTellingen = {
   inOpmaak: number;
   gearchiveerd: number;
   actueelAttest: number;
-  nietVerzondenFacturen:
-    number;
+  nietVerzondenFacturen: number;
 };
 
 type SelectieInvoer = {
   zoekterm: string;
-  contract:
-    IngeplandeTerreincontroleLijstcontract;
-  sortering:
-    IngeplandeTerreincontroleSortering;
-  richting:
-    Sorteerrichting;
+  contract: IngeplandeTerreincontroleLijstcontract;
+  sorteringen: IngeplandeTerreincontroleSorteercriterium[];
   limiet: number;
   cursorId: number | null;
 };
 
-const statusExpressie =
-  Prisma.sql`
+const statusExpressie = Prisma.sql`
     COALESCE(
       t."status"::text,
       ''
     )
   `;
 
-const factuurExpressie =
-  Prisma.sql`
+const factuurExpressie = Prisma.sql`
     CASE
       WHEN
         t."factuur_verzonden"
@@ -101,8 +76,7 @@ const factuurExpressie =
     END
   `;
 
-const afgerondExpressie =
-  Prisma.sql`
+const afgerondExpressie = Prisma.sql`
     CASE
       WHEN t."afgerond" IS TRUE
       THEN 'Ja'
@@ -110,16 +84,14 @@ const afgerondExpressie =
     END
   `;
 
-const datumSorteerExpressie =
-  Prisma.sql`
+const datumSorteerExpressie = Prisma.sql`
     TO_CHAR(
       t."datum_plaatsbezoek",
       'YYYY-MM-DD'
     )
   `;
 
-const uurExpressie =
-  Prisma.sql`
+const uurExpressie = Prisma.sql`
     TO_CHAR(
       t."uur_plaatsbezoek",
       'HH24:MI'
@@ -130,56 +102,32 @@ const tekstExpressies: Record<
   keyof IngeplandeTerreincontroleTekstfilters,
   Prisma.Sql
 > = {
-  afgerond:
-    afgerondExpressie,
-  status:
-    statusExpressie,
-  auditeur:
-    Prisma.sql`t."auditeur"`,
-  factuurVerzonden:
-    factuurExpressie,
-  inspectielocatie:
-    Prisma.sql`t."inspectielocatie"`,
-  bouwjaar:
-    Prisma.sql`t."bouwjaar"`,
-  vloeroppervlakteM2:
-    Prisma.sql`t."vloeroppervlakte_m2"`,
-  uurPlaatsbezoek:
-    uurExpressie,
-  ovamId:
-    Prisma.sql`t."ovam_id"`,
-  naamAdi:
-    Prisma.sql`t."naam_adi"`,
-  attestUrl:
-    Prisma.sql`t."attest_url"`,
-  bedrijfsnaam:
-    Prisma.sql`t."bedrijfsnaam"`,
-  postcode:
-    Prisma.sql`t."postcode"`,
-  gemeente:
-    Prisma.sql`t."gemeente"`,
-  straat:
-    Prisma.sql`t."straat"`,
-  huisnummer:
-    Prisma.sql`t."huisnummer"`,
-  extraAdresDetails:
-    Prisma.sql`t."extra_adres_details"`,
-  perceelGemeenteCode:
-    Prisma.sql`t."perceel_gemeente_code"`,
-  perceelAfdelingscode:
-    Prisma.sql`t."perceel_afdelingscode"`,
-  perceelSectieCode:
-    Prisma.sql`t."perceel_sectie_code"`,
-  attestId:
-    Prisma.sql`t."attest_id"::text`,
-  opmerkingen:
-    Prisma.sql`t."opmerkingen"`,
+  afgerond: afgerondExpressie,
+  status: statusExpressie,
+  auditeur: Prisma.sql`t."auditeur"`,
+  factuurVerzonden: factuurExpressie,
+  inspectielocatie: Prisma.sql`t."inspectielocatie"`,
+  bouwjaar: Prisma.sql`t."bouwjaar"`,
+  vloeroppervlakteM2: Prisma.sql`t."vloeroppervlakte_m2"`,
+  datumPlaatsbezoek: datumSorteerExpressie,
+  uurPlaatsbezoek: uurExpressie,
+  ovamId: Prisma.sql`t."ovam_id"`,
+  naamAdi: Prisma.sql`t."naam_adi"`,
+  attestUrl: Prisma.sql`t."attest_url"`,
+  bedrijfsnaam: Prisma.sql`t."bedrijfsnaam"`,
+  postcode: Prisma.sql`t."postcode"`,
+  gemeente: Prisma.sql`t."gemeente"`,
+  straat: Prisma.sql`t."straat"`,
+  huisnummer: Prisma.sql`t."huisnummer"`,
+  extraAdresDetails: Prisma.sql`t."extra_adres_details"`,
+  perceelGemeenteCode: Prisma.sql`t."perceel_gemeente_code"`,
+  perceelAfdelingscode: Prisma.sql`t."perceel_afdelingscode"`,
+  perceelSectieCode: Prisma.sql`t."perceel_sectie_code"`,
+  attestId: Prisma.sql`t."attest_id"::text`,
+  opmerkingen: Prisma.sql`t."opmerkingen"`,
 };
 
-function bevat(
-  expressie: Prisma.Sql,
-  waarde: string,
-) {
+function bevat(expressie: Prisma.Sql, waarde: string) {
   return Prisma.sql`
     STRPOS(
       LOWER(
@@ -193,20 +141,154 @@ function bevat(
   `;
 }
 
-function sorteerExpressie(
-  sortering:
-    IngeplandeTerreincontroleSortering,
-) {
-  if (
-    sortering ===
-    "datumPlaatsbezoek"
-  ) {
+const EXCEL_FILTER_PREFIX = "__excel__";
+
+type ExcelWaardeFilter = {
+  modus: "insluiten" | "uitsluiten";
+  waarden: string[];
+  legeCellenGeselecteerd: boolean;
+};
+
+function leesExcelWaardeFilter(waarde: string): ExcelWaardeFilter | null {
+  if (!waarde.startsWith(EXCEL_FILTER_PREFIX)) {
+    return null;
+  }
+
+  try {
+    const inhoud = JSON.parse(
+      decodeURIComponent(waarde.slice(EXCEL_FILTER_PREFIX.length)),
+    ) as unknown;
+
+    if (typeof inhoud !== "object" || inhoud === null) {
+      throw new Error("Ongeldige Excel-filterinhoud.");
+    }
+
+    const kandidaat = inhoud as Record<string, unknown>;
+
+    if (
+      (kandidaat.modus !== "insluiten" && kandidaat.modus !== "uitsluiten") ||
+      !Array.isArray(kandidaat.waarden) ||
+      typeof kandidaat.legeCellenGeselecteerd !== "boolean"
+    ) {
+      throw new Error("Ongeldige Excel-filtervelden.");
+    }
+
+    if (kandidaat.waarden.length > 2000) {
+      throw new Error("Te veel Excel-filterwaarden.");
+    }
+
+    const waarden = kandidaat.waarden.map((item) => {
+      if (typeof item !== "string" || item.length > 500) {
+        throw new Error("Ongeldige Excel-filterwaarde.");
+      }
+
+      return item.trim();
+    });
+
+    return {
+      modus: kandidaat.modus,
+      waarden: Array.from(new Set(waarden.filter((item) => item !== ""))),
+      legeCellenGeselecteerd: kandidaat.legeCellenGeselecteerd,
+    };
+  } catch {
+    throw new OngeldigePagineringFout(
+      "De gekozen Excel-filterwaarden zijn ongeldig.",
+    );
+  }
+}
+
+function maakTekstfilter(expressie: Prisma.Sql, waarde: string) {
+  const excelFilter = leesExcelWaardeFilter(waarde);
+
+  if (!excelFilter) {
+    return bevat(expressie, waarde);
+  }
+
+  const genormaliseerdeExpressie = Prisma.sql`
+      COALESCE(
+        NULLIF(
+          BTRIM(
+            (${expressie})::text
+          ),
+          ''
+        ),
+        ''
+      )
+    `;
+
+  if (excelFilter.modus === "insluiten") {
+    const voorwaarden: Prisma.Sql[] = [];
+
+    if (excelFilter.waarden.length > 0) {
+      voorwaarden.push(
+        Prisma.sql`
+          ${genormaliseerdeExpressie}
+          IN (
+            ${Prisma.join(excelFilter.waarden)}
+          )
+        `,
+      );
+    }
+
+    if (excelFilter.legeCellenGeselecteerd) {
+      voorwaarden.push(
+        Prisma.sql`
+          ${genormaliseerdeExpressie}
+          = ''
+        `,
+      );
+    }
+
+    if (voorwaarden.length === 0) {
+      return Prisma.sql`FALSE`;
+    }
+
+    return Prisma.sql`
+      (
+        ${Prisma.join(voorwaarden, " OR ")}
+      )
+    `;
+  }
+
+  const voorwaarden: Prisma.Sql[] = [];
+
+  if (excelFilter.waarden.length > 0) {
+    voorwaarden.push(
+      Prisma.sql`
+        ${genormaliseerdeExpressie}
+        NOT IN (
+          ${Prisma.join(excelFilter.waarden)}
+        )
+      `,
+    );
+  }
+
+  if (!excelFilter.legeCellenGeselecteerd) {
+    voorwaarden.push(
+      Prisma.sql`
+        ${genormaliseerdeExpressie}
+        <> ''
+      `,
+    );
+  }
+
+  if (voorwaarden.length === 0) {
+    return Prisma.sql`TRUE`;
+  }
+
+  return Prisma.sql`
+    (
+      ${Prisma.join(voorwaarden, " AND ")}
+    )
+  `;
+}
+
+function sorteerExpressie(sortering: IngeplandeTerreincontroleSortering) {
+  if (sortering === "datumPlaatsbezoek") {
     return datumSorteerExpressie;
   }
 
-  return tekstExpressies[
-    sortering
-  ];
+  return tekstExpressies[sortering];
 }
 
 function maakFiltervoorwaarden({
@@ -214,20 +296,17 @@ function maakFiltervoorwaarden({
   contract,
 }: {
   zoekterm: string;
-  contract:
-    IngeplandeTerreincontroleLijstcontract;
+  contract: IngeplandeTerreincontroleLijstcontract;
 }) {
-  const voorwaarden:
-    Prisma.Sql[] = [
-      Prisma.sql`
+  const voorwaarden: Prisma.Sql[] = [
+    Prisma.sql`
         t."verwijderd_op" IS NULL
         AND t."afwezig_op" IS NULL
       `,
-    ];
+  ];
 
   if (zoekterm) {
-    const algemeneExpressie =
-      Prisma.sql`
+    const algemeneExpressie = Prisma.sql`
         CONCAT_WS(
           ' ',
           t."auditeur",
@@ -263,44 +342,21 @@ function maakFiltervoorwaarden({
         )
       `;
 
-    voorwaarden.push(
-      bevat(
-        algemeneExpressie,
-        zoekterm,
-      ),
-    );
+    voorwaarden.push(bevat(algemeneExpressie, zoekterm));
   }
 
-  for (
-    const [
-      sleutel,
-      waarde,
-    ] of Object.entries(
-      contract.tekstfilters,
-    ) as [
-      keyof IngeplandeTerreincontroleTekstfilters,
-      string,
-    ][]
-  ) {
+  for (const [sleutel, waarde] of Object.entries(contract.tekstfilters) as [
+    keyof IngeplandeTerreincontroleTekstfilters,
+    string,
+  ][]) {
     if (!waarde) {
       continue;
     }
 
-    voorwaarden.push(
-      bevat(
-        tekstExpressies[
-          sleutel
-        ],
-        waarde,
-      ),
-    );
+    voorwaarden.push(maakTekstfilter(tekstExpressies[sleutel], waarde));
   }
 
-  if (
-    contract
-      .datumPlaatsbezoekJaar !==
-    null
-  ) {
+  if (contract.datumPlaatsbezoekJaar !== null) {
     voorwaarden.push(
       Prisma.sql`
         EXTRACT(
@@ -312,11 +368,7 @@ function maakFiltervoorwaarden({
     );
   }
 
-  if (
-    contract
-      .datumPlaatsbezoekMaand !==
-    null
-  ) {
+  if (contract.datumPlaatsbezoekMaand !== null) {
     voorwaarden.push(
       Prisma.sql`
         EXTRACT(
@@ -328,38 +380,20 @@ function maakFiltervoorwaarden({
     );
   }
 
-  return Prisma.join(
-    voorwaarden,
-    " AND ",
-  );
+  return Prisma.join(voorwaarden, " AND ");
 }
 
 function valideerInvoer({
   limiet,
   cursorId,
-}: Pick<
-  SelectieInvoer,
-  "limiet" | "cursorId"
->) {
-  if (
-    !Number.isInteger(limiet) ||
-    limiet < 1 ||
-    limiet > 50
-  ) {
+}: Pick<SelectieInvoer, "limiet" | "cursorId">) {
+  if (!Number.isInteger(limiet) || limiet < 1 || limiet > 50) {
     throw new OngeldigePagineringFout(
       "De paginalimiet voor ingeplande terreincontroles is ongeldig.",
     );
   }
 
-  if (
-    cursorId !== null &&
-    (
-      !Number.isInteger(
-        cursorId,
-      ) ||
-      cursorId <= 0
-    )
-  ) {
+  if (cursorId !== null && (!Number.isInteger(cursorId) || cursorId <= 0)) {
     throw new OngeldigePagineringFout(
       "De cursor voor ingeplande terreincontroles is ongeldig.",
     );
@@ -369,8 +403,7 @@ function valideerInvoer({
 export function laadIngeplandeTerreincontroleSelectie({
   zoekterm,
   contract,
-  sortering,
-  richting,
+  sorteringen,
   limiet,
   cursorId,
 }: SelectieInvoer) {
@@ -379,118 +412,99 @@ export function laadIngeplandeTerreincontroleSelectie({
     cursorId,
   });
 
-  const voorwaarden =
-    maakFiltervoorwaarden({
-      zoekterm,
-      contract,
-    });
-
-  const sorteerWaarde =
-    sorteerExpressie(
-      sortering,
+  if (
+    !Array.isArray(sorteringen) ||
+    sorteringen.length === 0 ||
+    sorteringen.length > 25 ||
+    sorteringen.some(
+      (sortering) =>
+        sortering.richting !== "asc" && sortering.richting !== "desc",
+    )
+  ) {
+    throw new OngeldigePagineringFout(
+      "De sorteringen voor ingeplande terreincontroles zijn ongeldig.",
     );
+  }
 
-  const richtingSql =
-    richting === "asc"
-      ? Prisma.sql`ASC`
-      : Prisma.sql`DESC`;
+  const voorwaarden = maakFiltervoorwaarden({
+    zoekterm,
+    contract,
+  });
 
-  const waardeVergelijking =
-    richting === "asc"
-      ? Prisma.sql`
-          g."sorteerWaarde" >
-            c."sorteerWaarde"
-        `
-      : Prisma.sql`
-          g."sorteerWaarde" <
-            c."sorteerWaarde"
-        `;
+  const sorteerSelecties = Prisma.join(
+    sorteringen.map((sortering, index) => {
+      const alias = Prisma.raw(`"sorteerWaarde${index}"`);
 
-  const idVergelijking =
-    richting === "asc"
-      ? Prisma.sql`
-          g.id > c.id
-        `
-      : Prisma.sql`
-          g.id < c.id
-        `;
+      return Prisma.sql`
+        LOWER(
+          COALESCE(
+            (${sorteerExpressie(sortering.sleutel)})::text,
+            ''
+          )
+        ) AS ${alias}
+      `;
+    }),
+    ",",
+  );
 
-  const cursorJoin =
-    cursorId === null
-      ? Prisma.empty
-      : Prisma.sql`
-          CROSS JOIN
-            "cursorRij" c
-        `;
+  const sorteerVolgorde = Prisma.join(
+    sorteringen.flatMap((sortering, index) => {
+      const alias = Prisma.raw(`"sorteerWaarde${index}"`);
+
+      const richtingSql =
+        sortering.richting === "asc" ? Prisma.sql`ASC` : Prisma.sql`DESC`;
+
+      return [
+        Prisma.sql`
+          CASE
+            WHEN ${alias} = ''
+            THEN 1
+            ELSE 0
+          END ASC
+        `,
+        Prisma.sql`
+          ${alias} ${richtingSql}
+        `,
+      ];
+    }),
+    ",",
+  );
 
   const cursorVoorwaarde =
     cursorId === null
-      ? Prisma.sql`TRUE`
+      ? Prisma.empty
       : Prisma.sql`
-          (
-            g."isLeeg" >
-              c."isLeeg"
-            OR (
-              g."isLeeg" =
-                c."isLeeg"
-              AND (
-                (
-                  g."isLeeg" = 1
-                  AND
-                  ${idVergelijking}
-                )
-                OR (
-                  g."isLeeg" = 0
-                  AND (
-                    ${waardeVergelijking}
-                    OR (
-                      g."sorteerWaarde"
-                        IS NOT DISTINCT FROM
-                      c."sorteerWaarde"
-                      AND
-                      ${idVergelijking}
-                    )
-                  )
-                )
-              )
-            )
+          WHERE g."positie" > (
+            SELECT anker."positie"
+            FROM "gerangschikt" anker
+            WHERE anker.id = ${cursorId}
           )
         `;
 
-  return prisma.$queryRaw<
-    IngeplandeTerreincontroleSelectieRij[]
-  >(Prisma.sql`
+  return prisma.$queryRaw<IngeplandeTerreincontroleSelectieRij[]>(Prisma.sql`
     WITH "gefilterd" AS (
       SELECT
         t.id,
         t."afgerond",
         t."auditeur",
-        t."factuur_verzonden"
-          AS "factuurVerzonden",
+        t."factuur_verzonden" AS "factuurVerzonden",
         t."status",
         t."inspectielocatie",
         t."bouwjaar",
-        t."vloeroppervlakte_m2"
-          AS "vloeroppervlakteM2",
+        t."vloeroppervlakte_m2" AS "vloeroppervlakteM2",
         CASE
-          WHEN
-            t."datum_plaatsbezoek"
-              IS NULL
+          WHEN t."datum_plaatsbezoek" IS NULL
           THEN NULL
           ELSE
             TO_CHAR(
               t."datum_plaatsbezoek",
               'YYYY-MM-DD'
-            ) ||
-            'T00:00:00.000Z'
+            ) || 'T00:00:00.000Z'
         END AS "datumPlaatsbezoek",
         CASE
-          WHEN
-            t."uur_plaatsbezoek"
-              IS NULL
+          WHEN t."uur_plaatsbezoek" IS NULL
           THEN NULL
-          ELSE
-            ${uurExpressie}
+          ELSE ${uurExpressie}
         END AS "uurPlaatsbezoek",
         t."ovam_id" AS "ovamId",
         t."naam_adi" AS "naamAdi",
@@ -500,50 +514,26 @@ export function laadIngeplandeTerreincontroleSelectie({
         t."gemeente",
         t."straat",
         t."huisnummer",
-        t."extra_adres_details"
-          AS "extraAdresDetails",
-        t."perceel_gemeente_code"
-          AS "perceelGemeenteCode",
-        t."perceel_afdelingscode"
-          AS "perceelAfdelingscode",
-        t."perceel_sectie_code"
-          AS "perceelSectieCode",
-        t."attest_id"::text
-          AS "attestId",
+        t."extra_adres_details" AS "extraAdresDetails",
+        t."perceel_gemeente_code" AS "perceelGemeenteCode",
+        t."perceel_afdelingscode" AS "perceelAfdelingscode",
+        t."perceel_sectie_code" AS "perceelSectieCode",
+        t."attest_id"::text AS "attestId",
         t."opmerkingen",
-        COUNT(*) OVER()::integer
-          AS "aantalTotaal",
-        CASE
-          WHEN
-            ${sorteerWaarde}
-              IS NULL
-            OR BTRIM(
-              (${sorteerWaarde})::text
-            ) = ''
-          THEN 1
-          ELSE 0
-        END AS "isLeeg",
-        LOWER(
-          COALESCE(
-            (${sorteerWaarde})::text,
-            ''
-          )
-        ) AS "sorteerWaarde"
-      FROM
-        "terreincontroles" t
-      WHERE
-        ${voorwaarden}
+        COUNT(*) OVER()::integer AS "aantalTotaal",
+        ${sorteerSelecties}
+      FROM "terreincontroles" t
+      WHERE ${voorwaarden}
     ),
-    "cursorRij" AS (
+    "gerangschikt" AS (
       SELECT
-        g.id,
-        g."isLeeg",
-        g."sorteerWaarde"
-      FROM
-        "gefilterd" g
-      WHERE
-        g.id =
-          ${cursorId ?? -1}
+        *,
+        ROW_NUMBER() OVER (
+          ORDER BY
+            ${sorteerVolgorde},
+            id ASC
+        ) AS "positie"
+      FROM "gefilterd"
     )
     SELECT
       g.id,
@@ -571,25 +561,17 @@ export function laadIngeplandeTerreincontroleSelectie({
       g."attestId",
       g."opmerkingen",
       g."aantalTotaal"
-    FROM
-      "gefilterd" g
-    ${cursorJoin}
-    WHERE
-      ${cursorVoorwaarde}
-    ORDER BY
-      g."isLeeg" ASC,
-      g."sorteerWaarde"
-        ${richtingSql},
-      g.id ${richtingSql}
+    FROM "gerangschikt" g
+    ${cursorVoorwaarde}
+    ORDER BY g."positie" ASC
     LIMIT ${limiet + 1}
   `);
 }
 
 export async function laadIngeplandeTerreincontroleDashboardTellingen() {
-  const [tellingen] =
-    await prisma.$queryRaw<
-      IngeplandeTerreincontroleDashboardTellingen[]
-    >(Prisma.sql`
+  const [tellingen] = await prisma.$queryRaw<
+    IngeplandeTerreincontroleDashboardTellingen[]
+  >(Prisma.sql`
       SELECT
         COUNT(*)::integer
           AS "plaatsbezoeken",
@@ -624,12 +606,96 @@ export async function laadIngeplandeTerreincontroleDashboardTellingen() {
         AND t."afwezig_op" IS NULL
     `);
 
-  return tellingen ?? {
-    plaatsbezoeken: 0,
-    inOpmaak: 0,
-    gearchiveerd: 0,
-    actueelAttest: 0,
-    nietVerzondenFacturen:
-      0,
-  };
+  return (
+    tellingen ?? {
+      plaatsbezoeken: 0,
+      inOpmaak: 0,
+      gearchiveerd: 0,
+      actueelAttest: 0,
+      nietVerzondenFacturen: 0,
+    }
+  );
+}
+
+export type IngeplandeTerreincontroleFilterwaarde = {
+  waarde: string;
+  aantal: number;
+};
+
+export function laadIngeplandeTerreincontroleFilterwaarden({
+  kolom,
+  zoekterm,
+}: {
+  kolom: IngeplandeTerreincontroleSortering;
+  zoekterm: string;
+}) {
+  const expressie = sorteerExpressie(kolom);
+
+  const zoekvoorwaarde = zoekterm
+    ? Prisma.sql`
+          AND ${bevat(expressie, zoekterm)}
+        `
+    : Prisma.empty;
+
+  const limiet = kolom === "datumPlaatsbezoek" ? 2000 : 300;
+
+  return prisma.$queryRaw<IngeplandeTerreincontroleFilterwaarde[]>(Prisma.sql`
+    SELECT
+      COALESCE(
+        NULLIF(
+          BTRIM(
+            (${expressie})::text
+          ),
+          ''
+        ),
+        ''
+      ) AS "waarde",
+      COUNT(*)::integer
+        AS "aantal"
+    FROM
+      "terreincontroles" t
+    WHERE
+      t."verwijderd_op"
+        IS NULL
+      AND t."afwezig_op"
+        IS NULL
+      ${zoekvoorwaarde}
+    GROUP BY
+      COALESCE(
+        NULLIF(
+          BTRIM(
+            (${expressie})::text
+          ),
+          ''
+        ),
+        ''
+      )
+    ORDER BY
+      CASE
+        WHEN
+          COALESCE(
+            NULLIF(
+              BTRIM(
+                (${expressie})::text
+              ),
+              ''
+            ),
+            ''
+          ) = ''
+        THEN 0
+        ELSE 1
+      END,
+      LOWER(
+        COALESCE(
+          NULLIF(
+            BTRIM(
+              (${expressie})::text
+            ),
+            ''
+          ),
+          ''
+        )
+      ) ASC
+    LIMIT ${limiet}
+  `);
 }
