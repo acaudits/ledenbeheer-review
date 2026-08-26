@@ -119,6 +119,7 @@ export function TerreincontroleDossiersTabel({
       modus="terreincontrole"
       magBeheren={magBeheren}
       serverModus={serverModus}
+      kaartWeergave
     />
   );
 }

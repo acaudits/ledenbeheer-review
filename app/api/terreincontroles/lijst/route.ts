@@ -1,12 +1,8 @@
 import { NextResponse } from "next/server";
 
 import { heeftMachtiging } from "@/lib/autorisatie";
-import {
-  haalIngelogdeGebruikerOp,
-} from "@/lib/auth";
-import {
-  formatteerOndernemingsnummer,
-} from "@/lib/ondernemingsnummer";
+import { haalIngelogdeGebruikerOp } from "@/lib/auth";
+import { formatteerOndernemingsnummer } from "@/lib/ondernemingsnummer";
 import {
   GEEN_TABEL_CACHE,
   maakTabelCursor,
@@ -16,27 +12,24 @@ import {
 import {
   leesTerreincontroleLijstcontract,
   TERREINCONTROLE_SORTERINGEN,
+  type TerreincontroleSortering,
 } from "@/lib/terreincontrole-lijstcontract";
 import {
   laadTerreincontroleDashboardTellingen,
+  laadTerreincontroleFilterwaarden,
   laadTerreincontroleSelectie,
 } from "@/lib/terreincontrole-selectie";
 
-export const dynamic =
-  "force-dynamic";
+export const dynamic = "force-dynamic";
 
-export async function GET(
-  verzoek: Request,
-) {
+export async function GET(verzoek: Request) {
   try {
-    const gebruiker =
-      await haalIngelogdeGebruikerOp();
+    const gebruiker = await haalIngelogdeGebruikerOp();
 
     if (!gebruiker?.actief) {
       return NextResponse.json(
         {
-          fout:
-            "Je bent niet ingelogd.",
+          fout: "Je bent niet ingelogd.",
         },
         {
           status: 401,
@@ -45,16 +38,10 @@ export async function GET(
       );
     }
 
-    if (
-      !heeftMachtiging(
-        gebruiker.rol,
-        "TERREINCONTROLES_BEKIJKEN",
-      )
-    ) {
+    if (!heeftMachtiging(gebruiker.rol, "TERREINCONTROLES_BEKIJKEN")) {
       return NextResponse.json(
         {
-          fout:
-            "Je hebt geen toegang tot terreincontroles.",
+          fout: "Je hebt geen toegang tot terreincontroles.",
         },
         {
           status: 403,
@@ -63,104 +50,102 @@ export async function GET(
       );
     }
 
-    const url =
-      new URL(verzoek.url);
+    const url = new URL(verzoek.url);
 
-    const aanvraag =
-      leesTabelAanvraag(
-        url,
+    const filterwaardenKolom = url.searchParams.get("filterwaardenKolom");
+
+    if (filterwaardenKolom !== null) {
+      if (
+        !TERREINCONTROLE_SORTERINGEN.includes(
+          filterwaardenKolom as TerreincontroleSortering,
+        )
+      ) {
+        throw new OngeldigePagineringFout(
+          "De gekozen filterkolom is ongeldig.",
+        );
+      }
+
+      const filterwaardenZoekterm = (
+        url.searchParams.get("filterwaardenZoekterm") ?? ""
+      )
+        .replace(/\s+/g, " ")
+        .trim();
+
+      if (filterwaardenZoekterm.length > 100) {
+        throw new OngeldigePagineringFout(
+          "De zoekterm voor filterwaarden is te lang.",
+        );
+      }
+
+      const waarden = await laadTerreincontroleFilterwaarden({
+        kolom: filterwaardenKolom as TerreincontroleSortering,
+        zoekterm: filterwaardenZoekterm,
+      });
+
+      return NextResponse.json(
         {
-          toegelatenSorteringen:
-            TERREINCONTROLE_SORTERINGEN,
-          standaardSortering:
-            "datumControle",
-          standaardRichting:
-            "desc",
-          standaardLimiet: 50,
+          waarden,
+          afgekapt:
+            waarden.length ===
+            (filterwaardenKolom === "datumControle" ? 2000 : 300),
+        },
+        {
+          headers: GEEN_TABEL_CACHE,
         },
       );
+    }
 
-    if (
-      aanvraag.limiet > 50
-    ) {
+    const aanvraag = leesTabelAanvraag(url, {
+      toegelatenSorteringen: TERREINCONTROLE_SORTERINGEN,
+      standaardSortering: "datumControle",
+      standaardRichting: "desc",
+      standaardLimiet: 50,
+    });
+
+    if (aanvraag.limiet > 50) {
       throw new OngeldigePagineringFout(
         "De paginalimiet mag voor terreincontroles maximaal 50 zijn.",
       );
     }
 
-    const {
-      contract,
-      sortering,
-      richting,
-    } =
-      leesTerreincontroleLijstcontract(
-        url,
-        aanvraag.richting,
-      );
+    const { contract, sorteringen } = leesTerreincontroleLijstcontract(
+      url,
+      aanvraag.richting,
+    );
 
-    const [
-      selectie,
-      dashboard,
-    ] = await Promise.all([
+    const [selectie, dashboard] = await Promise.all([
       laadTerreincontroleSelectie({
-        zoekterm:
-          aanvraag.zoekterm,
+        zoekterm: aanvraag.zoekterm,
         contract,
-        sortering,
-        richting,
-        limiet:
-          aanvraag.limiet,
-        cursorId:
-          aanvraag.cursor?.id ??
-          null,
+        sorteringen,
+        limiet: aanvraag.limiet,
+        cursorId: aanvraag.cursor?.id ?? null,
       }),
       laadTerreincontroleDashboardTellingen(),
     ]);
 
-    const heeftVolgendePagina =
-      selectie.length >
-      aanvraag.limiet;
+    const heeftVolgendePagina = selectie.length > aanvraag.limiet;
 
-    const pagina =
-      selectie.slice(
-        0,
-        aanvraag.limiet,
-      );
+    const pagina = selectie.slice(0, aanvraag.limiet);
 
     const aantalTotaal =
-      pagina[0]?.aantalTotaal ??
-      (
-        aanvraag.cursor === null
-          ? 0
-          : null
-      );
+      pagina[0]?.aantalTotaal ?? (aanvraag.cursor === null ? 0 : null);
 
-    const rijen =
-      pagina.map(
-        ({
-          aantalTotaal:
-            rijAantalTotaal,
-          ondernemingsnummer,
-          ...rij
-        }) => {
-          void rijAantalTotaal;
+    const rijen = pagina.map(
+      ({ aantalTotaal: rijAantalTotaal, ondernemingsnummer, ...rij }) => {
+        void rijAantalTotaal;
 
-          return {
-            ...rij,
-            ondernemingsnummer:
-              formatteerOndernemingsnummer(
-                ondernemingsnummer,
-              ),
-          };
-        },
-      );
+        return {
+          ...rij,
+          ondernemingsnummer: formatteerOndernemingsnummer(ondernemingsnummer),
+        };
+      },
+    );
 
-    const laatsteRij =
-      rijen.at(-1);
+    const laatsteRij = rijen.at(-1);
 
     const volgendeCursor =
-      heeftVolgendePagina &&
-      laatsteRij
+      heeftVolgendePagina && laatsteRij
         ? maakTabelCursor({
             id: laatsteRij.id,
             waarde: null,
@@ -180,10 +165,7 @@ export async function GET(
       },
     );
   } catch (fout) {
-    if (
-      fout instanceof
-      OngeldigePagineringFout
-    ) {
+    if (fout instanceof OngeldigePagineringFout) {
       return NextResponse.json(
         {
           fout: fout.message,
@@ -195,15 +177,11 @@ export async function GET(
       );
     }
 
-    console.error(
-      "Terreincontroles laden mislukt:",
-      fout,
-    );
+    console.error("Terreincontroles laden mislukt:", fout);
 
     return NextResponse.json(
       {
-        fout:
-          "De terreincontroles konden niet worden geladen.",
+        fout: "De terreincontroles konden niet worden geladen.",
       },
       {
         status: 500,
