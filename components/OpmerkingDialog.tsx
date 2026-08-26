@@ -6,32 +6,28 @@ import { useRouter } from "next/navigation";
 import { wijzigCertificaatOpmerking } from "@/app/certificaten/opmerking-actions";
 import { PERSOONSCERTIFICATEN_QUERY_SLEUTEL } from "@/hooks/usePersoonscertificatenQuery";
 import { PROCESCERTIFICATEN_QUERY_SLEUTEL } from "@/hooks/useProcescertificatenQuery";
-import {
-  useId,
-  useRef,
-  useState,
-} from "react";
+import { useId, useRef, useState } from "react";
 
 type OpmerkingDialogProps = {
   id: number;
   soort: "persoon" | "proces";
   tekst: string;
+  compact?: boolean;
 };
 
 export function OpmerkingDialog({
   id,
   soort,
   tekst,
+  compact = false,
 }: OpmerkingDialogProps) {
   const router = useRouter();
   const queryClient = useQueryClient();
-  const dialogRef =
-    useRef<HTMLDialogElement>(null);
+  const dialogRef = useRef<HTMLDialogElement>(null);
 
   const titelId = useId();
 
-  const [huidigeTekst, setHuidigeTekst] =
-    useState(tekst);
+  const [huidigeTekst, setHuidigeTekst] = useState(tekst);
 
   const [concept, setConcept] = useState(tekst);
   const [bewerken, setBewerken] = useState(false);
@@ -71,9 +67,7 @@ export function OpmerkingDialog({
 
   async function opslaan() {
     if (concept.length > 5000) {
-      setFout(
-        "De opmerking mag maximaal 5000 tekens bevatten.",
-      );
+      setFout("De opmerking mag maximaal 5000 tekens bevatten.");
       return;
     }
 
@@ -82,20 +76,18 @@ export function OpmerkingDialog({
     setMelding("");
 
     try {
-      const resultaat =
-        await wijzigCertificaatOpmerking({
-          id,
-          soort,
-          opmerking: concept,
-        });
+      const resultaat = await wijzigCertificaatOpmerking({
+        id,
+        soort,
+        opmerking: concept,
+      });
 
       if (!resultaat.succes) {
         setFout(resultaat.melding);
         return;
       }
 
-      const opgeslagenTekst =
-        resultaat.opmerking ?? concept.trim();
+      const opgeslagenTekst = resultaat.opmerking ?? concept.trim();
 
       setHuidigeTekst(opgeslagenTekst);
       setConcept(opgeslagenTekst);
@@ -111,21 +103,15 @@ export function OpmerkingDialog({
 
       router.refresh();
     } catch (error) {
-      console.error(
-        "Opmerking opslaan mislukt:",
-        error,
-      );
+      console.error("Opmerking opslaan mislukt:", error);
 
-      setFout(
-        "De opmerking kon niet worden opgeslagen. Probeer opnieuw.",
-      );
+      setFout("De opmerking kon niet worden opgeslagen. Probeer opnieuw.");
     } finally {
       setBezig(false);
     }
   }
 
-  const knopTekst =
-    huidigeTekst || "Opmerking toevoegen";
+  const knopTekst = huidigeTekst || "Opmerking toevoegen";
 
   return (
     <>
@@ -142,13 +128,17 @@ export function OpmerkingDialog({
             ? "Volledige opmerking bekijken of bewerken"
             : "Opmerking toevoegen"
         }
-        className={`max-w-72 truncate text-left underline decoration-dotted underline-offset-4 transition ${
-          huidigeTekst
-            ? "text-slate-700 decoration-slate-300 hover:text-emerald-800 hover:decoration-emerald-500"
-            : "text-slate-400 decoration-slate-300 hover:text-emerald-700"
-        }`}
+        className={
+          compact
+            ? "inline-flex size-8 shrink-0 items-center justify-center rounded-lg border border-slate-300 bg-white text-base text-slate-600 shadow-sm transition hover:border-emerald-400 hover:bg-emerald-50 hover:text-emerald-800"
+            : `max-w-72 truncate text-left underline decoration-dotted underline-offset-4 transition ${
+                huidigeTekst
+                  ? "text-slate-700 decoration-slate-300 hover:text-emerald-800 hover:decoration-emerald-500"
+                  : "text-slate-400 decoration-slate-300 hover:text-emerald-700"
+              }`
+        }
       >
-        {knopTekst}
+        {compact ? <span aria-hidden="true">✎</span> : knopTekst}
       </button>
 
       <dialog
@@ -166,10 +156,7 @@ export function OpmerkingDialog({
           }
         }}
         onClick={(event) => {
-          if (
-            event.target === event.currentTarget &&
-            !bezig
-          ) {
+          if (event.target === event.currentTarget && !bezig) {
             sluiten();
           }
         }}
@@ -186,9 +173,7 @@ export function OpmerkingDialog({
                 id={titelId}
                 className="mt-1 text-lg font-bold text-slate-950"
               >
-                {bewerken
-                  ? "Opmerking bewerken"
-                  : "Volledige opmerking"}
+                {bewerken ? "Opmerking bewerken" : "Volledige opmerking"}
               </h2>
             </div>
 
@@ -230,14 +215,9 @@ export function OpmerkingDialog({
                 />
 
                 <div className="mt-2 flex justify-between gap-4 text-xs text-slate-500">
-                  <span>
-                    Een lege opmerking verwijdert de huidige
-                    tekst.
-                  </span>
+                  <span>Een lege opmerking verwijdert de huidige tekst.</span>
 
-                  <span>
-                    {concept.length}/5000
-                  </span>
+                  <span>{concept.length}/5000</span>
                 </div>
               </div>
             ) : huidigeTekst ? (
@@ -251,8 +231,7 @@ export function OpmerkingDialog({
                 </p>
 
                 <p className="mt-1 text-sm text-slate-500">
-                  Klik op Bewerken om een opmerking toe te
-                  voegen.
+                  Klik op Bewerken om een opmerking toe te voegen.
                 </p>
               </div>
             )}
@@ -291,14 +270,10 @@ export function OpmerkingDialog({
                 <button
                   type="button"
                   onClick={opslaan}
-                  disabled={
-                    bezig || concept.length > 5000
-                  }
+                  disabled={bezig || concept.length > 5000}
                   className="rounded-xl bg-emerald-700 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-800 disabled:cursor-not-allowed disabled:opacity-60"
                 >
-                  {bezig
-                    ? "Opslaan..."
-                    : "Opmerking opslaan"}
+                  {bezig ? "Opslaan..." : "Opmerking opslaan"}
                 </button>
               </>
             ) : (
@@ -316,9 +291,7 @@ export function OpmerkingDialog({
                   onClick={startBewerken}
                   className="rounded-xl bg-emerald-700 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-800"
                 >
-                  {huidigeTekst
-                    ? "Bewerken"
-                    : "Opmerking toevoegen"}
+                  {huidigeTekst ? "Bewerken" : "Opmerking toevoegen"}
                 </button>
               </>
             )}

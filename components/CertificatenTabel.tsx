@@ -40,11 +40,10 @@ type CertificatenTabelProps = {
   soort: "persoon" | "proces";
   magBeheren: boolean;
   serverModus?: boolean;
+  kaartWeergave?: boolean;
 };
 
-type Sorteerrichting =
-  | "oplopend"
-  | "aflopend";
+type Sorteerrichting = "oplopend" | "aflopend";
 
 type Sortering = {
   sleutel: string;
@@ -72,10 +71,7 @@ const maanden = [
 ];
 
 function isDatumKolom(kolom: CertificaatKolom) {
-  return (
-    kolom.type === "datum" ||
-    kolom.sleutel === "uitgereiktOp"
-  );
+  return kolom.type === "datum" || kolom.sleutel === "uitgereiktOp";
 }
 
 const targetStatusOpties = [
@@ -102,36 +98,30 @@ function statusbolPresentatie(waarde: string) {
     case "GROEN":
       return {
         label: "Targets behaald",
-        stijl:
-          "bg-emerald-500 ring-emerald-200",
+        stijl: "bg-emerald-500 ring-emerald-200",
       };
 
     case "GEEL":
       return {
         label: "Targets gedeeltelijk behaald",
-        stijl:
-          "bg-amber-400 ring-amber-200",
+        stijl: "bg-amber-400 ring-amber-200",
       };
 
     case "ROOD":
       return {
         label: "Geen deskcontrole of terreincontrole uitgevoerd",
-        stijl:
-          "bg-red-500 ring-red-200",
+        stijl: "bg-red-500 ring-red-200",
       };
 
     default:
       return {
         label: "Geen attesten",
-        stijl:
-          "bg-slate-400 ring-slate-200",
+        stijl: "bg-slate-400 ring-slate-200",
       };
   }
 }
 
-function statusRijStijl(
-  waarde: string | number | null,
-) {
+function statusRijStijl(waarde: string | number | null) {
   switch (String(waarde ?? "").toUpperCase()) {
     case "GROEN":
       return "bg-emerald-50/70 hover:bg-emerald-100/60";
@@ -150,37 +140,23 @@ function statusRijStijl(
   }
 }
 
-function ontleedDatum(
-  waarde: string | number | null,
-) {
+function ontleedDatum(waarde: string | number | null) {
   const tekst = String(waarde ?? "").trim();
 
   if (!tekst) {
     return null;
   }
 
-  const belgischeDatum = tekst.match(
-    /^(\d{1,2})[/-](\d{1,2})[/-](\d{4})$/,
-  );
+  const belgischeDatum = tekst.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{4})$/);
 
   if (belgischeDatum) {
-    const dag = belgischeDatum[1].padStart(
-      2,
-      "0",
-    );
+    const dag = belgischeDatum[1].padStart(2, "0");
 
-    const maand = belgischeDatum[2].padStart(
-      2,
-      "0",
-    );
+    const maand = belgischeDatum[2].padStart(2, "0");
 
     const jaar = belgischeDatum[3];
 
-    const tijdstip = Date.UTC(
-      Number(jaar),
-      Number(maand) - 1,
-      Number(dag),
-    );
+    const tijdstip = Date.UTC(Number(jaar), Number(maand) - 1, Number(dag));
 
     return {
       dag,
@@ -194,12 +170,8 @@ function ontleedDatum(
 
   if (!Number.isNaN(isoDatum.getTime())) {
     return {
-      dag: String(
-        isoDatum.getUTCDate(),
-      ).padStart(2, "0"),
-      maand: String(
-        isoDatum.getUTCMonth() + 1,
-      ).padStart(2, "0"),
+      dag: String(isoDatum.getUTCDate()).padStart(2, "0"),
+      maand: String(isoDatum.getUTCMonth() + 1).padStart(2, "0"),
       jaar: String(isoDatum.getUTCFullYear()),
       tijdstip: isoDatum.getTime(),
     };
@@ -209,19 +181,14 @@ function ontleedDatum(
 }
 
 function naamVanMaand(maand: string) {
-  return (
-    maanden.find(
-      (optie) => optie.waarde === maand,
-    )?.label ?? maand
-  );
+  return maanden.find((optie) => optie.waarde === maand)?.label ?? maand;
 }
 
-type BeheerLinkProps =
-  ComponentProps<typeof NextLink> & {
-    magBeheren: boolean;
-    nieuwHref: string;
-    bewerkBasisHref: string;
-  };
+type BeheerLinkProps = ComponentProps<typeof NextLink> & {
+  magBeheren: boolean;
+  nieuwHref: string;
+  bewerkBasisHref: string;
+};
 
 function BeheerLink({
   magBeheren,
@@ -229,16 +196,10 @@ function BeheerLink({
   bewerkBasisHref,
   ...props
 }: BeheerLinkProps) {
-  const bestemming =
-    typeof props.href === "string"
-      ? props.href
-      : "";
+  const bestemming = typeof props.href === "string" ? props.href : "";
 
   const isBeheerlink =
-    bestemming === nieuwHref ||
-    bestemming.startsWith(
-      `${bewerkBasisHref}/`,
-    );
+    bestemming === nieuwHref || bestemming.startsWith(`${bewerkBasisHref}/`);
 
   if (!magBeheren && isBeheerlink) {
     return null;
@@ -247,10 +208,11 @@ function BeheerLink({
   return <NextLink {...props} />;
 }
 
-type BeheerVerwijderButtonProps =
-  ComponentProps<typeof BasisVerwijderButton> & {
-    magBeheren: boolean;
-  };
+type BeheerVerwijderButtonProps = ComponentProps<
+  typeof BasisVerwijderButton
+> & {
+  magBeheren: boolean;
+};
 
 function BeheerVerwijderButton({
   magBeheren,
@@ -263,7 +225,6 @@ function BeheerVerwijderButton({
   return <BasisVerwijderButton {...props} />;
 }
 
-
 type CertificaatRijMeerMenuProps = {
   bewerkenHref: string;
   children: ReactNode;
@@ -273,8 +234,7 @@ function CertificaatRijMeerMenu({
   bewerkenHref,
   children,
 }: CertificaatRijMeerMenuProps) {
-  const menuRef =
-    useRef<HTMLDetailsElement>(null);
+  const menuRef = useRef<HTMLDetailsElement>(null);
 
   function sluitMenu() {
     if (menuRef.current) {
@@ -298,8 +258,7 @@ function CertificaatRijMeerMenu({
         className="group"
         data-certificaat-rij-meer-menu="true"
         onToggle={(event) => {
-          const geopendMenu =
-            event.currentTarget;
+          const geopendMenu = event.currentTarget;
 
           if (!geopendMenu.open) {
             return;
@@ -326,14 +285,8 @@ function CertificaatRijMeerMenu({
           onClickCapture={(event) => {
             const doel = event.target;
 
-            if (
-              doel instanceof Element &&
-              doel.closest("a, button")
-            ) {
-              window.setTimeout(
-                sluitMenu,
-                0,
-              );
+            if (doel instanceof Element && doel.closest("a, button")) {
+              window.setTimeout(sluitMenu, 0);
             }
           }}
         >
@@ -354,6 +307,48 @@ function CertificaatRijMeerMenu({
   );
 }
 
+function CertificaatKaartWaarde({
+  label,
+  waarde,
+  weergave,
+  breed = false,
+  sterk = false,
+}: {
+  label: string;
+  waarde: string | number | null | undefined;
+  weergave?: string;
+  breed?: boolean;
+  sterk?: boolean;
+}) {
+  const kopieerWaarde =
+    waarde === null || waarde === undefined ? "" : String(waarde).trim();
+
+  const getoondeWaarde = weergave ?? kopieerWaarde ?? "";
+
+  return (
+    <div className={breed ? "sm:col-span-2 lg:col-span-3" : ""}>
+      <dt className="text-[11px] font-bold uppercase tracking-wide text-slate-500">
+        {label}
+      </dt>
+
+      <dd
+        className={`mt-1 flex items-start gap-1.5 break-words text-sm text-slate-900 ${
+          sterk ? "font-semibold" : "font-medium"
+        }`}
+      >
+        <span className="min-w-0 flex-1 whitespace-pre-wrap break-words">
+          {getoondeWaarde || "—"}
+        </span>
+
+        <CopyButton
+          waarde={kopieerWaarde || null}
+          label={`${label} kopiëren`}
+        />
+      </dd>
+    </div>
+  );
+}
+
 export function CertificatenTabel({
   rijen,
   kolommen,
@@ -367,134 +362,95 @@ export function CertificatenTabel({
   soort,
   magBeheren,
   serverModus = false,
+  kaartWeergave = false,
 }: CertificatenTabelProps) {
   const router = useRouter();
 
+  const [openKaartId, setOpenKaartId] = useState<number | null>(null);
+
   const [zoekterm, setZoekterm] = useState("");
 
-  const [kolomFilters, setKolomFilters] =
-    useState<Record<string, string>>({});
+  const [kolomFilters, setKolomFilters] = useState<Record<string, string>>({});
 
-  const [datumFilters, setDatumFilters] =
-    useState<Record<string, DatumFilter>>({});
+  const [datumFilters, setDatumFilters] = useState<Record<string, DatumFilter>>(
+    {},
+  );
 
-  const [
-    actieveFilterSleutel,
-    setActieveFilterSleutel,
-  ] = useState<string | null>(null);
+  const [actieveFilterSleutel, setActieveFilterSleutel] = useState<
+    string | null
+  >(null);
 
-  const [sortering, setSortering] =
-    useState<Sortering>(null);
+  const [sortering, setSortering] = useState<Sortering>(null);
 
-  const persoonscertificatenQuery =
-    usePersoonscertificatenQuery({
-      ingeschakeld:
-        serverModus &&
-        soort === "persoon",
-      zoekterm,
-      kolomFilters,
-      datumFilters,
-      sortering,
-    });
+  const persoonscertificatenQuery = usePersoonscertificatenQuery({
+    ingeschakeld: serverModus && soort === "persoon",
+    zoekterm,
+    kolomFilters,
+    datumFilters,
+    sortering,
+  });
 
-  const procescertificatenQuery =
-    useProcescertificatenQuery({
-      ingeschakeld:
-        serverModus &&
-        soort === "proces",
-      zoekterm,
-      kolomFilters,
-      datumFilters,
-      sortering,
-    });
+  const procescertificatenQuery = useProcescertificatenQuery({
+    ingeschakeld: serverModus && soort === "proces",
+    zoekterm,
+    kolomFilters,
+    datumFilters,
+    sortering,
+  });
 
   const serverQuery =
-    soort === "proces"
-      ? procescertificatenQuery
-      : persoonscertificatenQuery;
+    soort === "proces" ? procescertificatenQuery : persoonscertificatenQuery;
 
-  const bronRijen =
-    serverModus
-      ? serverQuery.rijen
-      : rijen;
+  const bronRijen = serverModus ? serverQuery.rijen : rijen;
 
-  const totaalAantal =
-    serverModus
-      ? (
-          serverQuery
-            .aantalTotaal ??
-          bronRijen.length
-        )
-      : rijen.length;
+  const totaalAantal = serverModus
+    ? (serverQuery.aantalTotaal ?? bronRijen.length)
+    : rijen.length;
 
-  const serverFout =
-    serverModus
-      ? serverQuery.fout
-      : null;
+  const serverFout = serverModus ? serverQuery.fout : null;
 
   const toontEersteServerlading =
-    serverModus &&
-    serverQuery.isEersteKeerLaden &&
-    bronRijen.length === 0;
+    serverModus && serverQuery.isEersteKeerLaden && bronRijen.length === 0;
 
   const toontServerFoutZonderRijen =
-    Boolean(serverFout) &&
-    bronRijen.length === 0;
+    Boolean(serverFout) && bronRijen.length === 0;
 
   const actieveFilterKolom =
-    kolommen.find(
-      (kolom) =>
-        kolom.sleutel === actieveFilterSleutel,
-    ) ?? null;
+    kolommen.find((kolom) => kolom.sleutel === actieveFilterSleutel) ?? null;
 
   const targetStatusKolom =
-    kolommen.find(
-      (kolom) => kolom.type === "statusbol",
-    ) ?? null;
+    kolommen.find((kolom) => kolom.type === "statusbol") ?? null;
 
-  const actiefTargetStatus =
-    targetStatusKolom
-      ? kolomFilters[
-          targetStatusKolom.sleutel
-        ] ?? ""
-      : "";
+  const actiefTargetStatus = targetStatusKolom
+    ? (kolomFilters[targetStatusKolom.sleutel] ?? "")
+    : "";
 
-  const zichtbareKolommen =
-    kolommen.filter(
-      (kolom) => kolom.type !== "statusbol",
-    );
+  const zichtbareKolommen = kolommen.filter(
+    (kolom) => kolom.type !== "statusbol",
+  );
 
-  const aantalTekstFilters = Object.values(
-    kolomFilters,
-  ).filter((waarde) => waarde.trim()).length;
+  const aantalTekstFilters = Object.values(kolomFilters).filter((waarde) =>
+    waarde.trim(),
+  ).length;
 
-  const aantalDatumFilters = Object.values(
-    datumFilters,
-  ).filter(
+  const aantalDatumFilters = Object.values(datumFilters).filter(
     (filter) => filter.jaar || filter.maand,
   ).length;
 
-  const aantalActieveKolomFilters =
-    aantalTekstFilters + aantalDatumFilters;
+  const aantalActieveKolomFilters = aantalTekstFilters + aantalDatumFilters;
 
   const heeftActieveFilters =
-    zoekterm.trim().length > 0 ||
-    aantalActieveKolomFilters > 0;
+    zoekterm.trim().length > 0 || aantalActieveKolomFilters > 0;
 
   const filterSuggesties = useMemo(() => {
-    if (
-      !actieveFilterKolom ||
-      isDatumKolom(actieveFilterKolom)
-    ) {
+    if (!actieveFilterKolom || isDatumKolom(actieveFilterKolom)) {
       return [];
     }
 
     const waarden = new Set<string>();
 
     for (const rij of bronRijen) {
-      const waarde = String(
-        rij[actieveFilterKolom.sleutel] ?? "",
-      ).trim();
+      const waarde = String(rij[actieveFilterKolom.sleutel] ?? "").trim();
 
       if (waarde) {
         waarden.add(waarde);
@@ -512,26 +468,18 @@ export function CertificatenTabel({
   }, [bronRijen, actieveFilterKolom]);
 
   const beschikbareJaren = useMemo(() => {
-    if (
-      !actieveFilterKolom ||
-      !isDatumKolom(actieveFilterKolom)
-    ) {
+    if (!actieveFilterKolom || !isDatumKolom(actieveFilterKolom)) {
       return [];
     }
 
-    if (
-      serverModus &&
-      soort === "proces"
-    ) {
+    if (serverModus && soort === "proces") {
       return ["2025", "2026", "2027"];
     }
 
     const jaren = new Set<string>();
 
     for (const rij of bronRijen) {
-      const datum = ontleedDatum(
-        rij[actieveFilterKolom.sleutel],
-      );
+      const datum = ontleedDatum(rij[actieveFilterKolom.sleutel]);
 
       if (datum) {
         jaren.add(datum.jaar);
@@ -539,187 +487,140 @@ export function CertificatenTabel({
     }
 
     return Array.from(jaren).sort(
-      (eerste, tweede) =>
-        Number(tweede) - Number(eerste),
+      (eerste, tweede) => Number(tweede) - Number(eerste),
     );
+  }, [bronRijen, actieveFilterKolom, serverModus, soort]);
+
+  const gefilterdeEnGesorteerdeRijen = useMemo(() => {
+    if (serverModus) {
+      return bronRijen;
+    }
+
+    const algemeneZoekwaarde = zoekterm.trim().toLocaleLowerCase("nl-BE");
+
+    const gefilterd = bronRijen.filter((rij) => {
+      const voldoetAanAlgemeneZoekterm =
+        !algemeneZoekwaarde ||
+        kolommen.some((kolom) => {
+          const waarde = String(rij[kolom.sleutel] ?? "").toLocaleLowerCase(
+            "nl-BE",
+          );
+
+          return waarde.includes(algemeneZoekwaarde);
+        });
+
+      if (!voldoetAanAlgemeneZoekterm) {
+        return false;
+      }
+
+      return kolommen.every((kolom) => {
+        if (isDatumKolom(kolom)) {
+          const filter = datumFilters[kolom.sleutel];
+
+          if (!filter?.jaar && !filter?.maand) {
+            return true;
+          }
+
+          const datum = ontleedDatum(rij[kolom.sleutel]);
+
+          if (!datum) {
+            return false;
+          }
+
+          if (filter.jaar && datum.jaar !== filter.jaar) {
+            return false;
+          }
+
+          if (filter.maand && datum.maand !== filter.maand) {
+            return false;
+          }
+
+          return true;
+        }
+
+        const filterWaarde =
+          kolomFilters[kolom.sleutel]?.trim().toLocaleLowerCase("nl-BE") ?? "";
+
+        if (!filterWaarde) {
+          return true;
+        }
+
+        const celWaarde = String(rij[kolom.sleutel] ?? "").toLocaleLowerCase(
+          "nl-BE",
+        );
+
+        return celWaarde.includes(filterWaarde);
+      });
+    });
+
+    if (!sortering) {
+      return gefilterd;
+    }
+
+    const gesorteerd = [...gefilterd];
+
+    const sorteerKolom = kolommen.find(
+      (kolom) => kolom.sleutel === sortering.sleutel,
+    );
+
+    gesorteerd.sort((eerste, tweede) => {
+      const eersteWaarde = eerste[sortering.sleutel];
+
+      const tweedeWaarde = tweede[sortering.sleutel];
+
+      const eersteLeeg =
+        eersteWaarde === null || String(eersteWaarde).trim() === "";
+
+      const tweedeLeeg =
+        tweedeWaarde === null || String(tweedeWaarde).trim() === "";
+
+      if (eersteLeeg && tweedeLeeg) {
+        return 0;
+      }
+
+      if (eersteLeeg) {
+        return 1;
+      }
+
+      if (tweedeLeeg) {
+        return -1;
+      }
+
+      let vergelijking = 0;
+
+      if (sorteerKolom && isDatumKolom(sorteerKolom)) {
+        const eersteDatum = ontleedDatum(eersteWaarde);
+
+        const tweedeDatum = ontleedDatum(tweedeWaarde);
+
+        vergelijking =
+          (eersteDatum?.tijdstip ?? 0) - (tweedeDatum?.tijdstip ?? 0);
+      } else {
+        vergelijking = String(eersteWaarde).localeCompare(
+          String(tweedeWaarde),
+          "nl-BE",
+          {
+            numeric: true,
+            sensitivity: "base",
+          },
+        );
+      }
+
+      return sortering.richting === "oplopend" ? vergelijking : -vergelijking;
+    });
+
+    return gesorteerd;
   }, [
-    bronRijen,
-    actieveFilterKolom,
     serverModus,
-    soort,
+    bronRijen,
+    kolommen,
+    zoekterm,
+    kolomFilters,
+    datumFilters,
+    sortering,
   ]);
 
-  const gefilterdeEnGesorteerdeRijen =
-    useMemo(() => {
-      if (serverModus) {
-        return bronRijen;
-      }
-
-      const algemeneZoekwaarde = zoekterm
-        .trim()
-        .toLocaleLowerCase("nl-BE");
-
-      const gefilterd = bronRijen.filter((rij) => {
-        const voldoetAanAlgemeneZoekterm =
-          !algemeneZoekwaarde ||
-          kolommen.some((kolom) => {
-            const waarde = String(
-              rij[kolom.sleutel] ?? "",
-            ).toLocaleLowerCase("nl-BE");
-
-            return waarde.includes(
-              algemeneZoekwaarde,
-            );
-          });
-
-        if (!voldoetAanAlgemeneZoekterm) {
-          return false;
-        }
-
-        return kolommen.every((kolom) => {
-          if (isDatumKolom(kolom)) {
-            const filter =
-              datumFilters[kolom.sleutel];
-
-            if (
-              !filter?.jaar &&
-              !filter?.maand
-            ) {
-              return true;
-            }
-
-            const datum = ontleedDatum(
-              rij[kolom.sleutel],
-            );
-
-            if (!datum) {
-              return false;
-            }
-
-            if (
-              filter.jaar &&
-              datum.jaar !== filter.jaar
-            ) {
-              return false;
-            }
-
-            if (
-              filter.maand &&
-              datum.maand !== filter.maand
-            ) {
-              return false;
-            }
-
-            return true;
-          }
-
-          const filterWaarde =
-            kolomFilters[kolom.sleutel]
-              ?.trim()
-              .toLocaleLowerCase("nl-BE") ??
-            "";
-
-          if (!filterWaarde) {
-            return true;
-          }
-
-          const celWaarde = String(
-            rij[kolom.sleutel] ?? "",
-          ).toLocaleLowerCase("nl-BE");
-
-          return celWaarde.includes(
-            filterWaarde,
-          );
-        });
-      });
-
-      if (!sortering) {
-        return gefilterd;
-      }
-
-      const gesorteerd = [...gefilterd];
-
-      const sorteerKolom = kolommen.find(
-        (kolom) =>
-          kolom.sleutel === sortering.sleutel,
-      );
-
-      gesorteerd.sort((eerste, tweede) => {
-        const eersteWaarde =
-          eerste[sortering.sleutel];
-
-        const tweedeWaarde =
-          tweede[sortering.sleutel];
-
-        const eersteLeeg =
-          eersteWaarde === null ||
-          String(eersteWaarde).trim() === "";
-
-        const tweedeLeeg =
-          tweedeWaarde === null ||
-          String(tweedeWaarde).trim() === "";
-
-        if (eersteLeeg && tweedeLeeg) {
-          return 0;
-        }
-
-        if (eersteLeeg) {
-          return 1;
-        }
-
-        if (tweedeLeeg) {
-          return -1;
-        }
-
-        let vergelijking = 0;
-
-        if (
-          sorteerKolom &&
-          isDatumKolom(sorteerKolom)
-        ) {
-          const eersteDatum =
-            ontleedDatum(eersteWaarde);
-
-          const tweedeDatum =
-            ontleedDatum(tweedeWaarde);
-
-          vergelijking =
-            (eersteDatum?.tijdstip ?? 0) -
-            (tweedeDatum?.tijdstip ?? 0);
-        } else {
-          vergelijking = String(
-            eersteWaarde,
-          ).localeCompare(
-            String(tweedeWaarde),
-            "nl-BE",
-            {
-              numeric: true,
-              sensitivity: "base",
-            },
-          );
-        }
-
-        return sortering.richting ===
-          "oplopend"
-          ? vergelijking
-          : -vergelijking;
-      });
-
-      return gesorteerd;
-    }, [
-      serverModus,
-      bronRijen,
-      kolommen,
-      zoekterm,
-      kolomFilters,
-      datumFilters,
-      sortering,
-    ]);
-
-  function wijzigKolomFilter(
-    sleutel: string,
-    waarde: string,
-  ) {
+  function wijzigKolomFilter(sleutel: string, waarde: string) {
     setKolomFilters((huidigeFilters) => ({
       ...huidigeFilters,
       [sleutel]: waarde,
@@ -734,11 +635,8 @@ export function CertificatenTabel({
     setDatumFilters((huidigeFilters) => ({
       ...huidigeFilters,
       [sleutel]: {
-        jaar:
-          huidigeFilters[sleutel]?.jaar ?? "",
-        maand:
-          huidigeFilters[sleutel]?.maand ??
-          "",
+        jaar: huidigeFilters[sleutel]?.jaar ?? "",
+        maand: huidigeFilters[sleutel]?.maand ?? "",
         [veld]: waarde,
       },
     }));
@@ -775,20 +673,14 @@ export function CertificatenTabel({
 
   function wijzigSortering(sleutel: string) {
     setSortering((huidigeSortering) => {
-      if (
-        !huidigeSortering ||
-        huidigeSortering.sleutel !== sleutel
-      ) {
+      if (!huidigeSortering || huidigeSortering.sleutel !== sleutel) {
         return {
           sleutel,
           richting: "oplopend",
         };
       }
 
-      if (
-        huidigeSortering.richting ===
-        "oplopend"
-      ) {
+      if (huidigeSortering.richting === "oplopend") {
         return {
           sleutel,
           richting: "aflopend",
@@ -799,9 +691,7 @@ export function CertificatenTabel({
     });
   }
 
-  function openOfSluitFilter(
-    sleutel: string,
-  ) {
+  function openOfSluitFilter(sleutel: string) {
     setActieveFilterSleutel((huidige) =>
       huidige === sleutel ? null : sleutel,
     );
@@ -810,23 +700,17 @@ export function CertificatenTabel({
   return (
     <section
       className={`${BEHEER_TABEL_STIJLEN.kader} ${
-        magBeheren
-          ? ""
-          : "[&_th:last-child]:hidden [&_td:last-child]:hidden"
+        magBeheren ? "" : "[&_th:last-child]:hidden [&_td:last-child]:hidden"
       }`}
     >
       <div className={BEHEER_TABEL_STIJLEN.bovenbalk}>
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div>
-            <h2 className={BEHEER_TABEL_STIJLEN.overzichtTitel}>
-              Overzicht
-            </h2>
+            <h2 className={BEHEER_TABEL_STIJLEN.overzichtTitel}>Overzicht</h2>
 
             <p className={BEHEER_TABEL_STIJLEN.aantal}>
               {totaalAantal} geregistreerd ·{" "}
-              {
-                gefilterdeEnGesorteerdeRijen.length
-              }{" "}
+              {gefilterdeEnGesorteerdeRijen.length}{" "}
               {serverModus ? "geladen" : "getoond"}
             </p>
           </div>
@@ -834,10 +718,7 @@ export function CertificatenTabel({
           <div className="flex w-full flex-col gap-2 sm:flex-row lg:max-w-3xl">
             {targetStatusKolom && (
               <div className="relative sm:w-64">
-                <label
-                  htmlFor="target-status-filter"
-                  className="sr-only"
-                >
+                <label htmlFor="target-status-filter" className="sr-only">
                   Filter op targetstatus
                 </label>
 
@@ -852,20 +733,13 @@ export function CertificatenTabel({
                   }
                   className="h-11 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm font-semibold text-slate-700 outline-none focus:border-emerald-600 focus:ring-4 focus:ring-emerald-600/10"
                 >
-                  <option value="">
-                    Alle targetstatussen
-                  </option>
+                  <option value="">Alle targetstatussen</option>
 
-                  {targetStatusOpties.map(
-                    (optie) => (
-                      <option
-                        key={optie.waarde}
-                        value={optie.waarde}
-                      >
-                        {optie.label}
-                      </option>
-                    ),
-                  )}
+                  {targetStatusOpties.map((optie) => (
+                    <option key={optie.waarde} value={optie.waarde}>
+                      {optie.label}
+                    </option>
+                  ))}
                 </select>
               </div>
             )}
@@ -888,9 +762,7 @@ export function CertificatenTabel({
               <input
                 type="search"
                 value={zoekterm}
-                onChange={(event) =>
-                  setZoekterm(event.target.value)
-                }
+                onChange={(event) => setZoekterm(event.target.value)}
                 placeholder={zoekPlaceholder}
                 className="h-11 w-full rounded-xl border border-slate-300 bg-white pl-11 pr-10 text-sm text-slate-900 outline-none placeholder:text-slate-400 focus:border-emerald-600 focus:ring-4 focus:ring-emerald-600/10"
               />
@@ -907,8 +779,7 @@ export function CertificatenTabel({
               )}
             </div>
 
-            {(heeftActieveFilters ||
-              sortering) && (
+            {(heeftActieveFilters || sortering) && (
               <button
                 type="button"
                 onClick={() => {
@@ -929,13 +800,10 @@ export function CertificatenTabel({
           <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
             <div className="min-w-0 flex-1">
               <p className="text-xs font-bold uppercase tracking-wider text-emerald-800">
-                Filter op{" "}
-                {actieveFilterKolom.label}
+                Filter op {actieveFilterKolom.label}
               </p>
 
-              {isDatumKolom(
-                actieveFilterKolom,
-              ) ? (
+              {isDatumKolom(actieveFilterKolom) ? (
                 <div className="mt-1.5 grid gap-2 sm:grid-cols-2">
                   <div>
                     <label
@@ -948,10 +816,7 @@ export function CertificatenTabel({
                     <select
                       id={`jaar-${actieveFilterKolom.sleutel}`}
                       value={
-                        datumFilters[
-                          actieveFilterKolom
-                            .sleutel
-                        ]?.jaar ?? ""
+                        datumFilters[actieveFilterKolom.sleutel]?.jaar ?? ""
                       }
                       onChange={(event) =>
                         wijzigDatumFilter(
@@ -962,20 +827,13 @@ export function CertificatenTabel({
                       }
                       className="h-10 w-full rounded-xl border border-emerald-300 bg-white px-3 text-sm text-slate-900 outline-none focus:border-emerald-600 focus:ring-4 focus:ring-emerald-600/10"
                     >
-                      <option value="">
-                        Alle jaren
-                      </option>
+                      <option value="">Alle jaren</option>
 
-                      {beschikbareJaren.map(
-                        (jaar) => (
-                          <option
-                            key={jaar}
-                            value={jaar}
-                          >
-                            {jaar}
-                          </option>
-                        ),
-                      )}
+                      {beschikbareJaren.map((jaar) => (
+                        <option key={jaar} value={jaar}>
+                          {jaar}
+                        </option>
+                      ))}
                     </select>
                   </div>
 
@@ -990,10 +848,7 @@ export function CertificatenTabel({
                     <select
                       id={`maand-${actieveFilterKolom.sleutel}`}
                       value={
-                        datumFilters[
-                          actieveFilterKolom
-                            .sleutel
-                        ]?.maand ?? ""
+                        datumFilters[actieveFilterKolom.sleutel]?.maand ?? ""
                       }
                       onChange={(event) =>
                         wijzigDatumFilter(
@@ -1004,15 +859,10 @@ export function CertificatenTabel({
                       }
                       className="h-10 w-full rounded-xl border border-emerald-300 bg-white px-3 text-sm text-slate-900 outline-none focus:border-emerald-600 focus:ring-4 focus:ring-emerald-600/10"
                     >
-                      <option value="">
-                        Alle maanden
-                      </option>
+                      <option value="">Alle maanden</option>
 
                       {maanden.map((maand) => (
-                        <option
-                          key={maand.waarde}
-                          value={maand.waarde}
-                        >
+                        <option key={maand.waarde} value={maand.waarde}>
                           {maand.label}
                         </option>
                       ))}
@@ -1025,11 +875,7 @@ export function CertificatenTabel({
                     id={`filter-${actieveFilterKolom.sleutel}`}
                     type="search"
                     list={`filter-opties-${actieveFilterKolom.sleutel}`}
-                    value={
-                      kolomFilters[
-                        actieveFilterKolom.sleutel
-                      ] ?? ""
-                    }
+                    value={kolomFilters[actieveFilterKolom.sleutel] ?? ""}
                     onChange={(event) =>
                       wijzigKolomFilter(
                         actieveFilterKolom.sleutel,
@@ -1041,17 +887,10 @@ export function CertificatenTabel({
                     className="h-10 w-full rounded-xl border border-emerald-300 bg-white px-3 pr-10 text-sm text-slate-900 outline-none placeholder:text-slate-400 focus:border-emerald-600 focus:ring-4 focus:ring-emerald-600/10"
                   />
 
-                  <datalist
-                    id={`filter-opties-${actieveFilterKolom.sleutel}`}
-                  >
-                    {filterSuggesties.map(
-                      (waarde) => (
-                        <option
-                          key={waarde}
-                          value={waarde}
-                        />
-                      ),
-                    )}
+                  <datalist id={`filter-opties-${actieveFilterKolom.sleutel}`}>
+                    {filterSuggesties.map((waarde) => (
+                      <option key={waarde} value={waarde} />
+                    ))}
                   </datalist>
                 </div>
               )}
@@ -1060,11 +899,7 @@ export function CertificatenTabel({
             <div className="flex shrink-0 gap-2">
               <button
                 type="button"
-                onClick={() =>
-                  wisKolomFilter(
-                    actieveFilterKolom.sleutel,
-                  )
-                }
+                onClick={() => wisKolomFilter(actieveFilterKolom.sleutel)}
                 className="h-10 rounded-xl border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-700 transition hover:bg-slate-100"
               >
                 Wissen
@@ -1072,9 +907,7 @@ export function CertificatenTabel({
 
               <button
                 type="button"
-                onClick={() =>
-                  setActieveFilterSleutel(null)
-                }
+                onClick={() => setActieveFilterSleutel(null)}
                 className="h-10 rounded-xl bg-emerald-700 px-4 text-sm font-semibold text-white transition hover:bg-emerald-800"
               >
                 Gereed
@@ -1091,24 +924,15 @@ export function CertificatenTabel({
           </span>
 
           {kolommen.map((kolom) => {
-            const tekstFilter =
-              kolomFilters[
-                kolom.sleutel
-              ]?.trim();
+            const tekstFilter = kolomFilters[kolom.sleutel]?.trim();
 
-            const datumFilter =
-              datumFilters[kolom.sleutel];
+            const datumFilter = datumFilters[kolom.sleutel];
 
-            if (
-              !tekstFilter &&
-              !datumFilter?.jaar &&
-              !datumFilter?.maand
-            ) {
+            if (!tekstFilter && !datumFilter?.jaar && !datumFilter?.maand) {
               return null;
             }
 
-            let filterTekst =
-              tekstFilter ?? "";
+            let filterTekst = tekstFilter ?? "";
 
             if (isDatumKolom(kolom)) {
               const delen: string[] = [];
@@ -1118,11 +942,7 @@ export function CertificatenTabel({
               }
 
               if (datumFilter?.maand) {
-                delen.push(
-                  naamVanMaand(
-                    datumFilter.maand,
-                  ),
-                );
+                delen.push(naamVanMaand(datumFilter.maand));
               }
 
               filterTekst = delen.join(" · ");
@@ -1132,9 +952,7 @@ export function CertificatenTabel({
               <button
                 key={kolom.sleutel}
                 type="button"
-                onClick={() =>
-                  wisKolomFilter(kolom.sleutel)
-                }
+                onClick={() => wisKolomFilter(kolom.sleutel)}
                 title={`${kolom.label}-filter verwijderen`}
                 className="inline-flex max-w-xs items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-800 transition hover:border-red-200 hover:bg-red-50 hover:text-red-700"
               >
@@ -1192,8 +1010,7 @@ export function CertificatenTabel({
             Opnieuw proberen
           </button>
         </div>
-      ) : gefilterdeEnGesorteerdeRijen.length ===
-      0 ? (
+      ) : gefilterdeEnGesorteerdeRijen.length === 0 ? (
         <div className="flex flex-col items-center justify-center px-6 py-16 text-center">
           <div className="flex size-16 items-center justify-center rounded-3xl bg-emerald-100 text-emerald-700">
             <svg
@@ -1212,9 +1029,7 @@ export function CertificatenTabel({
           </div>
 
           <h3 className="mt-5 text-xl font-bold text-slate-950">
-            {heeftActieveFilters
-              ? "Geen resultaten gevonden"
-              : legeTitel}
+            {heeftActieveFilters ? "Geen resultaten gevonden" : legeTitel}
           </h3>
 
           <p className="mt-2 max-w-md text-sm leading-6 text-slate-500">
@@ -1245,63 +1060,311 @@ export function CertificatenTabel({
         </div>
       ) : (
         <>
-          <div className={BEHEER_TABEL_STIJLEN.scroll}>
-            <table className={BEHEER_TABEL_STIJLEN.tabel}>
-              <thead className={BEHEER_TABEL_STIJLEN.kop}>
-                <tr>
-                  {zichtbareKolommen.map(
-                    (kolom, index) => {
-                      const heeftTekstFilter =
-                        Boolean(
-                          kolomFilters[
-                            kolom.sleutel
-                          ]?.trim(),
-                        );
+          {kaartWeergave && soort === "persoon" ? (
+            <div className="space-y-2 p-3">
+              {gefilterdeEnGesorteerdeRijen.map((rij) => {
+                const geopend = openKaartId === rij.id;
 
-                      const heeftDatumFilter =
-                        Boolean(
-                          datumFilters[
-                            kolom.sleutel
-                          ]?.jaar ||
-                            datumFilters[
-                              kolom.sleutel
-                            ]?.maand,
-                        );
+                const targetStatus = String(
+                  rij.controleTargetStatus ?? "GRIJS",
+                );
 
-                      const heeftFilter =
-                        heeftTekstFilter ||
-                        heeftDatumFilter;
+                const targetPresentatie = statusbolPresentatie(targetStatus);
 
-                      const isGesorteerd =
-                        sortering?.sleutel ===
-                        kolom.sleutel;
+                const targetToelichting = String(
+                  rij.controleTargetStatusToelichting ??
+                    targetPresentatie.label,
+                );
 
-                      const ariaSort =
-                        isGesorteerd
-                          ? sortering.richting ===
-                            "oplopend"
-                            ? "ascending"
-                            : "descending"
-                          : "none";
+                const targetRegels = targetToelichting
+                  .split(/\s+[—–]\s+/)
+                  .map((regel) =>
+                    regel
+                      .replace(/^deskcontroles\b/i, "deskcontrole")
+                      .replace(/^terreincontroles\b/i, "terreincontrole"),
+                  );
+
+                const naam = String(rij.naamPersoon ?? `record ${rij.id}`);
+
+                const certificatiePlatform = String(
+                  rij.certificatiePlatform ?? "",
+                ).trim();
+
+                const opmerking = String(rij.opmerking ?? "").trim();
+
+                return (
+                  <article
+                    key={rij.id}
+                    role="button"
+                    tabIndex={0}
+                    aria-expanded={geopend}
+                    aria-label={`Persoonscertificaat van ${naam}`}
+                    title={targetToelichting}
+                    onClick={(event) => {
+                      if (
+                        event.target instanceof Element &&
+                        event.target.closest(
+                          "a, button, input, select, textarea",
+                        )
+                      ) {
+                        return;
+                      }
+
+                      setOpenKaartId((huidig) =>
+                        huidig === rij.id ? null : rij.id,
+                      );
+                    }}
+                    onKeyDown={(event) => {
+                      if (
+                        event.target !== event.currentTarget ||
+                        (event.key !== "Enter" && event.key !== " ")
+                      ) {
+                        return;
+                      }
+
+                      event.preventDefault();
+
+                      setOpenKaartId((huidig) =>
+                        huidig === rij.id ? null : rij.id,
+                      );
+                    }}
+                    className={`group relative z-0 cursor-pointer rounded-xl border border-slate-200 shadow-sm outline-none transition hover:border-emerald-300 hover:shadow-md focus-within:z-40 has-[details[open]]:z-50 focus-visible:ring-4 focus-visible:ring-emerald-200 ${statusRijStijl(
+                      targetStatus,
+                    )} ${
+                      geopend
+                        ? "border-emerald-400 ring-1 ring-emerald-200"
+                        : ""
+                    }`}
+                  >
+                    <div className="relative p-3 pr-11">
+                      <span
+                        aria-hidden="true"
+                        className={`absolute right-3 top-3 inline-flex size-7 items-center justify-center rounded-full bg-white/80 text-sm font-black text-slate-600 shadow-sm transition ${
+                          geopend
+                            ? "rotate-180 bg-emerald-100 text-emerald-800"
+                            : ""
+                        }`}
+                      >
+                        ↓
+                      </span>
+
+                      <dl className="grid gap-x-5 gap-y-3 sm:grid-cols-2 lg:grid-cols-5 lg:items-start">
+                        <CertificaatKaartWaarde
+                          label="Naam persoon"
+                          waarde={rij.naamPersoon}
+                          sterk
+                        />
+
+                        <CertificaatKaartWaarde
+                          label="Telefoonnummer"
+                          waarde={rij.telefoonnummer}
+                          sterk
+                        />
+
+                        <CertificaatKaartWaarde
+                          label="Bedrijf"
+                          waarde={rij.bedrijf}
+                          sterk
+                        />
+
+                        <CertificaatKaartWaarde
+                          label="Mailadres"
+                          waarde={rij.mailadres}
+                          sterk
+                        />
+
+                        <CertificaatKaartWaarde
+                          label="OVAM-ID"
+                          waarde={rij.ovamId}
+                          sterk
+                        />
+                      </dl>
+                    </div>
+
+                    {geopend ? (
+                      <div className="border-t border-slate-200 bg-white/55 p-3">
+                        <p className="mb-3 text-xs font-black uppercase tracking-wider text-slate-600">
+                          Overige gegevens
+                        </p>
+
+                        <dl className="grid gap-x-5 gap-y-3 sm:grid-cols-2 lg:grid-cols-3">
+                          <div>
+                            <dt className="text-[11px] font-bold uppercase tracking-wide text-slate-500">
+                              Targetstatus
+                            </dt>
+
+                            <dd className="mt-1 flex items-start gap-2 text-sm font-medium text-slate-900">
+                              <span
+                                aria-hidden="true"
+                                className={`mt-1 inline-block size-3 shrink-0 rounded-full ring-4 ${targetPresentatie.stijl}`}
+                              />
+
+                              <span className="min-w-0 flex-1">
+                                {targetRegels.map((regel, index) => (
+                                  <span
+                                    key={`${rij.id}-target-${index}`}
+                                    className="block"
+                                  >
+                                    {regel}
+                                  </span>
+                                ))}
+                              </span>
+
+                              <CopyButton
+                                waarde={targetToelichting}
+                                label="Targetstatus kopiëren"
+                              />
+                            </dd>
+                          </div>
+
+                          <CertificaatKaartWaarde
+                            label="Certificaatnummer"
+                            waarde={rij.certificaatnummer}
+                          />
+
+                          <CertificaatKaartWaarde
+                            label="Uitgereikt op"
+                            waarde={rij.uitgereiktOp}
+                          />
+
+                          <CertificaatKaartWaarde
+                            label="Aansluiting"
+                            waarde={rij.aansluiting}
+                          />
+
+                          <div className="sm:col-span-2">
+                            <dt className="text-[11px] font-bold uppercase tracking-wide text-slate-500">
+                              Opmerking
+                            </dt>
+
+                            <dd className="mt-1 flex items-start gap-1.5 text-sm font-medium text-slate-900">
+                              <span className="min-w-0 flex-1 whitespace-pre-wrap break-words">
+                                {opmerking || "—"}
+                              </span>
+
+                              <CopyButton
+                                waarde={opmerking || null}
+                                label="Opmerking kopiëren"
+                              />
+
+                              {magBeheren ? (
+                                <span
+                                  data-voorkom-rij-navigatie
+                                  onClick={(event) => {
+                                    event.stopPropagation();
+                                  }}
+                                  onKeyDown={(event) => {
+                                    event.stopPropagation();
+                                  }}
+                                >
+                                  <OpmerkingDialog
+                                    id={rij.id}
+                                    soort={soort}
+                                    tekst={opmerking}
+                                    compact
+                                  />
+                                </span>
+                              ) : null}
+                            </dd>
+                          </div>
+
+                          <CertificaatKaartWaarde
+                            label="Certificatieplatform"
+                            waarde={certificatiePlatform}
+                            breed
+                          />
+                        </dl>
+
+                        <div
+                          className="mt-4 flex flex-wrap items-center gap-2 border-t border-slate-200 pt-3"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                          }}
+                          onKeyDown={(event) => {
+                            event.stopPropagation();
+                          }}
+                        >
+                          {certificatiePlatform ? (
+                            <a
+                              href={certificatiePlatform}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex h-9 items-center rounded-xl border border-sky-200 bg-white px-3 text-xs font-bold text-sky-800 hover:bg-sky-50"
+                            >
+                              Certificatieplatform
+                              <span aria-hidden="true" className="ml-1">
+                                ↗
+                              </span>
+                            </a>
+                          ) : null}
+
+                          {detailBasisHref ? (
+                            <NextLink
+                              href={`${detailBasisHref}/${rij.id}`}
+                              className="inline-flex h-9 items-center rounded-xl border border-slate-300 bg-white px-3 text-xs font-bold text-slate-700 hover:bg-slate-100"
+                            >
+                              Volledig dossier
+                            </NextLink>
+                          ) : null}
+
+                          {magBeheren ? (
+                            <div className="ml-auto">
+                              <CertificaatRijMeerMenu
+                                bewerkenHref={`${bewerkBasisHref}/${rij.id}/bewerken`}
+                              >
+                                <BeheerVerwijderButton
+                                  magBeheren={magBeheren}
+                                  id={rij.id}
+                                  soort={soort}
+                                  naam={naam}
+                                />
+                              </CertificaatRijMeerMenu>
+                            </div>
+                          ) : null}
+                        </div>
+                      </div>
+                    ) : null}
+                  </article>
+                );
+              })}
+            </div>
+          ) : (
+            <div className={BEHEER_TABEL_STIJLEN.scroll}>
+              <table className={BEHEER_TABEL_STIJLEN.tabel}>
+                <thead className={BEHEER_TABEL_STIJLEN.kop}>
+                  <tr>
+                    {zichtbareKolommen.map((kolom, index) => {
+                      const heeftTekstFilter = Boolean(
+                        kolomFilters[kolom.sleutel]?.trim(),
+                      );
+
+                      const heeftDatumFilter = Boolean(
+                        datumFilters[kolom.sleutel]?.jaar ||
+                        datumFilters[kolom.sleutel]?.maand,
+                      );
+
+                      const heeftFilter = heeftTekstFilter || heeftDatumFilter;
+
+                      const isGesorteerd = sortering?.sleutel === kolom.sleutel;
+
+                      const ariaSort = isGesorteerd
+                        ? sortering.richting === "oplopend"
+                          ? "ascending"
+                          : "descending"
+                        : "none";
 
                       return (
                         <th
                           key={kolom.sleutel}
                           aria-sort={ariaSort}
                           className={`border-b border-slate-200 px-5 py-3 text-xs font-bold uppercase tracking-wider text-slate-500 ${
-                            index === 0
-                              ? "sticky left-0 z-10 bg-slate-50"
-                              : ""
+                            index === 0 ? "sticky left-0 z-10 bg-slate-50" : ""
                           }`}
                         >
                           <div className="flex min-w-max items-center gap-1">
                             <button
                               type="button"
-                              onClick={() =>
-                                wijzigSortering(
-                                  kolom.sleutel,
-                                )
-                              }
+                              onClick={() => wijzigSortering(kolom.sleutel)}
                               title={`Sorteer op ${kolom.label}`}
                               className={`inline-flex items-center gap-1 rounded-lg px-1.5 py-1 transition hover:bg-white hover:text-slate-900 ${
                                 isGesorteerd
@@ -1309,18 +1372,12 @@ export function CertificatenTabel({
                                   : ""
                               }`}
                             >
-                              <span>
-                                {kolom.label}
-                              </span>
+                              <span>{kolom.label}</span>
 
-                              <span
-                                aria-hidden="true"
-                                className="text-sm"
-                              >
+                              <span aria-hidden="true" className="text-sm">
                                 {!isGesorteerd
                                   ? "↕"
-                                  : sortering.richting ===
-                                      "oplopend"
+                                  : sortering.richting === "oplopend"
                                     ? "↑"
                                     : "↓"}
                               </span>
@@ -1328,11 +1385,7 @@ export function CertificatenTabel({
 
                             <button
                               type="button"
-                              onClick={() =>
-                                openOfSluitFilter(
-                                  kolom.sleutel,
-                                )
-                              }
+                              onClick={() => openOfSluitFilter(kolom.sleutel)}
                               aria-label={`Filter instellen voor ${kolom.label}`}
                               title={`Filter op ${kolom.label}`}
                               className={`flex size-7 items-center justify-center rounded-lg border transition ${
@@ -1359,30 +1412,20 @@ export function CertificatenTabel({
                           </div>
                         </th>
                       );
-                    },
-                  )}
+                    })}
 
-                  <th className="sticky right-0 w-20 min-w-20 top-0 z-30 border-b border-slate-200 bg-slate-50 px-3 py-2.5 text-left text-xs font-bold uppercase tracking-wider text-slate-500">
-                    Acties
-                  </th>
-                </tr>
-              </thead>
+                    <th className="sticky right-0 w-20 min-w-20 top-0 z-30 border-b border-slate-200 bg-slate-50 px-3 py-2.5 text-left text-xs font-bold uppercase tracking-wider text-slate-500">
+                      Acties
+                    </th>
+                  </tr>
+                </thead>
 
-              <tbody className="divide-y divide-slate-100">
-                {gefilterdeEnGesorteerdeRijen.map(
-                  (rij) => (
+                <tbody className="divide-y divide-slate-100">
+                  {gefilterdeEnGesorteerdeRijen.map((rij) => (
                     <tr
                       key={rij.id}
-                      tabIndex={
-                        detailBasisHref
-                          ? 0
-                          : undefined
-                      }
-                      role={
-                        detailBasisHref
-                          ? "link"
-                          : undefined
-                      }
+                      tabIndex={detailBasisHref ? 0 : undefined}
+                      role={detailBasisHref ? "link" : undefined}
                       aria-label={
                         detailBasisHref
                           ? `Open detail van ${
@@ -1395,62 +1438,43 @@ export function CertificatenTabel({
                       title={
                         targetStatusKolom
                           ? String(
-                              rij[
-                                `${targetStatusKolom.sleutel}Toelichting`
-                              ] ?? "",
+                              rij[`${targetStatusKolom.sleutel}Toelichting`] ??
+                                "",
                             )
                           : undefined
                       }
                       onClick={(event) => {
                         if (
                           !detailBasisHref ||
-                          (
-                            event.target instanceof
-                              Element &&
+                          (event.target instanceof Element &&
                             event.target.closest(
                               "a, button, input, select, textarea, [role='button']",
-                            )
-                          )
+                            ))
                         ) {
                           return;
                         }
 
-                        router.push(
-                          `${detailBasisHref}/${rij.id}`,
-                        );
+                        router.push(`${detailBasisHref}/${rij.id}`);
                       }}
                       onKeyDown={(event) => {
                         if (
                           !detailBasisHref ||
-                          (
-                            event.key !==
-                              "Enter" &&
-                            event.key !== " "
-                          )
+                          (event.key !== "Enter" && event.key !== " ")
                         ) {
                           return;
                         }
 
-                        if (
-                          event.target !==
-                          event.currentTarget
-                        ) {
+                        if (event.target !== event.currentTarget) {
                           return;
                         }
 
                         event.preventDefault();
 
-                        router.push(
-                          `${detailBasisHref}/${rij.id}`,
-                        );
+                        router.push(`${detailBasisHref}/${rij.id}`);
                       }}
                       className={`group ${
                         targetStatusKolom
-                          ? statusRijStijl(
-                              rij[
-                                targetStatusKolom.sleutel
-                              ],
-                            )
+                          ? statusRijStijl(rij[targetStatusKolom.sleutel])
                           : "bg-white hover:bg-emerald-50/35"
                       } ${
                         detailBasisHref
@@ -1458,141 +1482,101 @@ export function CertificatenTabel({
                           : ""
                       }`}
                     >
-                      {zichtbareKolommen.map(
-                        (kolom, index) => {
-                          const origineleWaarde =
-                            rij[kolom.sleutel];
+                      {zichtbareKolommen.map((kolom, index) => {
+                        const origineleWaarde = rij[kolom.sleutel];
 
-                          const tekst = String(
-                            origineleWaarde ?? "",
-                          ).trim();
+                        const tekst = String(origineleWaarde ?? "").trim();
 
-                          const weergegevenTekst =
-                            tekst || "—";
+                        const weergegevenTekst = tekst || "—";
 
-                          return (
-                            <td
-                              key={kolom.sleutel}
-                              className={`max-w-96 px-5 py-3 text-sm text-slate-700 ${
-                                index === 0
-                                  ? "sticky left-0 z-10 bg-inherit font-semibold text-slate-950"
-                                  : ""
-                              }`}
-                            >
-                              <div className="flex min-w-max items-center gap-2">
-                                {kolom.sleutel ===
-                                "opmerking" ? (
-                                  magBeheren ? (
-                                    <OpmerkingDialog
-                                      id={rij.id}
-                                      soort={soort}
-                                      tekst={tekst}
-                                    />
-                                  ) : (
-                                    <span
-                                      title={
-                                        tekst ||
-                                        undefined
-                                      }
-                                      className={`max-w-72 truncate ${
-                                        !tekst
-                                          ? "text-slate-400"
-                                          : ""
-                                      }`}
-                                    >
-                                      {tekst || "—"}
-                                    </span>
-                                  )
-                                ) : kolom.type ===
-                                    "statusbol" ? (
-                                  (() => {
-                                    const presentatie =
-                                      statusbolPresentatie(
-                                        tekst,
-                                      );
-
-                                    const toelichting =
-                                      String(
-                                        rij[
-                                          `${kolom.sleutel}Toelichting`
-                                        ] ??
-                                          presentatie.label,
-                                      );
-
-                                    return (
-                                      <span
-                                        title={toelichting}
-                                        aria-label={toelichting}
-                                        className={`inline-block size-3 shrink-0 rounded-full ring-4 ${presentatie.stijl}`}
-                                      >
-                                        <span className="sr-only">
-                                          {
-                                            presentatie.label
-                                          }
-                                        </span>
-                                      </span>
-                                    );
-                                  })()
-                                ) : kolom.type ===
-                                    "url" &&
-                                  tekst ? (
-                                  <a
-                                    href={tekst}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="inline-flex items-center gap-1.5 rounded-lg border border-sky-200 bg-sky-50 px-2.5 py-1.5 text-xs font-bold text-sky-800 hover:bg-sky-100"
-                                  >
-                                    Open link
-                                    <span aria-hidden="true">
-                                      ↗
-                                    </span>
-                                  </a>
-                                ) : kolom.type ===
-                                    "badge" &&
-                                  tekst ? (
-                                  <span
-                                    className={`inline-flex rounded-full px-3 py-1.5 text-xs font-bold ${
-                                      tekst ===
-                                      "Eenmanszaak"
-                                        ? "bg-amber-100 text-amber-800"
-                                        : "bg-emerald-100 text-emerald-800"
-                                    }`}
-                                  >
-                                    {tekst}
-                                  </span>
+                        return (
+                          <td
+                            key={kolom.sleutel}
+                            className={`max-w-96 px-5 py-3 text-sm text-slate-700 ${
+                              index === 0
+                                ? "sticky left-0 z-10 bg-inherit font-semibold text-slate-950"
+                                : ""
+                            }`}
+                          >
+                            <div className="flex min-w-max items-center gap-2">
+                              {kolom.sleutel === "opmerking" ? (
+                                magBeheren ? (
+                                  <OpmerkingDialog
+                                    id={rij.id}
+                                    soort={soort}
+                                    tekst={tekst}
+                                  />
                                 ) : (
                                   <span
-                                    title={
-                                      tekst ||
-                                      undefined
-                                    }
+                                    title={tekst || undefined}
                                     className={`max-w-72 truncate ${
-                                      !tekst
-                                        ? "text-slate-400"
-                                        : ""
+                                      !tekst ? "text-slate-400" : ""
                                     }`}
                                   >
-                                    {
-                                      weergegevenTekst
-                                    }
+                                    {tekst || "—"}
                                   </span>
-                                )}
+                                )
+                              ) : kolom.type === "statusbol" ? (
+                                (() => {
+                                  const presentatie =
+                                    statusbolPresentatie(tekst);
 
-                                {kolom.sleutel !==
-                                  "opmerking" &&
-                                  kolom.type !==
-                                    "statusbol" && (
-                                    <CopyButton
-                                      waarde={
-                                        tekst || null
-                                      }
-                                    />
-                                  )}
-                              </div>
-                            </td>
-                          );
-                        },
-                      )}
+                                  const toelichting = String(
+                                    rij[`${kolom.sleutel}Toelichting`] ??
+                                      presentatie.label,
+                                  );
+
+                                  return (
+                                    <span
+                                      title={toelichting}
+                                      aria-label={toelichting}
+                                      className={`inline-block size-3 shrink-0 rounded-full ring-4 ${presentatie.stijl}`}
+                                    >
+                                      <span className="sr-only">
+                                        {presentatie.label}
+                                      </span>
+                                    </span>
+                                  );
+                                })()
+                              ) : kolom.type === "url" && tekst ? (
+                                <a
+                                  href={tekst}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="inline-flex items-center gap-1.5 rounded-lg border border-sky-200 bg-sky-50 px-2.5 py-1.5 text-xs font-bold text-sky-800 hover:bg-sky-100"
+                                >
+                                  Open link
+                                  <span aria-hidden="true">↗</span>
+                                </a>
+                              ) : kolom.type === "badge" && tekst ? (
+                                <span
+                                  className={`inline-flex rounded-full px-3 py-1.5 text-xs font-bold ${
+                                    tekst === "Eenmanszaak"
+                                      ? "bg-amber-100 text-amber-800"
+                                      : "bg-emerald-100 text-emerald-800"
+                                  }`}
+                                >
+                                  {tekst}
+                                </span>
+                              ) : (
+                                <span
+                                  title={tekst || undefined}
+                                  className={`max-w-72 truncate ${
+                                    !tekst ? "text-slate-400" : ""
+                                  }`}
+                                >
+                                  {weergegevenTekst}
+                                </span>
+                              )}
+
+                              {kolom.sleutel !== "opmerking" &&
+                                kolom.type !== "statusbol" && (
+                                  <CopyButton waarde={tekst || null} />
+                                )}
+                            </div>
+                          </td>
+                        );
+                      })}
 
                       <td className="sticky right-0 w-20 min-w-20 z-10 bg-inherit px-3 py-2.5 text-left">
                         {magBeheren ? (
@@ -1613,23 +1597,18 @@ export function CertificatenTabel({
                         ) : null}
                       </td>
                     </tr>
-                  ),
-                )}
-              </tbody>
-            </table>
-          </div>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
 
           <div className={BEHEER_TABEL_STIJLEN.voet}>
             <p>
               <strong className="text-slate-700">
-                {
-                  gefilterdeEnGesorteerdeRijen.length
-                }
+                {gefilterdeEnGesorteerdeRijen.length}
               </strong>{" "}
-              van{" "}
-              <strong className="text-slate-700">
-                {totaalAantal}
-              </strong>{" "}
+              van <strong className="text-slate-700">{totaalAantal}</strong>{" "}
               resultaten
             </p>
 
@@ -1653,13 +1632,10 @@ export function CertificatenTabel({
                 </div>
               )}
 
-              {serverModus &&
-              serverQuery.heeftVolgendePagina ? (
+              {serverModus && serverQuery.heeftVolgendePagina ? (
                 <button
                   type="button"
-                  disabled={
-                    serverQuery.isVolgendePaginaLaden
-                  }
+                  disabled={serverQuery.isVolgendePaginaLaden}
                   onClick={() => {
                     void serverQuery.laadVolgendePagina();
                   }}
@@ -1671,8 +1647,8 @@ export function CertificatenTabel({
                 </button>
               ) : (
                 <p className="text-xs">
-                  Klik op een kolomnaam om te sorteren en
-                  op het filtericoon om te filteren.
+                  Klik op een kolomnaam om te sorteren en op het filtericoon om
+                  te filteren.
                 </p>
               )}
             </div>

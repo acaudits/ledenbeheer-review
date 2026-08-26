@@ -59,14 +59,9 @@ const kolommen: CertificaatKolom[] = [
 ];
 
 export default async function PersoonscertificatenPage() {
-  const gebruiker = await vereisMachtiging(
-    "CERTIFICATEN_BEKIJKEN",
-  );
+  const gebruiker = await vereisMachtiging("CERTIFICATEN_BEKIJKEN");
 
-  const magBeheren = heeftMachtiging(
-    gebruiker.rol,
-    "CERTIFICATEN_BEHEREN",
-  );
+  const magBeheren = heeftMachtiging(gebruiker.rol, "CERTIFICATEN_BEHEREN");
 
   return (
     <div className="space-y-4">
@@ -74,29 +69,18 @@ export default async function PersoonscertificatenPage() {
         compact
         titel="Persoonscertificaten"
         beschrijving="Actieve persoonscertificaten"
-        actieTekst={
-          magBeheren
-            ? "Nieuw persoonscertificaat"
-            : undefined
-        }
-        actieHref={
-          magBeheren
-            ? "/persoonscertificaten/nieuw"
-            : undefined
-        }
-        secundaireActieTekst={
-          magBeheren ? "Verwijderde" : undefined
-        }
+        actieTekst={magBeheren ? "Nieuw persoonscertificaat" : undefined}
+        actieHref={magBeheren ? "/persoonscertificaten/nieuw" : undefined}
+        secundaireActieTekst={magBeheren ? "Verwijderde" : undefined}
         secundaireActieHref={
-          magBeheren
-            ? "/persoonscertificaten/verwijderd"
-            : undefined
+          magBeheren ? "/persoonscertificaten/verwijderd" : undefined
         }
       />
 
       <CertificatenTabel
         rijen={[]}
         serverModus
+        kaartWeergave
         kolommen={kolommen}
         zoekPlaceholder="Zoeken in persoonscertificaten..."
         legeTitel="Nog geen persoonscertificaten"
