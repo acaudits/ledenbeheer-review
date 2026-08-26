@@ -6,9 +6,15 @@ import {
   useMemo,
   useState,
   type ComponentProps,
+  type ReactNode,
 } from "react";
+import {
+  DeskcontroleKaartKolombalk,
+  type DeskcontroleCardSortering,
+} from "@/components/DeskcontroleKaartKolombalk";
 import { DeskcontroleHerstelButton as BasisDeskcontroleHerstelButton } from "@/components/DeskcontroleHerstelButton";
 import { DeskcontroleOpmerkingenDialog } from "@/components/DeskcontroleOpmerkingenDialog";
+import { CopyButton } from "@/components/CopyButton";
 import { DeskcontroleVerwijderButton as BasisDeskcontroleVerwijderButton } from "@/components/DeskcontroleVerwijderButton";
 import { OpvolgingRijMeerMenu } from "@/components/OpvolgingRijMeerMenu";
 import {
@@ -27,13 +33,7 @@ import {
 export type DeskcontroleKolom = {
   sleutel: string;
   label: string;
-  type?:
-    | "tekst"
-    | "url"
-    | "badge"
-    | "boolean"
-    | "datum"
-    | "opmerking";
+  type?: "tekst" | "url" | "badge" | "boolean" | "datum" | "opmerking";
 };
 
 export type DeskcontroleRij = {
@@ -47,6 +47,7 @@ type DeskcontrolesTabelProps = {
   modus?: "actief" | "verwijderd";
   magBeheren: boolean;
   serverModus?: boolean;
+  kaartWeergave?: boolean;
 };
 
 type Sortering = {
@@ -64,9 +65,7 @@ type DashboardFilter = {
   ids: number[];
 };
 
-const DASHBOARD_FILTER_EVENT =
-  "deskcontrole-dashboard-filter";
-
+const DASHBOARD_FILTER_EVENT = "deskcontrole-dashboard-filter";
 
 const maanden = [
   { waarde: "01", label: "Januari" },
@@ -86,9 +85,7 @@ const maanden = [
 function ontleedDatum(waarde: string | number | null) {
   const tekst = String(waarde ?? "").trim();
 
-  const gevonden = tekst.match(
-    /^(\d{1,2})[/-](\d{1,2})[/-](\d{4})$/,
-  );
+  const gevonden = tekst.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{4})$/);
 
   if (!gevonden) {
     return null;
@@ -102,27 +99,16 @@ function ontleedDatum(waarde: string | number | null) {
     dag,
     maand,
     jaar,
-    tijdstip: Date.UTC(
-      Number(jaar),
-      Number(maand) - 1,
-      Number(dag),
-    ),
+    tijdstip: Date.UTC(Number(jaar), Number(maand) - 1, Number(dag)),
   };
 }
 
 function badgeStijl(tekst: string) {
-  if (
-    tekst === "Geactualiseerd" ||
-    tekst === "Afgerond" ||
-    tekst === "Ja"
-  ) {
+  if (tekst === "Geactualiseerd" || tekst === "Afgerond" || tekst === "Ja") {
     return "bg-emerald-100 text-emerald-800";
   }
 
-  if (
-    tekst === "In opmaak" ||
-    tekst === "Opvolging"
-  ) {
+  if (tekst === "In opmaak" || tekst === "Opvolging") {
     return "bg-amber-100 text-amber-800";
   }
 
@@ -147,21 +133,15 @@ function bepaalDeadlineInformatie(
     return null;
   }
 
-  const genormaliseerdeStatus = status
-    .trim()
-    .toLocaleLowerCase("nl-BE");
+  const genormaliseerdeStatus = status.trim().toLocaleLowerCase("nl-BE");
 
   if (
-    genormaliseerdeStatus ===
-      "geactualiseerd" ||
-    genormaliseerdeStatus ===
-      "afgerond"
+    genormaliseerdeStatus === "geactualiseerd" ||
+    genormaliseerdeStatus === "afgerond"
   ) {
-
     return {
       label: "Afgehandeld",
-      stijl:
-        "border-emerald-200 bg-emerald-50 text-emerald-800",
+      stijl: "border-emerald-200 bg-emerald-50 text-emerald-800",
     };
   }
 
@@ -174,70 +154,52 @@ function bepaalDeadlineInformatie(
   );
 
   const verschilInDagen = Math.ceil(
-    (datum.tijdstip - vandaagTijdstip) /
-      (1000 * 60 * 60 * 24),
+    (datum.tijdstip - vandaagTijdstip) / (1000 * 60 * 60 * 24),
   );
 
   if (verschilInDagen < 0) {
-    const aantalDagen = Math.abs(
-      verschilInDagen,
-    );
+    const aantalDagen = Math.abs(verschilInDagen);
 
     return {
       label:
         aantalDagen === 1
           ? "1 dag verstreken"
           : `${aantalDagen} dagen verstreken`,
-      stijl:
-        "border-red-200 bg-red-50 text-red-800",
+      stijl: "border-red-200 bg-red-50 text-red-800",
     };
   }
 
   if (verschilInDagen === 0) {
     return {
       label: "Vandaag",
-      stijl:
-        "border-red-300 bg-red-100 text-red-900",
+      stijl: "border-red-300 bg-red-100 text-red-900",
     };
   }
 
   if (verschilInDagen <= 7) {
     return {
       label:
-        verschilInDagen === 1
-          ? "Nog 1 dag"
-          : `Nog ${verschilInDagen} dagen`,
-      stijl:
-        "border-amber-200 bg-amber-50 text-amber-800",
+        verschilInDagen === 1 ? "Nog 1 dag" : `Nog ${verschilInDagen} dagen`,
+      stijl: "border-amber-200 bg-amber-50 text-amber-800",
     };
   }
 
   return {
     label: `Nog ${verschilInDagen} dagen`,
-    stijl:
-      "border-sky-200 bg-sky-50 text-sky-800",
+    stijl: "border-sky-200 bg-sky-50 text-sky-800",
   };
 }
 
-type BeheerLinkProps =
-  ComponentProps<typeof NextLink> & {
-    magBeheren: boolean;
-  };
+type BeheerLinkProps = ComponentProps<typeof NextLink> & {
+  magBeheren: boolean;
+};
 
-function BeheerLink({
-  magBeheren,
-  ...props
-}: BeheerLinkProps) {
-  const bestemming =
-    typeof props.href === "string"
-      ? props.href
-      : "";
+function BeheerLink({ magBeheren, ...props }: BeheerLinkProps) {
+  const bestemming = typeof props.href === "string" ? props.href : "";
 
   const isWijziglink =
     bestemming === "/deskcontroles/nieuw" ||
-    /^\/deskcontroles\/\d+\/bewerken$/.test(
-      bestemming,
-    );
+    /^\/deskcontroles\/\d+\/bewerken$/.test(bestemming);
 
   if (!magBeheren && isWijziglink) {
     return null;
@@ -246,12 +208,11 @@ function BeheerLink({
   return <NextLink {...props} />;
 }
 
-type BeheerVerwijderButtonProps =
-  ComponentProps<
-    typeof BasisDeskcontroleVerwijderButton
-  > & {
-    magBeheren: boolean;
-  };
+type BeheerVerwijderButtonProps = ComponentProps<
+  typeof BasisDeskcontroleVerwijderButton
+> & {
+  magBeheren: boolean;
+};
 
 function BeheerVerwijderButton({
   magBeheren,
@@ -261,19 +222,14 @@ function BeheerVerwijderButton({
     return null;
   }
 
-  return (
-    <BasisDeskcontroleVerwijderButton
-      {...props}
-    />
-  );
+  return <BasisDeskcontroleVerwijderButton {...props} />;
 }
 
-type BeheerHerstelButtonProps =
-  ComponentProps<
-    typeof BasisDeskcontroleHerstelButton
-  > & {
-    magBeheren: boolean;
-  };
+type BeheerHerstelButtonProps = ComponentProps<
+  typeof BasisDeskcontroleHerstelButton
+> & {
+  magBeheren: boolean;
+};
 
 function BeheerHerstelButton({
   magBeheren,
@@ -283,11 +239,139 @@ function BeheerHerstelButton({
     return null;
   }
 
+  return <BasisDeskcontroleHerstelButton {...props} />;
+}
+
+type DeskcontroleKaartWaardeProps = {
+  label: string;
+  waarde?: string | number | null;
+  kinderen?: ReactNode;
+  breed?: boolean;
+  sterk?: boolean;
+  className?: string;
+};
+
+function DeskcontroleKaartWaarde({
+  label,
+  waarde,
+  kinderen,
+  breed = false,
+  sterk = false,
+  className = "",
+}: DeskcontroleKaartWaardeProps) {
+  const kopieerWaarde =
+    waarde === null || waarde === undefined ? "" : String(waarde).trim();
+
   return (
-    <BasisDeskcontroleHerstelButton
-      {...props}
-    />
+    <div
+      className={`min-w-0 ${
+        breed ? "sm:col-span-2 lg:col-span-3" : ""
+      } ${className}`}
+    >
+      <dt className="text-[9px] font-bold uppercase leading-none tracking-wide text-slate-500">
+        {label}
+      </dt>
+
+      <dd
+        className={`mt-0.5 flex items-start gap-1 break-words text-xs leading-tight text-slate-900 ${
+          sterk ? "font-semibold" : "font-medium"
+        }`}
+      >
+        <span className="min-w-0 flex-1 whitespace-pre-wrap break-words">
+          {(kinderen ?? kopieerWaarde) || "—"}
+        </span>
+
+        {kinderen === undefined ? (
+          <CopyButton
+            waarde={kopieerWaarde || null}
+            label={`${label} kopiëren`}
+          />
+        ) : null}
+      </dd>
+    </div>
   );
+}
+
+const DESKCONTROLE_KAARTKOLOMMEN: DeskcontroleKolom[] = [
+  {
+    sleutel: "auditeur",
+    label: "Auditeur",
+  },
+  {
+    sleutel: "naamAdi",
+    label: "Naam ADI",
+  },
+  {
+    sleutel: "afgerond",
+    label: "Afgerond",
+    type: "boolean",
+  },
+  {
+    sleutel: "attestnummer",
+    label: "Attestnummer",
+  },
+  {
+    sleutel: "status",
+    label: "Status",
+    type: "badge",
+  },
+  {
+    sleutel: "deadlineSanctie",
+    label: "Deadline sanctie",
+    type: "datum",
+  },
+  {
+    sleutel: "datumControle",
+    label: "Datum controle",
+    type: "datum",
+  },
+  {
+    sleutel: "voorwaardelijkeOpheffing",
+    label: "Voorwaardelijke opheffing",
+    type: "boolean",
+  },
+  {
+    sleutel: "adres",
+    label: "Adres",
+  },
+];
+
+const DESKCONTROLE_ZICHTBARE_KAARTSLEUTELS = new Set(
+  DESKCONTROLE_KAARTKOLOMMEN.map((kolom) => kolom.sleutel),
+);
+
+function deskcontroleKaartKolomStijl(sleutel: string) {
+  switch (sleutel) {
+    case "auditeur":
+      return "lg:order-1 lg:col-span-2";
+
+    case "naamAdi":
+      return "lg:order-2 lg:col-span-2";
+
+    case "afgerond":
+      return "lg:order-3 lg:col-span-1";
+
+    case "attestnummer":
+      return "lg:order-4 lg:col-span-2";
+
+    case "status":
+      return "lg:order-5 lg:col-span-2";
+
+    case "deadlineSanctie":
+      return "lg:order-6 lg:col-span-3";
+
+    case "datumControle":
+      return "lg:order-7 lg:col-span-2";
+
+    case "voorwaardelijkeOpheffing":
+      return "lg:order-8 lg:col-span-2";
+
+    case "adres":
+      return "lg:order-9 lg:col-span-8";
+
+    default:
+      return "";
+  }
 }
 
 export function DeskcontrolesTabel({
@@ -296,114 +380,80 @@ export function DeskcontrolesTabel({
   modus = "actief",
   magBeheren,
   serverModus = false,
+  kaartWeergave = false,
 }: DeskcontrolesTabelProps) {
   const router = useRouter();
+  const deskKaartModus = kaartWeergave && modus === "actief";
 
   const [zoekterm, setZoekterm] = useState("");
 
-  const [filters, setFilters] = useState<
-    Record<string, string>
-  >({});
+  const [filters, setFilters] = useState<Record<string, string>>({});
 
-  const [datumFilters, setDatumFilters] = useState<
-    Record<string, DatumFilter>
-  >({});
+  const [datumFilters, setDatumFilters] = useState<Record<string, DatumFilter>>(
+    {},
+  );
 
-  const [
-    actieveFilterSleutel,
-    setActieveFilterSleutel,
-  ] = useState<string | null>(null);
-
-  const [sortering, setSortering] =
-    useState<Sortering>(null);
-  const [
-    dashboardFilter,
-    setDashboardFilter,
-  ] = useState<
-    DashboardFilter | null
+  const [actieveFilterSleutel, setActieveFilterSleutel] = useState<
+    string | null
   >(null);
-  const serverQuery =
-    useDeskcontrolesQuery({
-      ingeschakeld: serverModus,
-      zoekterm,
-      filters,
-      datumFilters,
-      sortering,
-      dashboardFilter:
-        dashboardFilter?.sleutel ?? null,
-    });
 
-  const bronRijen =
-    serverModus
-      ? serverQuery.rijen
-      : rijen;
+  const [sortering, setSortering] = useState<Sortering>(null);
+  const [deskSorteringen, setDeskSorteringen] = useState<
+    DeskcontroleCardSortering[]
+  >([]);
+  const [openKaartId, setOpenKaartId] = useState<number | null>(null);
+  const [dashboardFilter, setDashboardFilter] =
+    useState<DashboardFilter | null>(null);
+  const serverQuery = useDeskcontrolesQuery({
+    ingeschakeld: serverModus,
+    zoekterm,
+    filters,
+    datumFilters,
+    sorteringen: deskKaartModus
+      ? deskSorteringen
+      : sortering
+        ? [sortering]
+        : [],
+    dashboardFilter: dashboardFilter?.sleutel ?? null,
+  });
 
-  const totaalAantal =
-    serverModus
-      ? (
-          serverQuery.aantalTotaal ??
-          bronRijen.length
-        )
-      : rijen.length;
+  const bronRijen = serverModus ? serverQuery.rijen : rijen;
 
-  const serverFout =
-    serverModus
-      ? serverQuery.fout
-      : null;
+  const totaalAantal = serverModus
+    ? (serverQuery.aantalTotaal ?? bronRijen.length)
+    : rijen.length;
+
+  const serverFout = serverModus ? serverQuery.fout : null;
 
   const toontEersteServerlading =
-    serverModus &&
-    serverQuery.isEersteKeerLaden &&
-    bronRijen.length === 0;
+    serverModus && serverQuery.isEersteKeerLaden && bronRijen.length === 0;
 
   const toontServerFoutZonderRijen =
-    serverModus &&
-    Boolean(serverFout) &&
-    bronRijen.length === 0;
+    serverModus && Boolean(serverFout) && bronRijen.length === 0;
 
   useEffect(() => {
     if (!serverModus) {
       return;
     }
 
-    const detail:
-      DeskcontroleServergegevens = {
-      aantalTotaal:
-        serverQuery.aantalTotaal,
-      dashboard:
-        serverQuery.dashboard,
+    const detail: DeskcontroleServergegevens = {
+      aantalTotaal: serverQuery.aantalTotaal,
+      dashboard: serverQuery.dashboard,
     };
 
     window.dispatchEvent(
-      new CustomEvent(
-        DESKCONTROLE_SERVERGEGEVENS_EVENT,
-        { detail },
-      ),
+      new CustomEvent(DESKCONTROLE_SERVERGEGEVENS_EVENT, { detail }),
     );
-  }, [
-    serverModus,
-    serverQuery.aantalTotaal,
-    serverQuery.dashboard,
-  ]);
+  }, [serverModus, serverQuery.aantalTotaal, serverQuery.dashboard]);
 
   useEffect(() => {
-    function verwerkDashboardFilter(
-      event: Event,
-    ) {
-      const customEvent =
-        event as CustomEvent<
-          DashboardFilter | null
-        >;
+    function verwerkDashboardFilter(event: Event) {
+      const customEvent = event as CustomEvent<DashboardFilter | null>;
 
-      setDashboardFilter(
-        customEvent.detail,
-      );
+      setDashboardFilter(customEvent.detail);
     }
 
-    window.addEventListener(
-      DASHBOARD_FILTER_EVENT,
-      verwerkDashboardFilter,
-    );
+    window.addEventListener(DASHBOARD_FILTER_EVENT, verwerkDashboardFilter);
 
     return () => {
       window.removeEventListener(
@@ -413,29 +463,17 @@ export function DeskcontrolesTabel({
     };
   }, []);
 
-
   const actieveKolom =
-    kolommen.find(
-      (kolom) =>
-        kolom.sleutel === actieveFilterSleutel,
-    ) ?? null;
+    kolommen.find((kolom) => kolom.sleutel === actieveFilterSleutel) ?? null;
 
   const heeftFilters =
     dashboardFilter !== null ||
     zoekterm.trim().length > 0 ||
-    Object.values(filters).some((waarde) =>
-      waarde.trim(),
-    ) ||
-    Object.values(datumFilters).some(
-      (filter) => filter.jaar || filter.maand,
-    );
-
+    Object.values(filters).some((waarde) => waarde.trim()) ||
+    Object.values(datumFilters).some((filter) => filter.jaar || filter.maand);
 
   const beschikbareJaren = useMemo(() => {
-    if (
-      !actieveKolom ||
-      actieveKolom.type !== "datum"
-    ) {
+    if (!actieveKolom || actieveKolom.type !== "datum") {
       return [];
     }
 
@@ -446,53 +484,32 @@ export function DeskcontrolesTabel({
     const jaren = new Set<string>();
 
     for (const rij of rijen) {
-      const datum = ontleedDatum(
-        rij[actieveKolom.sleutel],
-      );
+      const datum = ontleedDatum(rij[actieveKolom.sleutel]);
 
       if (datum) {
         jaren.add(datum.jaar);
       }
     }
 
-    return Array.from(jaren).sort(
-      (a, b) => Number(b) - Number(a),
-    );
-  }, [
-    actieveKolom,
-    rijen,
-    serverModus,
-  ]);
+    return Array.from(jaren).sort((a, b) => Number(b) - Number(a));
+  }, [actieveKolom, rijen, serverModus]);
 
   const zichtbareRijen = useMemo(() => {
     if (serverModus) {
       return bronRijen;
     }
 
-    const algemeneZoekterm = zoekterm
-      .trim()
-      .toLocaleLowerCase("nl-BE");
+    const algemeneZoekterm = zoekterm.trim().toLocaleLowerCase("nl-BE");
 
-  const dashboardIds =
-    dashboardFilter
-      ? new Set(
-          dashboardFilter.ids,
-        )
-      : null;
+    const dashboardIds = dashboardFilter ? new Set(dashboardFilter.ids) : null;
 
-  const resultaat = rijen.filter((rij) => {
-    if (
-      dashboardIds &&
-      !dashboardIds.has(
-        Number(rij.id),
-      )
-    ) {
-      return false;
-    }
+    const resultaat = rijen.filter((rij) => {
+      if (dashboardIds && !dashboardIds.has(Number(rij.id))) {
+        return false;
+      }
 
       if (
         algemeneZoekterm &&
-
         !kolommen.some((kolom) =>
           String(rij[kolom.sleutel] ?? "")
             .toLocaleLowerCase("nl-BE")
@@ -504,32 +521,23 @@ export function DeskcontrolesTabel({
 
       return kolommen.every((kolom) => {
         if (kolom.type === "datum") {
-          const filter =
-            datumFilters[kolom.sleutel];
+          const filter = datumFilters[kolom.sleutel];
 
           if (!filter?.jaar && !filter?.maand) {
             return true;
           }
 
-          const datum = ontleedDatum(
-            rij[kolom.sleutel],
-          );
+          const datum = ontleedDatum(rij[kolom.sleutel]);
 
           if (!datum) {
             return false;
           }
 
-          if (
-            filter.jaar &&
-            datum.jaar !== filter.jaar
-          ) {
+          if (filter.jaar && datum.jaar !== filter.jaar) {
             return false;
           }
 
-          if (
-            filter.maand &&
-            datum.maand !== filter.maand
-          ) {
+          if (filter.maand && datum.maand !== filter.maand) {
             return false;
           }
 
@@ -537,9 +545,7 @@ export function DeskcontrolesTabel({
         }
 
         const filter =
-          filters[kolom.sleutel]
-            ?.trim()
-            .toLocaleLowerCase("nl-BE") ?? "";
+          filters[kolom.sleutel]?.trim().toLocaleLowerCase("nl-BE") ?? "";
 
         if (!filter) {
           return true;
@@ -555,68 +561,50 @@ export function DeskcontrolesTabel({
       return resultaat;
     }
 
-    return [...resultaat].sort(
-      (eerste, tweede) => {
-        const kolom = kolommen.find(
-          (item) =>
-            item.sleutel === sortering.sleutel,
+    return [...resultaat].sort((eerste, tweede) => {
+      const kolom = kolommen.find((item) => item.sleutel === sortering.sleutel);
+
+      const eersteWaarde = eerste[sortering.sleutel];
+
+      const tweedeWaarde = tweede[sortering.sleutel];
+
+      const eersteLeeg =
+        eersteWaarde === null || String(eersteWaarde).trim() === "";
+
+      const tweedeLeeg =
+        tweedeWaarde === null || String(tweedeWaarde).trim() === "";
+
+      if (eersteLeeg && tweedeLeeg) {
+        return 0;
+      }
+
+      if (eersteLeeg) {
+        return 1;
+      }
+
+      if (tweedeLeeg) {
+        return -1;
+      }
+
+      let vergelijking = 0;
+
+      if (kolom?.type === "datum") {
+        vergelijking =
+          (ontleedDatum(eersteWaarde)?.tijdstip ?? 0) -
+          (ontleedDatum(tweedeWaarde)?.tijdstip ?? 0);
+      } else {
+        vergelijking = String(eersteWaarde).localeCompare(
+          String(tweedeWaarde),
+          "nl-BE",
+          {
+            numeric: true,
+            sensitivity: "base",
+          },
         );
+      }
 
-        const eersteWaarde =
-          eerste[sortering.sleutel];
-
-        const tweedeWaarde =
-          tweede[sortering.sleutel];
-
-        const eersteLeeg =
-          eersteWaarde === null ||
-          String(eersteWaarde).trim() === "";
-
-        const tweedeLeeg =
-          tweedeWaarde === null ||
-          String(tweedeWaarde).trim() === "";
-
-        if (eersteLeeg && tweedeLeeg) {
-          return 0;
-        }
-
-        if (eersteLeeg) {
-          return 1;
-        }
-
-        if (tweedeLeeg) {
-          return -1;
-        }
-
-        let vergelijking = 0;
-
-        if (kolom?.type === "datum") {
-          vergelijking =
-            (ontleedDatum(
-              eersteWaarde,
-            )?.tijdstip ?? 0) -
-            (ontleedDatum(
-              tweedeWaarde,
-            )?.tijdstip ?? 0);
-        } else {
-          vergelijking = String(
-            eersteWaarde,
-          ).localeCompare(
-            String(tweedeWaarde),
-            "nl-BE",
-            {
-              numeric: true,
-              sensitivity: "base",
-            },
-          );
-        }
-
-        return sortering.richting ===
-          "oplopend"
-          ? vergelijking
-          : -vergelijking;
-      },
-    );
+      return sortering.richting === "oplopend" ? vergelijking : -vergelijking;
+    });
   }, [
     bronRijen,
     rijen,
@@ -629,13 +617,9 @@ export function DeskcontrolesTabel({
     dashboardFilter,
   ]);
 
-
   function wijzigSortering(sleutel: string) {
     setSortering((huidige) => {
-      if (
-        !huidige ||
-        huidige.sleutel !== sleutel
-      ) {
+      if (!huidige || huidige.sleutel !== sleutel) {
         return {
           sleutel,
           richting: "oplopend",
@@ -672,86 +656,70 @@ export function DeskcontrolesTabel({
     setFilters({});
     setDatumFilters({});
     setSortering(null);
+    setDeskSorteringen([]);
+    setOpenKaartId(null);
     setActieveFilterSleutel(null);
     setDashboardFilter(null);
 
     window.dispatchEvent(
-      new CustomEvent(
-        DASHBOARD_FILTER_EVENT,
-        {
-          detail: null,
-        },
-      ),
+      new CustomEvent(DASHBOARD_FILTER_EVENT, {
+        detail: null,
+      }),
     );
   }
 
-  function isInteractiefElement(
-    doel: EventTarget | null,
-  ) {
+  function isInteractiefElement(doel: EventTarget | null, container?: Element) {
     if (!(doel instanceof Element)) {
       return false;
     }
 
-    return Boolean(
-      doel.closest(
-        [
-          "a",
-          "button",
-          "input",
-          "select",
-          "textarea",
-          "label",
-          '[role="button"]',
-          "[data-voorkom-rij-navigatie]",
-        ].join(","),
-      ),
+    const interactiefElement = doel.closest(
+      [
+        "a",
+        "button",
+        "input",
+        "select",
+        "textarea",
+        "label",
+        '[role="button"]',
+        "[data-voorkom-rij-navigatie]",
+      ].join(","),
     );
+
+    return Boolean(interactiefElement && interactiefElement !== container);
   }
 
-  function openDeskcontrole(
-    id: number,
-  ) {
-    router.push(
-      `/deskcontroles/${id}`,
-    );
+  function openDeskcontrole(id: number) {
+    router.push(`/deskcontroles/${id}`);
   }
-
 
   return (
     <section className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
       <div className="flex flex-col gap-3 border-b border-slate-200 p-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h2 className="font-bold text-slate-950">
-            Overzicht
-          </h2>
+          <h2 className="font-bold text-slate-950">Overzicht</h2>
 
           <p className="mt-0.5 text-xs text-slate-500">
-            {zichtbareRijen.length} van {totaalAantal}{" "}
-            deskcontroles
+            {zichtbareRijen.length} van {totaalAantal} deskcontroles
           </p>
 
           {dashboardFilter ? (
             <p className="mt-1 inline-flex rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-800">
-              Filter: {
-                dashboardFilter.label
-              }
+              Filter: {dashboardFilter.label}
             </p>
           ) : null}
-
         </div>
 
         <div className="flex w-full gap-2 sm:max-w-xl">
           <input
             type="search"
             value={zoekterm}
-            onChange={(event) =>
-              setZoekterm(event.target.value)
-            }
+            onChange={(event) => setZoekterm(event.target.value)}
             placeholder="Zoeken in deskcontroles..."
             className="h-10 min-w-0 flex-1 rounded-xl border border-slate-300 px-3.5 text-sm outline-none focus:border-emerald-600 focus:ring-4 focus:ring-emerald-100"
           />
 
-          {(heeftFilters || sortering) && (
+          {(heeftFilters || sortering || deskSorteringen.length > 0) && (
             <button
               type="button"
               onClick={wisAlles}
@@ -763,7 +731,61 @@ export function DeskcontrolesTabel({
         </div>
       </div>
 
-      {actieveKolom && (
+      {deskKaartModus ? (
+        <DeskcontroleKaartKolombalk
+          kolommen={DESKCONTROLE_KAARTKOLOMMEN}
+          filters={filters}
+          sorteringen={deskSorteringen}
+          onFilterWijzigen={(sleutel, waarde) => {
+            setFilters((huidig) => ({
+              ...huidig,
+              [sleutel]: waarde,
+            }));
+          }}
+          onSorteren={(sleutel, richting) => {
+            setDeskSorteringen((huidig) => {
+              const index = huidig.findIndex(
+                (item) => item.sleutel === sleutel,
+              );
+
+              if (index < 0) {
+                return [...huidig, { sleutel, richting }];
+              }
+
+              return huidig.map((item, huidigIndex) =>
+                huidigIndex === index ? { ...item, richting } : item,
+              );
+            });
+          }}
+          onSorteringVerwijderen={(sleutel) => {
+            setDeskSorteringen((huidig) =>
+              huidig.filter((item) => item.sleutel !== sleutel),
+            );
+          }}
+          onSorteringVerplaatsen={(sleutel, verschil) => {
+            setDeskSorteringen((huidig) => {
+              const index = huidig.findIndex(
+                (item) => item.sleutel === sleutel,
+              );
+              const doelIndex = index + verschil;
+
+              if (index < 0 || doelIndex < 0 || doelIndex >= huidig.length) {
+                return huidig;
+              }
+
+              const volgende = [...huidig];
+              [volgende[index], volgende[doelIndex]] = [
+                volgende[doelIndex],
+                volgende[index],
+              ];
+
+              return volgende;
+            });
+          }}
+        />
+      ) : null}
+
+      {actieveKolom && !deskKaartModus && (
         <div className="border-b border-emerald-200 bg-emerald-50 px-4 py-3">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
             <div className="min-w-0 flex-1">
@@ -774,72 +796,44 @@ export function DeskcontrolesTabel({
               {actieveKolom.type === "datum" ? (
                 <div className="mt-1.5 grid gap-2 sm:grid-cols-2">
                   <select
-                    value={
-                      datumFilters[
-                        actieveKolom.sleutel
-                      ]?.jaar ?? ""
-                    }
+                    value={datumFilters[actieveKolom.sleutel]?.jaar ?? ""}
                     onChange={(event) =>
-                      setDatumFilters(
-                        (huidige) => ({
-                          ...huidige,
-                          [actieveKolom.sleutel]: {
-                            jaar: event.target.value,
-                            maand:
-                              huidige[
-                                actieveKolom.sleutel
-                              ]?.maand ?? "",
-                          },
-                        }),
-                      )
+                      setDatumFilters((huidige) => ({
+                        ...huidige,
+                        [actieveKolom.sleutel]: {
+                          jaar: event.target.value,
+                          maand: huidige[actieveKolom.sleutel]?.maand ?? "",
+                        },
+                      }))
                     }
                     className="h-10 rounded-xl border border-emerald-300 bg-white px-3 text-sm outline-none"
                   >
-                    <option value="">
-                      Alle jaren
-                    </option>
+                    <option value="">Alle jaren</option>
 
                     {beschikbareJaren.map((jaar) => (
-                      <option
-                        key={jaar}
-                        value={jaar}
-                      >
+                      <option key={jaar} value={jaar}>
                         {jaar}
                       </option>
                     ))}
                   </select>
 
                   <select
-                    value={
-                      datumFilters[
-                        actieveKolom.sleutel
-                      ]?.maand ?? ""
-                    }
+                    value={datumFilters[actieveKolom.sleutel]?.maand ?? ""}
                     onChange={(event) =>
-                      setDatumFilters(
-                        (huidige) => ({
-                          ...huidige,
-                          [actieveKolom.sleutel]: {
-                            jaar:
-                              huidige[
-                                actieveKolom.sleutel
-                              ]?.jaar ?? "",
-                            maand: event.target.value,
-                          },
-                        }),
-                      )
+                      setDatumFilters((huidige) => ({
+                        ...huidige,
+                        [actieveKolom.sleutel]: {
+                          jaar: huidige[actieveKolom.sleutel]?.jaar ?? "",
+                          maand: event.target.value,
+                        },
+                      }))
                     }
                     className="h-10 rounded-xl border border-emerald-300 bg-white px-3 text-sm outline-none"
                   >
-                    <option value="">
-                      Alle maanden
-                    </option>
+                    <option value="">Alle maanden</option>
 
                     {maanden.map((maand) => (
-                      <option
-                        key={maand.waarde}
-                        value={maand.waarde}
-                      >
+                      <option key={maand.waarde} value={maand.waarde}>
                         {maand.label}
                       </option>
                     ))}
@@ -849,16 +843,11 @@ export function DeskcontrolesTabel({
                 <input
                   type="search"
                   autoFocus
-                  value={
-                    filters[
-                      actieveKolom.sleutel
-                    ] ?? ""
-                  }
+                  value={filters[actieveKolom.sleutel] ?? ""}
                   onChange={(event) =>
                     setFilters((huidige) => ({
                       ...huidige,
-                      [actieveKolom.sleutel]:
-                        event.target.value,
+                      [actieveKolom.sleutel]: event.target.value,
                     }))
                   }
                   placeholder={`Filter op ${actieveKolom.label.toLowerCase()}...`}
@@ -870,9 +859,7 @@ export function DeskcontrolesTabel({
             <div className="flex gap-2">
               <button
                 type="button"
-                onClick={() =>
-                  wisFilter(actieveKolom.sleutel)
-                }
+                onClick={() => wisFilter(actieveKolom.sleutel)}
                 className="h-10 rounded-xl border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-700 hover:bg-slate-100"
               >
                 Wissen
@@ -880,9 +867,7 @@ export function DeskcontrolesTabel({
 
               <button
                 type="button"
-                onClick={() =>
-                  setActieveFilterSleutel(null)
-                }
+                onClick={() => setActieveFilterSleutel(null)}
                 className="h-10 rounded-xl bg-emerald-700 px-4 text-sm font-semibold text-white hover:bg-emerald-800"
               >
                 Gereed
@@ -893,10 +878,7 @@ export function DeskcontrolesTabel({
       )}
 
       {toontEersteServerlading ? (
-        <div
-          className="px-6 py-16 text-center"
-          role="status"
-        >
+        <div className="px-6 py-16 text-center" role="status">
           <div className="mx-auto size-8 animate-spin rounded-full border-4 border-emerald-100 border-t-emerald-700" />
 
           <h3 className="mt-4 text-lg font-bold text-slate-950">
@@ -908,17 +890,12 @@ export function DeskcontrolesTabel({
           </p>
         </div>
       ) : toontServerFoutZonderRijen ? (
-        <div
-          className="px-6 py-16 text-center"
-          role="alert"
-        >
+        <div className="px-6 py-16 text-center" role="alert">
           <h3 className="text-lg font-bold text-red-800">
             Deskcontroles konden niet worden geladen
           </h3>
 
-          <p className="mt-2 text-sm text-red-700">
-            {serverFout}
-          </p>
+          <p className="mt-2 text-sm text-red-700">{serverFout}</p>
 
           <button
             type="button"
@@ -945,11 +922,9 @@ export function DeskcontrolesTabel({
           </p>
 
           <BeheerLink
-                magBeheren={magBeheren}
+            magBeheren={magBeheren}
             href={
-              modus === "verwijderd"
-                ? "/deskcontroles"
-                : "/deskcontroles/nieuw"
+              modus === "verwijderd" ? "/deskcontroles" : "/deskcontroles/nieuw"
             }
             className="mt-5 inline-flex rounded-xl bg-emerald-700 px-5 py-3 text-sm font-semibold text-white hover:bg-emerald-600"
           >
@@ -960,53 +935,455 @@ export function DeskcontrolesTabel({
         </div>
       ) : (
         <>
-          <div className="max-h-[calc(100vh-240px)] overflow-auto">
-            <table className="w-full min-w-max text-left">
-              <thead className="sticky top-0 z-20 bg-slate-50 shadow-sm">
-                <tr>
-                  {kolommen.map(
-                    (kolom, index) => {
-                      const actief =
-                        sortering?.sleutel ===
-                        kolom.sleutel;
+          {deskKaartModus ? (
+            <div className="space-y-1.5 p-2">
+              {zichtbareRijen.map((rij) => {
+                const id = Number(rij.id);
+                const geopend = openKaartId === id;
+                const afgerond =
+                  String(rij.afgerond ?? "")
+                    .trim()
+                    .toLocaleLowerCase("nl-BE") === "ja";
+
+                const verborgenKolommen = kolommen.filter(
+                  (kolom) =>
+                    !DESKCONTROLE_ZICHTBARE_KAARTSLEUTELS.has(kolom.sleutel),
+                );
+
+                return (
+                  <article
+                    key={rij.id}
+                    role="button"
+                    tabIndex={0}
+                    aria-expanded={geopend}
+                    aria-label={`Deskcontrole ${id}`}
+                    onClick={(event) => {
+                      if (
+                        isInteractiefElement(event.target, event.currentTarget)
+                      ) {
+                        return;
+                      }
+
+                      setOpenKaartId((huidig) => (huidig === id ? null : id));
+                    }}
+                    onKeyDown={(event) => {
+                      if (
+                        event.target !== event.currentTarget ||
+                        (event.key !== "Enter" && event.key !== " ")
+                      ) {
+                        return;
+                      }
+
+                      event.preventDefault();
+
+                      setOpenKaartId((huidig) => (huidig === id ? null : id));
+                    }}
+                    className={`group relative z-0 cursor-pointer rounded-lg border border-slate-200 shadow-sm outline-none transition hover:border-emerald-300 hover:shadow-md focus-within:z-40 has-[details[open]]:z-50 focus-visible:ring-2 focus-visible:ring-emerald-200 ${
+                      afgerond ? "bg-emerald-50/70" : "bg-white"
+                    } ${
+                      geopend
+                        ? "border-emerald-400 ring-1 ring-emerald-200"
+                        : ""
+                    }`}
+                  >
+                    <div className="relative p-2 pr-9">
+                      <span
+                        aria-hidden="true"
+                        className={`absolute right-2 top-2 inline-flex size-6 items-center justify-center rounded-full bg-white/80 text-xs font-black text-slate-600 shadow-sm transition ${
+                          geopend
+                            ? "rotate-180 bg-emerald-100 text-emerald-800"
+                            : ""
+                        }`}
+                      >
+                        ↓
+                      </span>
+
+                      <dl className="grid gap-x-4 gap-y-2 sm:grid-cols-2 lg:grid-cols-12 lg:items-start">
+                        {DESKCONTROLE_KAARTKOLOMMEN.map((kolom) => {
+                          const waarde = String(
+                            rij[kolom.sleutel] ?? "",
+                          ).trim();
+
+                          if (kolom.sleutel === "afgerond") {
+                            return (
+                              <DeskcontroleKaartWaarde
+                                key={kolom.sleutel}
+                                className={deskcontroleKaartKolomStijl(
+                                  kolom.sleutel,
+                                )}
+                                label={kolom.label}
+                                kinderen={
+                                  magBeheren ? (
+                                    <DeskcontroleAfgerondSelectievak
+                                      id={id}
+                                      afgerond={afgerond}
+                                      label={`Deskcontrole ${id} als afgerond markeren`}
+                                    />
+                                  ) : (
+                                    <span
+                                      className={`inline-flex rounded-full px-2.5 py-1 text-xs font-bold ${
+                                        afgerond
+                                          ? "bg-emerald-100 text-emerald-800"
+                                          : "bg-slate-100 text-slate-700"
+                                      }`}
+                                    >
+                                      {afgerond ? "Ja" : "Nee"}
+                                    </span>
+                                  )
+                                }
+                              />
+                            );
+                          }
+
+                          if (kolom.sleutel === "status") {
+                            return (
+                              <DeskcontroleKaartWaarde
+                                key={kolom.sleutel}
+                                className={deskcontroleKaartKolomStijl(
+                                  kolom.sleutel,
+                                )}
+                                label={kolom.label}
+                                kinderen={
+                                  magBeheren ? (
+                                    <DeskcontroleStatusSelect
+                                      id={id}
+                                      waarde={waarde}
+                                    />
+                                  ) : (
+                                    <span
+                                      className={`inline-flex rounded-full px-2.5 py-1 text-xs font-bold ${badgeStijl(
+                                        waarde || "Geen",
+                                      )}`}
+                                    >
+                                      {waarde || "Geen"}
+                                    </span>
+                                  )
+                                }
+                              />
+                            );
+                          }
+
+                          if (kolom.sleutel === "voorwaardelijkeOpheffing") {
+                            return (
+                              <DeskcontroleKaartWaarde
+                                key={kolom.sleutel}
+                                className={deskcontroleKaartKolomStijl(
+                                  kolom.sleutel,
+                                )}
+                                label={kolom.label}
+                                kinderen={
+                                  magBeheren ? (
+                                    <DeskcontroleSelectievak
+                                      id={id}
+                                      veld="voorwaardelijkeOpheffing"
+                                      waarde={waarde}
+                                      label={`Voorwaardelijke opheffing voor deskcontrole ${id}`}
+                                    />
+                                  ) : (
+                                    <span
+                                      className={`inline-flex rounded-full px-2.5 py-1 text-xs font-bold ${badgeStijl(
+                                        waarde || "Nee",
+                                      )}`}
+                                    >
+                                      {waarde || "Nee"}
+                                    </span>
+                                  )
+                                }
+                              />
+                            );
+                          }
+
+                          if (kolom.sleutel === "deadlineSanctie" && waarde) {
+                            const informatie = bepaalDeadlineInformatie(
+                              rij.deadlineSanctie,
+                              String(rij.status ?? ""),
+                            );
+
+                            return (
+                              <DeskcontroleKaartWaarde
+                                key={kolom.sleutel}
+                                className={deskcontroleKaartKolomStijl(
+                                  kolom.sleutel,
+                                )}
+                                label={kolom.label}
+                                kinderen={
+                                  <span className="flex flex-col items-start gap-1">
+                                    <span>{waarde}</span>
+                                    <span
+                                      className={`inline-flex rounded-full border px-2 py-0.5 text-[10px] font-bold ${informatie?.stijl ?? "border-slate-200 bg-slate-50 text-slate-700"}`}
+                                    >
+                                      {informatie?.label ?? waarde}
+                                    </span>
+                                  </span>
+                                }
+                              />
+                            );
+                          }
+
+                          return (
+                            <DeskcontroleKaartWaarde
+                              key={kolom.sleutel}
+                              className={deskcontroleKaartKolomStijl(
+                                kolom.sleutel,
+                              )}
+                              label={kolom.label}
+                              waarde={waarde}
+                              sterk={
+                                kolom.sleutel === "auditeur" ||
+                                kolom.sleutel === "naamAdi"
+                              }
+                            />
+                          );
+                        })}
+                      </dl>
+
+                      {geopend ? (
+                        <div className="mt-2.5 border-t border-slate-200 pt-2.5">
+                          <dl className="grid gap-x-3 gap-y-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+                            {verborgenKolommen
+                              .filter(
+                                (kolom) =>
+                                  ![
+                                    "linkAttest",
+                                    "oneDrive",
+                                    "certificatiePlatform",
+                                  ].includes(kolom.sleutel),
+                              )
+                              .sort((links, rechts) => {
+                                const linksIsOpmerking =
+                                  links.type === "opmerking" ||
+                                  links.sleutel === "opmerkingen";
+                                const rechtsIsOpmerking =
+                                  rechts.type === "opmerking" ||
+                                  rechts.sleutel === "opmerkingen";
+
+                                return (
+                                  Number(linksIsOpmerking) -
+                                  Number(rechtsIsOpmerking)
+                                );
+                              })
+                              .map((kolom) => {
+                                const waarde = String(
+                                  rij[kolom.sleutel] ?? "",
+                                ).trim();
+
+                                const isSnelSelectievak =
+                                  kolom.sleutel === "mailSanctieVerzonden" ||
+                                  kolom.sleutel === "mailCorrectieVerzonden";
+
+                                const isOpmerking =
+                                  kolom.type === "opmerking" ||
+                                  kolom.sleutel === "opmerkingen";
+
+                                const isDeadline =
+                                  kolom.sleutel === "deadlineCorrectie";
+
+                                if (isSnelSelectievak && magBeheren) {
+                                  return (
+                                    <DeskcontroleKaartWaarde
+                                      key={kolom.sleutel}
+                                      label={kolom.label}
+                                      kinderen={
+                                        <DeskcontroleSelectievak
+                                          id={id}
+                                          veld={
+                                            kolom.sleutel as
+                                              | "mailSanctieVerzonden"
+                                              | "mailCorrectieVerzonden"
+                                          }
+                                          waarde={waarde}
+                                          label={`${kolom.label} voor deskcontrole ${id}`}
+                                        />
+                                      }
+                                    />
+                                  );
+                                }
+
+                                if (isOpmerking && magBeheren) {
+                                  return (
+                                    <DeskcontroleKaartWaarde
+                                      key={kolom.sleutel}
+                                      label={kolom.label}
+                                      breed
+                                      kinderen={
+                                        <DeskcontroleOpmerkingenDialog
+                                          id={id}
+                                          tekst={waarde}
+                                        />
+                                      }
+                                    />
+                                  );
+                                }
+
+                                if (kolom.type === "url" && waarde) {
+                                  return (
+                                    <DeskcontroleKaartWaarde
+                                      key={kolom.sleutel}
+                                      label={kolom.label}
+                                      kinderen={
+                                        <a
+                                          href={waarde}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                          className="font-bold text-sky-700 underline decoration-sky-300 underline-offset-2 hover:text-sky-900"
+                                        >
+                                          Open
+                                        </a>
+                                      }
+                                    />
+                                  );
+                                }
+
+                                if (isDeadline && waarde) {
+                                  const informatie = bepaalDeadlineInformatie(
+                                    rij[kolom.sleutel],
+                                    String(rij.status ?? ""),
+                                  );
+
+                                  return (
+                                    <DeskcontroleKaartWaarde
+                                      key={kolom.sleutel}
+                                      label={kolom.label}
+                                      kinderen={
+                                        <span className="flex flex-col items-start gap-1">
+                                          <span>{waarde}</span>
+                                          <span
+                                            className={`inline-flex rounded-full border px-2 py-0.5 text-[10px] font-bold ${informatie?.stijl ?? "border-slate-200 bg-slate-50 text-slate-700"}`}
+                                          >
+                                            {informatie?.label ?? waarde}
+                                          </span>
+                                        </span>
+                                      }
+                                    />
+                                  );
+                                }
+
+                                if (
+                                  kolom.type === "boolean" ||
+                                  kolom.type === "badge"
+                                ) {
+                                  return (
+                                    <DeskcontroleKaartWaarde
+                                      key={kolom.sleutel}
+                                      label={kolom.label}
+                                      kinderen={
+                                        <span
+                                          className={`inline-flex rounded-full px-2.5 py-1 text-xs font-bold ${badgeStijl(
+                                            waarde || "Nee",
+                                          )}`}
+                                        >
+                                          {waarde || "Nee"}
+                                        </span>
+                                      }
+                                    />
+                                  );
+                                }
+
+                                return (
+                                  <DeskcontroleKaartWaarde
+                                    key={kolom.sleutel}
+                                    label={kolom.label}
+                                    waarde={waarde}
+                                    breed={isOpmerking}
+                                  />
+                                );
+                              })}
+                          </dl>
+
+                          <div className="mt-2.5 flex flex-wrap items-center gap-1.5 border-t border-slate-200 pt-2.5">
+                            <div className="flex flex-wrap items-center gap-1.5">
+                              {[
+                                {
+                                  sleutel: "linkAttest",
+                                  label: "Link attest",
+                                },
+                                {
+                                  sleutel: "oneDrive",
+                                  label: "OneDrive",
+                                },
+                                {
+                                  sleutel: "certificatiePlatform",
+                                  label: "Certificatieplatform",
+                                },
+                              ].map(({ sleutel, label }) => {
+                                const href = String(rij[sleutel] ?? "").trim();
+
+                                if (!href) {
+                                  return null;
+                                }
+
+                                return (
+                                  <a
+                                    key={sleutel}
+                                    href={href}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="inline-flex h-8 items-center justify-center rounded-lg border border-sky-200 bg-sky-50 px-3 text-[11px] font-bold text-sky-800 transition hover:border-sky-300 hover:bg-sky-100"
+                                  >
+                                    {label}
+                                  </a>
+                                );
+                              })}
+                            </div>
+
+                            <div className="ml-auto flex flex-wrap items-center justify-end gap-1.5">
+                              <button
+                                type="button"
+                                onClick={() => openDeskcontrole(id)}
+                                className="inline-flex h-8 items-center justify-center rounded-lg border border-emerald-300 bg-white px-3 text-[11px] font-bold text-emerald-800 transition hover:bg-emerald-50"
+                              >
+                                Bekijken
+                              </button>
+
+                              <OpvolgingRijMeerMenu
+                                bronType="DESKCONTROLE"
+                                bronId={id}
+                                bewerkenHref={`/deskcontroles/${id}/bewerken`}
+                                kinderen={
+                                  <BeheerVerwijderButton
+                                    magBeheren={magBeheren}
+                                    id={id}
+                                  />
+                                }
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      ) : null}
+                    </div>
+                  </article>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="max-h-[calc(100vh-240px)] overflow-auto">
+              <table className="w-full min-w-max text-left">
+                <thead className="sticky top-0 z-20 bg-slate-50 shadow-sm">
+                  <tr>
+                    {kolommen.map((kolom, index) => {
+                      const actief = sortering?.sleutel === kolom.sleutel;
 
                       const heeftFilter =
+                        Boolean(filters[kolom.sleutel]?.trim()) ||
                         Boolean(
-                          filters[
-                            kolom.sleutel
-                          ]?.trim(),
-                        ) ||
-                        Boolean(
-                          datumFilters[
-                            kolom.sleutel
-                          ]?.jaar ||
-                            datumFilters[
-                              kolom.sleutel
-                            ]?.maand,
+                          datumFilters[kolom.sleutel]?.jaar ||
+                          datumFilters[kolom.sleutel]?.maand,
                         );
 
                       return (
                         <th
                           key={kolom.sleutel}
                           className={`border-b border-slate-200 px-3 py-2.5 text-xs font-bold uppercase tracking-wide text-slate-500 ${
-                            index === 0
-                              ? "sticky left-0 z-30 bg-slate-50"
-                              : ""
+                            index === 0 ? "sticky left-0 z-30 bg-slate-50" : ""
                           }`}
                         >
                           <div className="flex items-center gap-1">
                             <button
                               type="button"
-                              onClick={() =>
-                                wijzigSortering(
-                                  kolom.sleutel,
-                                )
-                              }
+                              onClick={() => wijzigSortering(kolom.sleutel)}
                               title={`Sorteren op ${kolom.label}`}
                               className={`inline-flex items-center gap-1 rounded-md px-1 py-1 hover:bg-white hover:text-slate-900 ${
-                                actief
-                                  ? "text-emerald-800"
-                                  : ""
+                                actief ? "text-emerald-800" : ""
                               }`}
                             >
                               {kolom.label}
@@ -1014,8 +1391,7 @@ export function DeskcontrolesTabel({
                               <span aria-hidden="true">
                                 {!actief
                                   ? "↕"
-                                  : sortering.richting ===
-                                      "oplopend"
+                                  : sortering.richting === "oplopend"
                                     ? "↑"
                                     : "↓"}
                               </span>
@@ -1024,12 +1400,10 @@ export function DeskcontrolesTabel({
                             <button
                               type="button"
                               onClick={() =>
-                                setActieveFilterSleutel(
-                                  (huidige) =>
-                                    huidige ===
-                                    kolom.sleutel
-                                      ? null
-                                      : kolom.sleutel,
+                                setActieveFilterSleutel((huidige) =>
+                                  huidige === kolom.sleutel
+                                    ? null
+                                    : kolom.sleutel,
                                 )
                               }
                               title={`Filter op ${kolom.label}`}
@@ -1057,85 +1431,55 @@ export function DeskcontrolesTabel({
                           </div>
                         </th>
                       );
-                    },
-                  )}
+                    })}
 
-                  <th className="sticky right-0 w-20 min-w-20 top-0 z-30 border-b border-slate-200 bg-slate-50 px-3 py-2.5 text-left text-xs font-bold uppercase text-slate-500">
-                    Acties
-                  </th>
-                </tr>
-              </thead>
+                    <th className="sticky right-0 w-20 min-w-20 top-0 z-30 border-b border-slate-200 bg-slate-50 px-3 py-2.5 text-left text-xs font-bold uppercase text-slate-500">
+                      Acties
+                    </th>
+                  </tr>
+                </thead>
 
-              <tbody className="divide-y divide-slate-100">
-                {zichtbareRijen.map((rij) => (
-                  <tr
-                    key={rij.id}
-                    tabIndex={0}
-                    title="Klik om de deskcontrole en non-conformiteiten te bekijken"
-                    onClick={(event) => {
-                      if (
-                        isInteractiefElement(
-                          event.target,
-                        )
-                      ) {
-                        return;
-                      }
+                <tbody className="divide-y divide-slate-100">
+                  {zichtbareRijen.map((rij) => (
+                    <tr
+                      key={rij.id}
+                      tabIndex={0}
+                      title="Klik om de deskcontrole en non-conformiteiten te bekijken"
+                      onClick={(event) => {
+                        if (isInteractiefElement(event.target)) {
+                          return;
+                        }
 
-                      openDeskcontrole(
-                        Number(rij.id),
-                      );
-                    }}
-                    onKeyDown={(event) => {
-                      if (
-                        isInteractiefElement(
-                          event.target,
-                        )
-                      ) {
-                        return;
-                      }
+                        openDeskcontrole(Number(rij.id));
+                      }}
+                      onKeyDown={(event) => {
+                        if (isInteractiefElement(event.target)) {
+                          return;
+                        }
 
-                      if (
-                        event.key === "Enter" ||
-                        event.key === " "
-                      ) {
-                        event.preventDefault();
+                        if (event.key === "Enter" || event.key === " ") {
+                          event.preventDefault();
 
-                        openDeskcontrole(
-                          Number(rij.id),
-                        );
-                      }
-                    }}
-                    className={`group cursor-pointer outline-none transition focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-emerald-600 ${
-                      String(
-                        rij.status ?? "",
-                      )
-                        .trim()
-                        .toLocaleLowerCase(
-                          "nl-BE",
-                        ) ===
-                      "afgerond"
-                        ? "[&>td]:!bg-emerald-100 [&>td]:!text-emerald-950 hover:[&>td]:!bg-emerald-200 focus-visible:[&>td]:!bg-emerald-200"
-                        : "bg-white hover:bg-emerald-50/40 focus-visible:bg-emerald-50"
-                    }`}
-
-                  >
-
-                    {kolommen.map(
-                      (kolom, index) => {
-                        const tekst = String(
-                          rij[kolom.sleutel] ?? "",
-                        ).trim();
+                          openDeskcontrole(Number(rij.id));
+                        }
+                      }}
+                      className={`group cursor-pointer outline-none transition focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-emerald-600 ${
+                        String(rij.status ?? "")
+                          .trim()
+                          .toLocaleLowerCase("nl-BE") === "afgerond"
+                          ? "[&>td]:!bg-emerald-100 [&>td]:!text-emerald-950 hover:[&>td]:!bg-emerald-200 focus-visible:[&>td]:!bg-emerald-200"
+                          : "bg-white hover:bg-emerald-50/40 focus-visible:bg-emerald-50"
+                      }`}
+                    >
+                      {kolommen.map((kolom, index) => {
+                        const tekst = String(rij[kolom.sleutel] ?? "").trim();
 
                         const isOpmerking =
-                          kolom.type ===
-                            "opmerking" ||
-                          kolom.sleutel ===
-                            "opmerkingen";
+                          kolom.type === "opmerking" ||
+                          kolom.sleutel === "opmerkingen";
                         const isDeadline =
-                          kolom.sleutel ===
-                            "deadlineSanctie" ||
-                          kolom.sleutel ===
-                            "deadlineCorrectie";
+                          kolom.sleutel === "deadlineSanctie" ||
+                          kolom.sleutel === "deadlineCorrectie";
 
                         const deadlineInformatie =
                           isDeadline && tekst
@@ -1144,20 +1488,13 @@ export function DeskcontrolesTabel({
                                 String(rij.status ?? ""),
                               )
                             : null;
-                        const isStatus =
-                          kolom.sleutel === "status";
-                        const isAfgerond =
-                          kolom.sleutel ===
-                          "afgerond";
+                        const isStatus = kolom.sleutel === "status";
+                        const isAfgerond = kolom.sleutel === "afgerond";
 
                         const isSnelSelectievak =
-                          kolom.sleutel ===
-                            "mailSanctieVerzonden" ||
-                          kolom.sleutel ===
-                            "mailCorrectieVerzonden" ||
-                          kolom.sleutel ===
-                            "voorwaardelijkeOpheffing";
-
+                          kolom.sleutel === "mailSanctieVerzonden" ||
+                          kolom.sleutel === "mailCorrectieVerzonden" ||
+                          kolom.sleutel === "voorwaardelijkeOpheffing";
 
                         return (
                           <td
@@ -1168,31 +1505,22 @@ export function DeskcontrolesTabel({
                                 : ""
                             }`}
                           >
-                            {isAfgerond &&
-                            modus === "actief" &&
-                            magBeheren ? (
+                            {isAfgerond && modus === "actief" && magBeheren ? (
                               <DeskcontroleAfgerondSelectievak
                                 id={Number(rij.id)}
                                 afgerond={
-                                  tekst
-                                    .toLocaleLowerCase(
-                                      "nl-BE",
-                                    ) ===
-                                  "ja"
+                                  tekst.toLocaleLowerCase("nl-BE") === "ja"
                                 }
                                 label={`Deskcontrole ${rij.id} als afgerond markeren`}
                               />
-                            ) : isStatus &&
-                              modus === "actief" &&
-                            magBeheren ? (
+                            ) : isStatus && modus === "actief" && magBeheren ? (
                               <DeskcontroleStatusSelect
                                 id={Number(rij.id)}
                                 waarde={tekst}
                               />
                             ) : isSnelSelectievak &&
-
                               modus === "actief" &&
-                            magBeheren ? (
+                              magBeheren ? (
                               <DeskcontroleSelectievak
                                 id={Number(rij.id)}
                                 veld={
@@ -1206,7 +1534,7 @@ export function DeskcontrolesTabel({
                               />
                             ) : isOpmerking &&
                               modus === "actief" &&
-                            magBeheren ? (
+                              magBeheren ? (
                               <DeskcontroleOpmerkingenDialog
                                 id={Number(rij.id)}
                                 tekst={tekst}
@@ -1249,42 +1577,39 @@ export function DeskcontrolesTabel({
                                 {tekst || "—"}
                               </span>
                             )}
-
                           </td>
                         );
-                      },
-                    )}
+                      })}
 
-                    <td className="sticky right-0 w-20 min-w-20 z-10 has-[details[open]]:z-50 whitespace-nowrap border-l border-slate-200 bg-inherit px-3 py-3 align-top group-hover:bg-[#f7fcfa]">
-                      {modus === "verwijderd" ? (
-                        <BeheerHerstelButton
-                          magBeheren={magBeheren}
-                          id={Number(rij.id)}
-                        />
-                      ) : (
-                        <OpvolgingRijMeerMenu
-                          bronType="DESKCONTROLE"
-                          bronId={Number(rij.id)}
-                          bewerkenHref={`/deskcontroles/${rij.id}/bewerken`}
-                          kinderen={
-                            <BeheerVerwijderButton
-                              magBeheren={magBeheren}
-                              id={Number(rij.id)}
-                            />
-                          }
-                        />
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                      <td className="sticky right-0 w-20 min-w-20 z-10 has-[details[open]]:z-50 whitespace-nowrap border-l border-slate-200 bg-inherit px-3 py-3 align-top group-hover:bg-[#f7fcfa]">
+                        {modus === "verwijderd" ? (
+                          <BeheerHerstelButton
+                            magBeheren={magBeheren}
+                            id={Number(rij.id)}
+                          />
+                        ) : (
+                          <OpvolgingRijMeerMenu
+                            bronType="DESKCONTROLE"
+                            bronId={Number(rij.id)}
+                            bewerkenHref={`/deskcontroles/${rij.id}/bewerken`}
+                            kinderen={
+                              <BeheerVerwijderButton
+                                magBeheren={magBeheren}
+                                id={Number(rij.id)}
+                              />
+                            }
+                          />
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
 
           <footer className="border-t border-slate-200 bg-slate-50 px-4 py-3">
-            {serverModus &&
-            serverFout &&
-            bronRijen.length > 0 ? (
+            {serverModus && serverFout && bronRijen.length > 0 ? (
               <div
                 role="alert"
                 className="mb-3 flex flex-col gap-2 rounded-xl border border-red-200 bg-red-50 p-3 text-xs text-red-800 sm:flex-row sm:items-center sm:justify-between"
@@ -1307,22 +1632,17 @@ export function DeskcontrolesTabel({
 
             <div className="flex flex-col gap-3 text-xs text-slate-500 sm:flex-row sm:items-center sm:justify-between">
               <span>
-                Klik op een rij om de deskcontrole
-                en non-conformiteiten te bekijken. Klik
-                op een kolomnaam om te sorteren en
-                op het filtericoon om te filteren.
+                Klik op een rij om de deskcontrole en non-conformiteiten te
+                bekijken. Klik op een kolomnaam om te sorteren en op het
+                filtericoon om te filteren.
               </span>
 
-              {serverModus &&
-              serverQuery.heeftVolgendePagina ? (
+              {serverModus && serverQuery.heeftVolgendePagina ? (
                 <button
                   type="button"
-                  disabled={
-                    serverQuery.isVolgendePaginaLaden
-                  }
+                  disabled={serverQuery.isVolgendePaginaLaden}
                   onClick={() => {
-                    void serverQuery
-                      .laadVolgendePagina();
+                    void serverQuery.laadVolgendePagina();
                   }}
                   className="inline-flex h-9 shrink-0 items-center justify-center rounded-xl border border-emerald-300 bg-white px-4 font-semibold text-emerald-800 hover:bg-emerald-50 disabled:cursor-wait disabled:opacity-60"
                 >
@@ -1333,7 +1653,6 @@ export function DeskcontrolesTabel({
               ) : null}
             </div>
           </footer>
-
         </>
       )}
     </section>

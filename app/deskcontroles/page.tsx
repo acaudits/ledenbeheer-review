@@ -7,7 +7,6 @@ import {
 import { vereisMachtiging } from "@/lib/auth";
 import { heeftMachtiging } from "@/lib/autorisatie";
 
-
 export const dynamic = "force-dynamic";
 
 const kolommen: DeskcontroleKolom[] = [
@@ -103,8 +102,7 @@ const kolommen: DeskcontroleKolom[] = [
   },
   {
     sleutel: "ondernemingsnummer",
-    label:
-      "Ondernemingsnummer / EU-btw-nummer",
+    label: "Ondernemingsnummer / EU-btw-nummer",
   },
   {
     sleutel: "persoonscertificaat",
@@ -128,10 +126,7 @@ const kolommen: DeskcontroleKolom[] = [
 export default async function DeskcontrolesPage() {
   const gebruiker = await vereisMachtiging("DESKCONTROLES_BEKIJKEN");
 
-  const magBeheren = heeftMachtiging(
-    gebruiker.rol,
-    "DESKCONTROLES_BEHEREN",
-  );
+  const magBeheren = heeftMachtiging(gebruiker.rol, "DESKCONTROLES_BEHEREN");
 
   const magExporteren = heeftMachtiging(
     gebruiker.rol,
@@ -149,16 +144,11 @@ export default async function DeskcontrolesPage() {
         aantal={null}
         magBeheren={magBeheren}
         magExporteren={magExporteren}
-        magStatussenImporteren={
-          magStatussenImporteren
-        }
+        magStatussenImporteren={magStatussenImporteren}
         serverModus
       />
 
-      <DeskcontroleDashboard
-        rijen={[]}
-        serverModus
-      />
+      <DeskcontroleDashboard rijen={[]} serverModus />
 
       <DeskcontrolesTabel
         rijen={[]}
@@ -166,6 +156,7 @@ export default async function DeskcontrolesPage() {
         modus="actief"
         magBeheren={magBeheren}
         serverModus
+        kaartWeergave
       />
     </div>
   );

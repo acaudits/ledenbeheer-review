@@ -1,17 +1,11 @@
 "use client";
 
-import {
-  useEffect,
-  useRef,
-  useState,
-  useTransition,
-} from "react";
-import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
-import {
-  DESKCONTROLES_QUERY_SLEUTEL,
-} from "@/hooks/useDeskcontrolesQuery";
+import { useRouter } from "next/navigation";
+import { useId, useRef, useState } from "react";
+
 import { wijzigDeskcontroleOpmerkingen } from "@/app/deskcontroles/opmerkingen-actions";
+import { DESKCONTROLES_QUERY_SLEUTEL } from "@/hooks/useDeskcontrolesQuery";
 
 type DeskcontroleOpmerkingenDialogProps = {
   id: number;
@@ -23,301 +17,283 @@ export function DeskcontroleOpmerkingenDialog({
   tekst,
 }: DeskcontroleOpmerkingenDialogProps) {
   const router = useRouter();
-  const queryClient =
-    useQueryClient();
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const queryClient = useQueryClient();
+  const dialogRef = useRef<HTMLDialogElement>(null);
+  const titelId = useId();
 
   const oorspronkelijkeTekst = tekst ?? "";
 
-  const [open, setOpen] = useState(false);
+  const [huidigeTekst, setHuidigeTekst] = useState(oorspronkelijkeTekst);
+  const [concept, setConcept] = useState(oorspronkelijkeTekst);
   const [bewerken, setBewerken] = useState(false);
-  const [opmerkingen, setOpmerkingen] = useState(oorspronkelijkeTekst);
-  const [opgeslagenTekst, setOpgeslagenTekst] =
-    useState(oorspronkelijkeTekst);
+  const [bezig, setBezig] = useState(false);
+  const [fout, setFout] = useState("");
   const [melding, setMelding] = useState("");
-  const [foutmelding, setFoutmelding] = useState("");
-  const [isBezig, startTransition] = useTransition();
 
-  useEffect(() => {
-    if (!open) {
-      return;
-    }
-
-    function sluitMetEscape(event: KeyboardEvent) {
-      if (event.key === "Escape" && !isBezig) {
-        setOpen(false);
-        setBewerken(false);
-        setOpmerkingen(opgeslagenTekst);
-        setMelding("");
-        setFoutmelding("");
-      }
-    }
-
-    document.addEventListener("keydown", sluitMetEscape);
-
-    return () => {
-      document.removeEventListener("keydown", sluitMetEscape);
-    };
-  }, [open, isBezig, opgeslagenTekst]);
-
-  useEffect(() => {
-    if (open && bewerken) {
-      textareaRef.current?.focus();
-    }
-  }, [open, bewerken]);
-
-  function openDialog() {
-    setOpmerkingen(opgeslagenTekst);
-    setMelding("");
-    setFoutmelding("");
+  function openen() {
+    setConcept(huidigeTekst);
     setBewerken(false);
-    setOpen(true);
+    setFout("");
+    setMelding("");
+    dialogRef.current?.showModal();
   }
 
-  function sluitDialog() {
-    if (isBezig) {
+  function sluiten() {
+    if (bezig) {
       return;
     }
 
-    setOpen(false);
-    setBewerken(false);
-    setOpmerkingen(opgeslagenTekst);
+    dialogRef.current?.close();
+  }
+
+  function startBewerken() {
+    setConcept(huidigeTekst);
+    setFout("");
     setMelding("");
-    setFoutmelding("");
+    setBewerken(true);
   }
 
   function annuleerBewerken() {
-    if (isBezig) {
+    if (bezig) {
       return;
     }
 
-    setOpmerkingen(opgeslagenTekst);
+    setConcept(huidigeTekst);
+    setFout("");
+    setMelding("");
     setBewerken(false);
-    setMelding("");
-    setFoutmelding("");
   }
 
-  function opslaan() {
-    setMelding("");
-    setFoutmelding("");
-
-    if (opmerkingen.length > 5000) {
-      setFoutmelding(
-        "Opmerkingen mogen maximaal 5000 tekens bevatten.",
-      );
+  async function opslaan() {
+    if (concept.length > 5000) {
+      setFout("Opmerkingen mogen maximaal 5000 tekens bevatten.");
       return;
     }
 
-    startTransition(async () => {
-      try {
-        const resultaat =
-          await wijzigDeskcontroleOpmerkingen(id, opmerkingen);
+    setBezig(true);
+    setFout("");
+    setMelding("");
 
-        if (!resultaat.succes) {
-          setFoutmelding(
-            resultaat.melding ??
-              "De opmerkingen konden niet worden opgeslagen.",
-          );
-          return;
-        }
+    try {
+      const resultaat = await wijzigDeskcontroleOpmerkingen(id, concept);
 
-        const nieuweTekst = resultaat.opmerkingen ?? "";
-
-        setOpmerkingen(nieuweTekst);
-        setOpgeslagenTekst(nieuweTekst);
-        setBewerken(false);
-        setMelding(
-          resultaat.melding ?? "De opmerkingen zijn opgeslagen.",
+      if (!resultaat.succes) {
+        setFout(
+          resultaat.melding ?? "De opmerkingen konden niet worden opgeslagen.",
         );
-
-        await queryClient.invalidateQueries({
-          queryKey:
-            DESKCONTROLES_QUERY_SLEUTEL,
-        });
-
-        router.refresh();
-      } catch (fout) {
-        setFoutmelding(
-          fout instanceof Error
-            ? fout.message
-            : "De opmerkingen konden niet worden opgeslagen.",
-        );
+        return;
       }
-    });
+
+      const opgeslagenTekst = resultaat.opmerkingen ?? concept.trim();
+
+      setHuidigeTekst(opgeslagenTekst);
+      setConcept(opgeslagenTekst);
+      setBewerken(false);
+      setMelding(resultaat.melding ?? "De opmerkingen zijn opgeslagen.");
+
+      await queryClient.invalidateQueries({
+        queryKey: DESKCONTROLES_QUERY_SLEUTEL,
+      });
+
+      router.refresh();
+    } catch (error) {
+      console.error("Deskcontroleopmerkingen opslaan mislukt:", error);
+
+      setFout(
+        error instanceof Error
+          ? error.message
+          : "De opmerkingen konden niet worden opgeslagen.",
+      );
+    } finally {
+      setBezig(false);
+    }
   }
 
-  const tabelTekst = opgeslagenTekst.trim();
+  const knopTekst = huidigeTekst.trim() || "Opmerking toevoegen";
 
   return (
     <>
       <button
         type="button"
-        onClick={openDialog}
-        className={[
-          "block max-w-64 truncate text-left text-sm",
-          tabelTekst
-            ? "text-slate-700 underline decoration-dotted underline-offset-2 hover:text-slate-950"
-            : "text-slate-400 hover:text-slate-700",
-        ].join(" ")}
+        onClick={openen}
         title={
-          tabelTekst
+          huidigeTekst.trim()
             ? "Opmerkingen bekijken of bewerken"
             : "Opmerkingen toevoegen"
         }
+        aria-label={
+          huidigeTekst.trim()
+            ? "Opmerkingen bekijken of bewerken"
+            : "Opmerkingen toevoegen"
+        }
+        className={`max-w-72 truncate text-left underline decoration-dotted underline-offset-4 transition ${
+          huidigeTekst.trim()
+            ? "text-slate-700 decoration-slate-300 hover:text-emerald-800 hover:decoration-emerald-500"
+            : "text-slate-400 decoration-slate-300 hover:text-emerald-700"
+        }`}
       >
-        {tabelTekst || "Opmerking toevoegen"}
+        {knopTekst}
       </button>
 
-      {open ? (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 p-4 backdrop-blur-sm"
-          onMouseDown={(event) => {
-            if (event.target === event.currentTarget) {
-              sluitDialog();
-            }
-          }}
-        >
-          <div
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby={`deskcontrole-opmerkingen-titel-${id}`}
-            className="w-full max-w-2xl overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl"
-          >
-            <div className="flex items-start justify-between border-b border-slate-200 px-5 py-4">
+      <dialog
+        ref={dialogRef}
+        aria-labelledby={titelId}
+        onClose={() => {
+          setConcept(huidigeTekst);
+          setBewerken(false);
+          setFout("");
+          setMelding("");
+        }}
+        onCancel={(event) => {
+          if (bezig) {
+            event.preventDefault();
+          }
+        }}
+        onClick={(event) => {
+          if (event.target === event.currentTarget && !bezig) {
+            sluiten();
+          }
+        }}
+        className="m-auto w-[calc(100%-2rem)] max-w-2xl overflow-hidden rounded-3xl border border-slate-200 bg-white p-0 text-left shadow-2xl backdrop:bg-slate-950/45 backdrop:backdrop-blur-sm"
+      >
+        <section>
+          <header className="flex items-center justify-between gap-4 border-b border-slate-200 px-5 py-4 sm:px-6">
+            <div>
+              <p className="text-xs font-bold uppercase tracking-[0.16em] text-emerald-700">
+                Deskcontrole #{id}
+              </p>
+
+              <h2
+                id={titelId}
+                className="mt-1 text-lg font-bold text-slate-950"
+              >
+                {bewerken ? "Opmerkingen bewerken" : "Volledige opmerkingen"}
+              </h2>
+            </div>
+
+            <button
+              type="button"
+              onClick={sluiten}
+              disabled={bezig}
+              aria-label="Venster sluiten"
+              className="flex size-9 shrink-0 items-center justify-center rounded-full border border-slate-200 text-lg text-slate-500 transition hover:border-slate-300 hover:bg-slate-100 hover:text-slate-900 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              ×
+            </button>
+          </header>
+
+          <div className="max-h-[65vh] overflow-y-auto px-5 py-5 sm:px-6">
+            {bewerken ? (
               <div>
-                <h2
-                  id={`deskcontrole-opmerkingen-titel-${id}`}
-                  className="text-lg font-semibold text-slate-950"
+                <label
+                  htmlFor={`${titelId}-tekst`}
+                  className="text-sm font-bold text-slate-800"
                 >
                   Opmerkingen
-                </h2>
+                </label>
+
+                <textarea
+                  id={`${titelId}-tekst`}
+                  value={concept}
+                  onChange={(event) => {
+                    setConcept(event.target.value);
+                    setFout("");
+                    setMelding("");
+                  }}
+                  disabled={bezig}
+                  maxLength={5000}
+                  rows={10}
+                  autoFocus
+                  placeholder="Schrijf hier de opmerkingen..."
+                  className="mt-2 min-h-48 w-full resize-y rounded-2xl border border-slate-300 bg-white px-4 py-3 text-sm leading-6 text-slate-900 outline-none placeholder:text-slate-400 focus:border-emerald-600 focus:ring-4 focus:ring-emerald-600/10 disabled:bg-slate-100"
+                />
+
+                <div className="mt-2 flex justify-between gap-4 text-xs text-slate-500">
+                  <span>Een leeg veld verwijdert de huidige opmerkingen.</span>
+
+                  <span>{concept.length}/5000</span>
+                </div>
+              </div>
+            ) : huidigeTekst.trim() ? (
+              <p className="whitespace-pre-wrap break-words text-sm leading-7 text-slate-700">
+                {huidigeTekst}
+              </p>
+            ) : (
+              <div className="rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-5 py-8 text-center">
+                <p className="text-sm font-semibold text-slate-700">
+                  Er zijn nog geen opmerkingen toegevoegd.
+                </p>
 
                 <p className="mt-1 text-sm text-slate-500">
-                  Deskcontrole #{id}
+                  Klik op Bewerken om opmerkingen toe te voegen.
                 </p>
               </div>
+            )}
 
-              <button
-                type="button"
-                onClick={sluitDialog}
-                disabled={isBezig}
-                aria-label="Dialoog sluiten"
-                className="flex h-9 w-9 items-center justify-center rounded-full text-xl text-slate-500 transition hover:bg-slate-100 hover:text-slate-900 disabled:cursor-not-allowed disabled:opacity-50"
+            {fout ? (
+              <p
+                role="alert"
+                className="mt-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-700"
               >
-                ×
-              </button>
-            </div>
+                {fout}
+              </p>
+            ) : null}
 
-            <div className="px-5 py-5">
-              {bewerken ? (
-                <div>
-                  <label
-                    htmlFor={`deskcontrole-opmerkingen-${id}`}
-                    className="mb-2 block text-sm font-medium text-slate-700"
-                  >
-                    Opmerkingen bewerken
-                  </label>
-
-                  <textarea
-                    ref={textareaRef}
-                    id={`deskcontrole-opmerkingen-${id}`}
-                    value={opmerkingen}
-                    onChange={(event) => {
-                      setOpmerkingen(event.target.value);
-                      setMelding("");
-                      setFoutmelding("");
-                    }}
-                    disabled={isBezig}
-                    rows={12}
-                    maxLength={5000}
-                    className="min-h-72 w-full resize-y rounded-xl border border-slate-300 bg-white px-3 py-3 text-sm leading-6 text-slate-900 outline-none transition focus:border-slate-500 focus:ring-2 focus:ring-slate-200 disabled:bg-slate-50"
-                    placeholder="Voer hier de opmerkingen in..."
-                  />
-
-                  <div className="mt-1 flex justify-end text-xs text-slate-500">
-                    {opmerkingen.length}/5000
-                  </div>
-                </div>
-              ) : (
-                <div className="max-h-[55vh] min-h-40 overflow-y-auto whitespace-pre-wrap rounded-xl border border-slate-200 bg-slate-50 px-4 py-4 text-sm leading-6 text-slate-700">
-                  {opgeslagenTekst.trim() || (
-                    <span className="text-slate-400">
-                      Er zijn nog geen opmerkingen toegevoegd.
-                    </span>
-                  )}
-                </div>
-              )}
-
-              {foutmelding ? (
-                <p
-                  role="alert"
-                  className="mt-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700"
-                >
-                  {foutmelding}
-                </p>
-              ) : null}
-
-              {melding ? (
-                <p
-                  role="status"
-                  className="mt-3 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700"
-                >
-                  {melding}
-                </p>
-              ) : null}
-            </div>
-
-            <div className="flex flex-wrap justify-end gap-2 border-t border-slate-200 bg-slate-50 px-5 py-4">
-              {bewerken ? (
-                <>
-                  <button
-                    type="button"
-                    onClick={annuleerBewerken}
-                    disabled={isBezig}
-                    className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
-                  >
-                    Annuleren
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={opslaan}
-                    disabled={isBezig}
-                    className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-50"
-                  >
-                    {isBezig ? "Opslaan..." : "Opslaan"}
-                  </button>
-                </>
-              ) : (
-                <>
-                  <button
-                    type="button"
-                    onClick={sluitDialog}
-                    className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-100"
-                  >
-                    Sluiten
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setMelding("");
-                      setFoutmelding("");
-                      setBewerken(true);
-                    }}
-                    className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-slate-700"
-                  >
-                    {opgeslagenTekst.trim()
-                      ? "Bewerken"
-                      : "Opmerking toevoegen"}
-                  </button>
-                </>
-              )}
-            </div>
+            {melding ? (
+              <p
+                role="status"
+                className="mt-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-800"
+              >
+                {melding}
+              </p>
+            ) : null}
           </div>
-        </div>
-      ) : null}
+
+          <footer className="flex flex-wrap justify-end gap-2 border-t border-slate-200 bg-slate-50 px-5 py-3 sm:px-6">
+            {bewerken ? (
+              <>
+                <button
+                  type="button"
+                  onClick={annuleerBewerken}
+                  disabled={bezig}
+                  className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  Annuleren
+                </button>
+
+                <button
+                  type="button"
+                  onClick={opslaan}
+                  disabled={bezig || concept.length > 5000}
+                  className="rounded-xl bg-emerald-700 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-800 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {bezig ? "Opslaan..." : "Opmerkingen opslaan"}
+                </button>
+              </>
+            ) : (
+              <>
+                <button
+                  type="button"
+                  onClick={sluiten}
+                  disabled={bezig}
+                  className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  Sluiten
+                </button>
+
+                <button
+                  type="button"
+                  onClick={startBewerken}
+                  disabled={bezig}
+                  className="rounded-xl bg-emerald-700 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-800 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {huidigeTekst.trim() ? "Bewerken" : "Opmerking toevoegen"}
+                </button>
+              </>
+            )}
+          </footer>
+        </section>
+      </dialog>
     </>
   );
 }
-
