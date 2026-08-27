@@ -11,9 +11,11 @@ import {
 import {
   leesNaFinalisatieLijstcontract,
   NA_FINALISATIE_SORTERINGEN,
+  type NaFinalisatieSortering,
 } from "@/lib/na-finalisatie-lijstcontract";
 import {
   laadNaFinalisatieDashboardTellingen,
+  laadNaFinalisatieFilterwaarden,
   laadNaFinalisatieSelectie,
 } from "@/lib/na-finalisatie-selectie";
 import {
@@ -70,6 +72,78 @@ export async function GET(
       new URL(
         verzoek.url,
       );
+
+    const filterwaardenKolom =
+      url.searchParams.get(
+        "filterwaardenKolom",
+      );
+
+    if (
+      filterwaardenKolom !==
+      null
+    ) {
+      if (
+        !NA_FINALISATIE_SORTERINGEN.includes(
+          filterwaardenKolom as
+            NaFinalisatieSortering,
+        )
+      ) {
+        throw new OngeldigePagineringFout(
+          "De gekozen filterkolom is ongeldig.",
+        );
+      }
+
+      const filterwaardenZoekterm =
+        (
+          url.searchParams.get(
+            "filterwaardenZoekterm",
+          ) ?? ""
+        )
+          .replace(
+            /\s+/g,
+            " ",
+          )
+          .trim();
+
+      if (
+        filterwaardenZoekterm.length >
+        100
+      ) {
+        throw new OngeldigePagineringFout(
+          "De zoekterm voor filterwaarden is te lang.",
+        );
+      }
+
+      const waarden =
+        await laadNaFinalisatieFilterwaarden(
+          {
+            kolom:
+              filterwaardenKolom as
+                NaFinalisatieSortering,
+            zoekterm:
+              filterwaardenZoekterm,
+          },
+        );
+
+      const limiet =
+        filterwaardenKolom ===
+        "datumNaFinalisatie"
+          ? 2000
+          : 300;
+
+      return NextResponse.json(
+        {
+          waarden,
+          afgekapt:
+            waarden.length ===
+            limiet,
+        },
+        {
+          headers:
+            GEEN_TABEL_CACHE,
+        },
+      );
+    }
 
     const aanvraag =
       leesTabelAanvraag(

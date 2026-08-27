@@ -6,7 +6,7 @@ import {
 } from "@/lib/server-paginering";
 
 const MAXIMALE_FILTERLENGTE =
-  100;
+  12000;
 
 export const NA_FINALISATIE_SORTERINGEN = [
   "auditeur",
@@ -39,6 +39,8 @@ export const NA_FINALISATIE_TEKSTFILTERPARAMETERS = {
     "filterLinkAttest",
   attestnummer:
     "filterAttestnummer",
+  datumNaFinalisatie:
+    "filterDatumNaFinalisatie",
   plaatsbezoek:
     "filterPlaatsbezoek",
   typeControle:

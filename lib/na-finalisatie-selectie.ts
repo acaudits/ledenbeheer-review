@@ -144,6 +144,8 @@ const tekstExpressies: Record<
     Prisma.sql`t."link_attest"`,
   attestnummer:
     Prisma.sql`t."attestnummer"`,
+  datumNaFinalisatie:
+    datumSorteerExpressie,
   plaatsbezoek:
     plaatsbezoekExpressie,
   typeControle:
@@ -176,6 +178,252 @@ function bevat(
       ),
       LOWER(${waarde})
     ) > 0
+  `;
+}
+
+const EXCEL_FILTER_PREFIX =
+  "__excel__";
+
+type ExcelWaardeFilter = {
+  modus:
+    | "insluiten"
+    | "uitsluiten";
+  waarden: string[];
+  legeCellenGeselecteerd:
+    boolean;
+};
+
+function leesExcelWaardeFilter(
+  waarde: string,
+): ExcelWaardeFilter | null {
+  if (
+    !waarde.startsWith(
+      EXCEL_FILTER_PREFIX,
+    )
+  ) {
+    return null;
+  }
+
+  try {
+    const inhoud =
+      JSON.parse(
+        decodeURIComponent(
+          waarde.slice(
+            EXCEL_FILTER_PREFIX.length,
+          ),
+        ),
+      ) as unknown;
+
+    if (
+      typeof inhoud !==
+        "object" ||
+      inhoud === null
+    ) {
+      throw new Error(
+        "Ongeldige filterinhoud.",
+      );
+    }
+
+    const kandidaat =
+      inhoud as Record<
+        string,
+        unknown
+      >;
+
+    if (
+      (
+        kandidaat.modus !==
+          "insluiten" &&
+        kandidaat.modus !==
+          "uitsluiten"
+      ) ||
+      !Array.isArray(
+        kandidaat.waarden,
+      ) ||
+      typeof kandidaat
+        .legeCellenGeselecteerd !==
+        "boolean"
+    ) {
+      throw new Error(
+        "Ongeldige filtervelden.",
+      );
+    }
+
+    if (
+      kandidaat.waarden.length >
+      2000
+    ) {
+      throw new Error(
+        "Te veel filterwaarden.",
+      );
+    }
+
+    const waarden =
+      kandidaat.waarden.map(
+        (item) => {
+          if (
+            typeof item !==
+              "string" ||
+            item.length > 500
+          ) {
+            throw new Error(
+              "Ongeldige filterwaarde.",
+            );
+          }
+
+          return item.trim();
+        },
+      );
+
+    return {
+      modus:
+        kandidaat.modus,
+      waarden:
+        Array.from(
+          new Set(
+            waarden.filter(
+              (item) =>
+                item !== "",
+            ),
+          ),
+        ),
+      legeCellenGeselecteerd:
+        kandidaat
+          .legeCellenGeselecteerd,
+    };
+  } catch {
+    throw new OngeldigePagineringFout(
+      "De gekozen filterwaarden zijn ongeldig.",
+    );
+  }
+}
+
+function maakTekstfilter(
+  expressie: Prisma.Sql,
+  waarde: string,
+) {
+  const excelFilter =
+    leesExcelWaardeFilter(
+      waarde,
+    );
+
+  if (!excelFilter) {
+    return bevat(
+      expressie,
+      waarde,
+    );
+  }
+
+  const genormaliseerd =
+    Prisma.sql`
+      COALESCE(
+        NULLIF(
+          BTRIM(
+            (${expressie})::text
+          ),
+          ''
+        ),
+        ''
+      )
+    `;
+
+  if (
+    excelFilter.modus ===
+    "insluiten"
+  ) {
+    const voorwaarden:
+      Prisma.Sql[] = [];
+
+    if (
+      excelFilter
+        .waarden.length > 0
+    ) {
+      voorwaarden.push(
+        Prisma.sql`
+          ${genormaliseerd}
+          IN (
+            ${Prisma.join(
+              excelFilter.waarden,
+            )}
+          )
+        `,
+      );
+    }
+
+    if (
+      excelFilter
+        .legeCellenGeselecteerd
+    ) {
+      voorwaarden.push(
+        Prisma.sql`
+          ${genormaliseerd} = ''
+        `,
+      );
+    }
+
+    if (
+      voorwaarden.length === 0
+    ) {
+      return Prisma.sql`
+        FALSE
+      `;
+    }
+
+    return Prisma.sql`
+      (
+        ${Prisma.join(
+          voorwaarden,
+          " OR ",
+        )}
+      )
+    `;
+  }
+
+  const voorwaarden:
+    Prisma.Sql[] = [];
+
+  if (
+    excelFilter
+      .waarden.length > 0
+  ) {
+    voorwaarden.push(
+      Prisma.sql`
+        ${genormaliseerd}
+        NOT IN (
+          ${Prisma.join(
+            excelFilter.waarden,
+          )}
+        )
+      `,
+    );
+  }
+
+  if (
+    !excelFilter
+      .legeCellenGeselecteerd
+  ) {
+    voorwaarden.push(
+      Prisma.sql`
+        ${genormaliseerd} <> ''
+      `,
+    );
+  }
+
+  if (
+    voorwaarden.length === 0
+  ) {
+    return Prisma.sql`
+      TRUE
+    `;
+  }
+
+  return Prisma.sql`
+    (
+      ${Prisma.join(
+        voorwaarden,
+        " AND ",
+      )}
+    )
   `;
 }
 
@@ -263,7 +511,7 @@ function maakFiltervoorwaarden({
     }
 
     voorwaarden.push(
-      bevat(
+      maakTekstfilter(
         tekstExpressies[
           sleutel
         ],
@@ -527,6 +775,100 @@ export function laadNaFinalisatieSelectie({
         ${richtingSql},
       g.id ${richtingSql}
     LIMIT ${limiet + 1}
+  `);
+}
+
+export type NaFinalisatieFilterwaarde = {
+  waarde: string;
+  aantal: number;
+};
+
+export async function laadNaFinalisatieFilterwaarden({
+  kolom,
+  zoekterm,
+}: {
+  kolom:
+    NaFinalisatieSortering;
+  zoekterm: string;
+}) {
+  const expressie =
+    sorteerExpressie(
+      kolom,
+    );
+
+  const zoekvoorwaarde =
+    zoekterm
+      ? Prisma.sql`
+          AND ${bevat(
+            expressie,
+            zoekterm,
+          )}
+        `
+      : Prisma.empty;
+
+  const limiet =
+    kolom ===
+    "datumNaFinalisatie"
+      ? 2000
+      : 300;
+
+  return prisma.$queryRaw<
+    NaFinalisatieFilterwaarde[]
+  >(Prisma.sql`
+    SELECT
+      COALESCE(
+        NULLIF(
+          BTRIM(
+            (${expressie})::text
+          ),
+          ''
+        ),
+        ''
+      ) AS "waarde",
+      COUNT(*)::integer
+        AS "aantal"
+    FROM
+      "na_finalisatie" t
+    WHERE
+      t."verwijderd_op" IS NULL
+      ${zoekvoorwaarde}
+    GROUP BY
+      COALESCE(
+        NULLIF(
+          BTRIM(
+            (${expressie})::text
+          ),
+          ''
+        ),
+        ''
+      )
+    ORDER BY
+      CASE
+        WHEN
+          COALESCE(
+            NULLIF(
+              BTRIM(
+                (${expressie})::text
+              ),
+              ''
+            ),
+            ''
+          ) = ''
+        THEN 0
+        ELSE 1
+      END,
+      LOWER(
+        COALESCE(
+          NULLIF(
+            BTRIM(
+              (${expressie})::text
+            ),
+            ''
+          ),
+          ''
+        )
+      ) ASC
+    LIMIT ${limiet}
   `);
 }
 

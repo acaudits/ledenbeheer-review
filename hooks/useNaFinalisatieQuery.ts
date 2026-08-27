@@ -45,6 +45,8 @@ const TEKSTFILTERPARAMETERS = {
     "filterLinkAttest",
   attestnummer:
     "filterAttestnummer",
+  datumNaFinalisatie:
+    "filterDatumNaFinalisatie",
   plaatsbezoek:
     "filterPlaatsbezoek",
   typeControle:

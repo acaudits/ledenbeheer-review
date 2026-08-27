@@ -1,9 +1,6 @@
 "use client";
 
 import {
-  useRouter,
-} from "next/navigation";
-import {
   useMemo,
   useState,
 } from "react";
@@ -12,8 +9,14 @@ import {
   BEHEER_TABEL_STIJLEN,
 } from "@/components/BeheerTabelOnderdelen";
 import {
+  CopyButton,
+} from "@/components/CopyButton";
+import {
   NaFinalisatieHerstelKnop,
 } from "@/components/NaFinalisatieHerstelKnop";
+import {
+  NaFinalisatieKaartKolombalk,
+} from "@/components/NaFinalisatieKaartKolombalk";
 import {
   NaFinalisatieVerwijderKnop,
 } from "@/components/NaFinalisatieVerwijderKnop";
@@ -305,9 +308,6 @@ export function NaFinalisatieTabel({
   verwijderd = false,
   serverModus = false,
 }: Props) {
-  const router =
-    useRouter();
-
   const [
     zoeken,
     setZoeken,
@@ -329,6 +329,13 @@ export function NaFinalisatieTabel({
     maand,
     setMaand,
   ] = useState("");
+
+  const [
+    openKaartId,
+    setOpenKaartId,
+  ] = useState<number | null>(
+    null,
+  );
 
   const [
     sorteerSleutel,
@@ -564,28 +571,6 @@ export function NaFinalisatieTabel({
         )
       : rijen.length;
 
-  function sorteer(
-    sleutel:
-      keyof NaFinalisatieRij,
-  ) {
-    if (
-      sorteerSleutel ===
-      sleutel
-    ) {
-      setAflopend(
-        (huidig) => !huidig,
-      );
-
-      return;
-    }
-
-    setSorteerSleutel(
-      sleutel,
-    );
-
-    setAflopend(false);
-  }
-
   function wisFilters() {
     setZoeken("");
     setFilters({});
@@ -595,85 +580,7 @@ export function NaFinalisatieTabel({
       "datumNaFinalisatie",
     );
     setAflopend(true);
-  }
-
-  function renderCel(
-    rij: NaFinalisatieRij,
-    kolom: Kolom,
-  ) {
-    const waarde =
-      rij[kolom.sleutel];
-
-    if (
-      kolom.sleutel ===
-      "verwijderdOp"
-    ) {
-      return formatteerDatumTijd(
-        String(waarde ?? ""),
-      );
-    }
-
-    if (
-      kolom.type === "datum"
-    ) {
-      return formatteerDatum(
-        String(waarde ?? ""),
-      );
-    }
-
-    if (
-      kolom.type === "boolean"
-    ) {
-      return (
-        <span
-          className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-bold ${
-            waarde
-              ? "border-emerald-200 bg-emerald-100 text-emerald-900"
-              : "border-slate-300 bg-slate-100 text-slate-700"
-          }`}
-        >
-          {waarde
-            ? "Ja"
-            : "Nee"}
-        </span>
-      );
-    }
-
-    if (
-      kolom.type === "url"
-    ) {
-      return waarde ? (
-        <a
-          href={String(waarde)}
-          target="_blank"
-          rel="noreferrer"
-          className="font-bold text-emerald-700 underline hover:text-emerald-900"
-        >
-          Open attest
-        </a>
-      ) : (
-        "—"
-      );
-    }
-
-    if (
-      kolom.type ===
-      "plaatsbezoek"
-    ) {
-      return plaatsbezoekLabel(
-        String(waarde ?? ""),
-      );
-    }
-
-    if (kolom.type === "type") {
-      return typeLabel(
-        String(waarde ?? ""),
-      );
-    }
-
-    return String(
-      waarde ?? "",
-    ).trim() || "—";
+    setOpenKaartId(null);
   }
 
   const actieveFilters =
@@ -704,7 +611,7 @@ export function NaFinalisatieTabel({
             </p>
           </div>
 
-          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-[minmax(32rem,2fr)_repeat(3,minmax(10rem,1fr))]">
             <input
               value={zoeken}
               onChange={(event) =>
@@ -713,7 +620,7 @@ export function NaFinalisatieTabel({
                 )
               }
               placeholder="Zoeken..."
-              className="h-10 rounded-xl border border-slate-300 bg-white px-3 text-sm outline-none focus:border-emerald-600 focus:ring-2 focus:ring-emerald-100"
+              className="h-10 min-w-0 rounded-xl border border-slate-300 bg-white px-4 text-sm outline-none focus:border-emerald-600 focus:ring-2 focus:ring-emerald-100 lg:min-w-[32rem]"
             />
 
             <select
@@ -781,102 +688,202 @@ export function NaFinalisatieTabel({
         </div>
       </div>
 
+      <NaFinalisatieKaartKolombalk
+        kolommen={basiskolommen}
+        filters={filters}
+        sorteringen={[
+          {
+            sleutel:
+              String(
+                sorteerSleutel,
+              ),
+            richting:
+              aflopend
+                ? "aflopend"
+                : "oplopend",
+          },
+        ]}
+        onFilterWijzigen={(
+          sleutel,
+          waarde,
+        ) => {
+          setFilters(
+            (huidig) => ({
+              ...huidig,
+              [sleutel]:
+                waarde,
+            }),
+          );
+        }}
+        onSorteren={(
+          sleutel,
+          richting,
+        ) => {
+          setSorteerSleutel(
+            sleutel as keyof NaFinalisatieRij,
+          );
+
+          setAflopend(
+            richting ===
+              "aflopend",
+          );
+        }}
+        onSorteringVerwijderen={() => {
+          setSorteerSleutel(
+            "datumNaFinalisatie",
+          );
+          setAflopend(true);
+        }}
+        onSorteringVerplaatsen={() => {
+          // Na finalisatie gebruikt momenteel één server-sortering.
+        }}
+      />
+
       {zichtbareRijen.length === 0 ? (
         <div className={BEHEER_TABEL_STIJLEN.leeg}>
           Geen registraties gevonden.
         </div>
       ) : (
-        <div className={BEHEER_TABEL_STIJLEN.scroll}>
-          <table className={`${BEHEER_TABEL_STIJLEN.tabel} ${BEHEER_TABEL_STIJLEN.actieKolomLaatste} min-w-[2800px]`}>
-            <thead className={BEHEER_TABEL_STIJLEN.kop}>
-              <tr>
-                {kolommen.map(
-                  (kolom) => (
-                    <th
-                      key={
-                        kolom.sleutel
-                      }
-                      className="min-w-40 border-b border-slate-200 px-3 py-2 align-top"
+        <div className="space-y-2 bg-slate-50/70 p-2 sm:p-3">
+          {zichtbareRijen.map(
+            (rij) => {
+              const geopend =
+                openKaartId ===
+                rij.id;
+
+              const inhoudId =
+                `na-finalisatie-kaart-${rij.id}`;
+
+              const hoofdvelden = [
+                {
+                  label:
+                    "Auditeur",
+                  waarde:
+                    rij.auditeur ||
+                    "—",
+                  sterk: true,
+                },
+                {
+                  label:
+                    "Naam ADI",
+                  waarde:
+                    rij.naamAdi ||
+                    "—",
+                  sterk: false,
+                },
+                {
+                  label:
+                    "Geregistreerd",
+                  waarde: (
+                    <span
+                      className={`inline-flex rounded-full border px-2 py-0.5 text-xs font-bold ${
+                        rij.geregistreerd
+                          ? "border-emerald-200 bg-emerald-100 text-emerald-900"
+                          : "border-slate-300 bg-slate-100 text-slate-700"
+                      }`}
                     >
-                      <button
-                        type="button"
-                        onClick={() =>
-                          sorteer(
-                            kolom.sleutel,
-                          )
-                        }
-                        className="flex w-full items-center justify-between gap-2 text-left hover:text-emerald-800"
-                      >
-                        <span>
-                          {kolom.label}
-                        </span>
-
-                        {sorteerSleutel ===
-                        kolom.sleutel ? (
-                          <span>
-                            {aflopend
-                              ? "↓"
-                              : "↑"}
-                          </span>
-                        ) : null}
-                      </button>
-
-                      <input
-                        value={
-                          filters[
-                            String(
-                              kolom.sleutel,
-                            )
-                          ] ?? ""
-                        }
-                        onChange={(
-                          event,
-                        ) =>
-                          setFilters(
-                            (huidig) => ({
-                              ...huidig,
-                              [String(
-                                kolom.sleutel,
-                              )]:
-                                event
-                                  .target
-                                  .value,
-                            }),
-                          )
-                        }
-                        placeholder="Filter"
-                        className="mt-2 h-8 w-full rounded-lg border border-slate-300 bg-white px-2 text-xs font-normal normal-case tracking-normal text-slate-700 outline-none focus:border-emerald-600"
-                      />
-                    </th>
+                      {rij.geregistreerd
+                        ? "Ja"
+                        : "Nee"}
+                    </span>
                   ),
-                )}
+                  sterk: false,
+                },
+                {
+                  label:
+                    "Attestnummer",
+                  waarde:
+                    rij.attestnummer ||
+                    "—",
+                  sterk: true,
+                },
+                {
+                  label:
+                    "Datum na finalisatie",
+                  waarde:
+                    formatteerDatum(
+                      rij.datumNaFinalisatie,
+                    ),
+                  sterk: false,
+                },
+                {
+                  label:
+                    "Inspectielocatie",
+                  waarde:
+                    rij.inspectielocatie ||
+                    "—",
+                  sterk: false,
+                },
+              ];
 
-                <th className="sticky right-0 w-20 min-w-20 z-30 border-b border-l border-slate-200 bg-slate-100 px-3 py-2 text-left">
-                  Acties
-                </th>
-              </tr>
-            </thead>
+              const overigeVelden = [
+                {
+                  label:
+                    "Plaatsbezoek",
+                  waarde:
+                    plaatsbezoekLabel(
+                      rij.plaatsbezoek,
+                    ) || "—",
+                },
+                {
+                  label:
+                    "Type controle",
+                  waarde:
+                    typeLabel(
+                      rij.typeControle,
+                    ) || "—",
+                },
+                {
+                  label:
+                    "Reden",
+                  waarde:
+                    rij.reden || "—",
+                },
+                {
+                  label:
+                    "Naam bedrijf",
+                  waarde:
+                    rij.naamBedrijf ||
+                    "—",
+                },
+                {
+                  label:
+                    "PersoonsID",
+                  waarde:
+                    rij.persoonsId ||
+                    "—",
+                },
+                {
+                  label:
+                    "ID",
+                  waarde:
+                    rij.attestId ||
+                    "—",
+                },
+              ];
 
-            <tbody className="divide-y divide-slate-100">
-              {zichtbareRijen.map(
-                (rij) => (
-                  <tr
-                    key={rij.id}
-                    role={
-                      verwijderd
-                        ? undefined
-                        : "link"
+              return (
+                <article
+                  key={rij.id}
+                  className={`overflow-visible rounded-xl border bg-white shadow-sm transition ${
+                    geopend
+                      ? "border-emerald-300 ring-1 ring-emerald-100"
+                      : "border-slate-200 hover:border-emerald-200 hover:shadow"
+                  }`}
+                >
+                  <div
+                    role="button"
+                    tabIndex={0}
+                    aria-expanded={
+                      geopend
                     }
-                    tabIndex={
-                      verwijderd
-                        ? undefined
-                        : 0
+                    aria-controls={
+                      inhoudId
                     }
                     onClick={(
                       event,
                     ) => {
                       if (
-                        verwijderd ||
                         isInteractief(
                           event.target,
                         )
@@ -884,52 +891,224 @@ export function NaFinalisatieTabel({
                         return;
                       }
 
-                      router.push(
-                        `/na-finalisatie/${rij.id}`,
+                      setOpenKaartId(
+                        (huidig) =>
+                          huidig ===
+                          rij.id
+                            ? null
+                            : rij.id,
                       );
                     }}
                     onKeyDown={(
                       event,
                     ) => {
                       if (
-                        verwijderd ||
-                        (event.key !==
-                          "Enter" &&
+                        isInteractief(
+                          event.target,
+                        ) ||
+                        (
                           event.key !==
-                            " ")
+                            "Enter" &&
+                          event.key !==
+                            " "
+                        )
                       ) {
                         return;
                       }
 
                       event.preventDefault();
 
-                      router.push(
-                        `/na-finalisatie/${rij.id}`,
+                      setOpenKaartId(
+                        (huidig) =>
+                          huidig ===
+                          rij.id
+                            ? null
+                            : rij.id,
                       );
                     }}
-                    className={`group bg-white align-top transition hover:bg-emerald-50/40 ${
-                      verwijderd
-                        ? ""
-                        : "cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-emerald-600"
-                    }`}
+                    className="cursor-pointer rounded-t-xl p-3 outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-emerald-600"
                   >
-                    {kolommen.map(
-                      (kolom) => (
-                        <td
-                          key={
-                            kolom.sleutel
-                          }
-                          className="max-w-80 whitespace-pre-wrap break-words px-3 py-3 text-xs text-slate-700"
-                        >
-                          {renderCel(
-                            rij,
-                            kolom,
-                          )}
-                        </td>
-                      ),
-                    )}
+                    <div className="flex items-start gap-2">
+                      <dl className="grid min-w-0 flex-1 grid-cols-1 gap-x-3 gap-y-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+                        {hoofdvelden.map(
+                          (veld) => (
+                            <div
+                              key={
+                                veld.label
+                              }
+                              className="min-w-0"
+                            >
+                              <dt className="text-[10px] font-black uppercase tracking-wide text-slate-500">
+                                {
+                                  veld.label
+                                }
+                              </dt>
 
-                    <td className="sticky right-0 w-20 min-w-20 z-10 has-[details[open]]:z-50 border-l border-slate-200 bg-inherit px-3 py-3 text-left group-hover:bg-[#f7fcfa]">
+                              <dd
+                                className={`mt-0.5 flex min-w-0 items-start justify-between gap-2 break-words text-sm text-slate-900 ${
+                                  veld.sterk
+                                    ? "font-bold"
+                                    : "font-medium"
+                                }`}
+                              >
+                                <span className="min-w-0 flex-1 break-words">
+                                  {
+                                    veld.waarde
+                                  }
+                                </span>
+
+                                {veld.label !==
+                                  "Geregistreerd" &&
+                                veld.label !==
+                                  "Datum na finalisatie" ? (
+                                  <CopyButton
+                                    waarde={
+                                      typeof veld.waarde ===
+                                        "string" &&
+                                      veld.waarde !==
+                                        "—"
+                                        ? veld.waarde
+                                        : null
+                                    }
+                                    label={`${veld.label} kopiëren`}
+                                  />
+                                ) : null}
+                              </dd>
+                            </div>
+                          ),
+                        )}
+                      </dl>
+
+                      <span
+                        aria-hidden="true"
+                        className={`mt-1 text-xs font-black text-slate-500 transition-transform ${
+                          geopend
+                            ? "rotate-180"
+                            : ""
+                        }`}
+                      >
+                        ▼
+                      </span>
+                    </div>
+                  </div>
+
+                  {geopend ? (
+                    <div
+                      id={inhoudId}
+                      className="border-t border-slate-200 px-3 py-3"
+                    >
+                      <p className="mb-2 text-[10px] font-black uppercase tracking-wide text-slate-500">
+                        Overige gegevens
+                      </p>
+
+                      <dl className="grid grid-cols-1 gap-x-4 gap-y-3 sm:grid-cols-2 lg:grid-cols-3">
+                        {overigeVelden.map(
+                          (veld) => (
+                            <div
+                              key={
+                                veld.label
+                              }
+                              className="min-w-0"
+                            >
+                              <dt className="text-[10px] font-black uppercase tracking-wide text-slate-500">
+                                {
+                                  veld.label
+                                }
+                              </dt>
+
+                              <dd className="mt-0.5 flex items-start justify-between gap-2 whitespace-pre-wrap break-words text-sm font-medium text-slate-900">
+                                <span className="min-w-0 flex-1 break-words">
+                                  {
+                                    veld.waarde
+                                  }
+                                </span>
+
+                                {veld.label !==
+                                "Plaatsbezoek" ? (
+                                  <CopyButton
+                                    waarde={
+                                      veld.waarde !==
+                                        "—"
+                                        ? veld.waarde
+                                        : null
+                                    }
+                                    label={`${veld.label} kopiëren`}
+                                  />
+                                ) : null}
+                              </dd>
+                            </div>
+                          ),
+                        )}
+
+                        <div className="min-w-0 sm:col-span-2 lg:col-span-3">
+                          <dt className="text-[10px] font-black uppercase tracking-wide text-slate-500">
+                            Opmerking
+                          </dt>
+
+                          <dd className="mt-0.5 flex items-start justify-between gap-2 whitespace-pre-wrap break-words text-sm font-medium text-slate-900">
+                            <span className="min-w-0 flex-1 break-words">
+                              {rij.opmerking ||
+                                "—"}
+                            </span>
+
+                            <CopyButton
+                              waarde={
+                                rij.opmerking ||
+                                null
+                              }
+                              label="Opmerking kopiëren"
+                            />
+                          </dd>
+                        </div>
+
+                        {verwijderd ? (
+                          <div className="min-w-0">
+                            <dt className="text-[10px] font-black uppercase tracking-wide text-slate-500">
+                              Verwijderd op
+                            </dt>
+
+                            <dd className="mt-0.5 flex items-start justify-between gap-2 break-words text-sm font-medium text-slate-900">
+                              <span className="min-w-0 flex-1 break-words">
+                                {formatteerDatumTijd(
+                                  rij.verwijderdOp,
+                                )}
+                              </span>
+
+                              <CopyButton
+                                waarde={
+                                  rij.verwijderdOp
+                                    ? formatteerDatumTijd(
+                                        rij.verwijderdOp,
+                                      )
+                                    : null
+                                }
+                                label="Verwijderd op kopiëren"
+                              />
+                            </dd>
+                          </div>
+                        ) : null}
+                      </dl>
+                    </div>
+                  ) : null}
+
+                  {geopend ? (
+                  <div className="flex min-h-12 items-center justify-between gap-3 border-t border-slate-200 bg-slate-50/70 px-3 py-2">
+                    <div>
+                      {rij.linkAttest ? (
+                        <a
+                          href={
+                            rij.linkAttest
+                          }
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex h-9 items-center rounded-lg border border-emerald-300 bg-white px-3 text-xs font-bold text-emerald-800 shadow-sm transition hover:bg-emerald-50"
+                        >
+                          Attest
+                        </a>
+                      ) : null}
+                    </div>
+
+                    <div className="flex items-center justify-end gap-2">
                       {verwijderd ? (
                         <NaFinalisatieHerstelKnop
                           id={rij.id}
@@ -941,21 +1120,20 @@ export function NaFinalisatieTabel({
                           bewerkenHref={`/na-finalisatie/${rij.id}/bewerken`}
                           kinderen={
                             <NaFinalisatieVerwijderKnop
-                              id={rij.id}
+                              id={
+                                rij.id
+                              }
                             />
                           }
                         />
-                      ) : (
-                        <span className="text-xs text-slate-400">
-                          —
-                        </span>
-                      )}
-                    </td>
-                  </tr>
-                ),
-              )}
-            </tbody>
-          </table>
+                      ) : null}
+                    </div>
+                  </div>
+                  ) : null}
+                </article>
+              );
+            },
+          )}
         </div>
       )}
 
