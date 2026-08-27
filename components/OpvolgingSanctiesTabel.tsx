@@ -65,6 +65,8 @@ export type OpvolgingSanctieTabelRij =
     ncCategorie: string;
     sanctieBegindatum: string;
     sanctieEinddatum: string;
+    sanctieDoorgezet: string;
+    redenNietDoorzetten: string;
     magBeheren: boolean;
   };
 
@@ -140,6 +142,19 @@ const kolommen:
       sleutel: "ncCategorie",
       label: "NC-categorie",
       type: "badge",
+    },
+    {
+      sleutel:
+        "sanctieDoorgezet",
+      label:
+        "Sanctie doorgezet",
+      type: "badge",
+    },
+    {
+      sleutel:
+        "redenNietDoorzetten",
+      label:
+        "Reden niet doorzetten",
     },
     {
       sleutel:

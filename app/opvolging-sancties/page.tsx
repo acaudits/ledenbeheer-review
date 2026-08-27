@@ -272,6 +272,17 @@ export default async function OpvolgingSanctiesPage() {
               formatteerDatum(
                 registratie.sanctieEinddatum,
               ),
+            sanctieDoorgezet:
+              registratie.sanctieDoorgezet ===
+              true
+                ? "Ja"
+                : registratie.sanctieDoorgezet ===
+                    false
+                  ? "Nee"
+                  : "—",
+            redenNietDoorzetten:
+              registratie.redenNietDoorzetten ??
+              "—",
             magBeheren:
               registratie.bronType ===
               "DESKCONTROLE"

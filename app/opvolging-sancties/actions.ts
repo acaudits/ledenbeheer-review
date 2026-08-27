@@ -409,6 +409,12 @@ export async function maakOpvolgingSanctie(
                 sanctieEinddatum:
                   validatie.invoer
                     .sanctieEinddatum,
+                sanctieDoorgezet:
+                  validatie.invoer
+                    .sanctieDoorgezet,
+                redenNietDoorzetten:
+                  validatie.invoer
+                    .redenNietDoorzetten,
                 aangemaaktDoorId:
                   gebruiker.id,
               },
@@ -446,6 +452,12 @@ export async function maakOpvolgingSanctie(
                     .sanctieEinddatum
                     ?.toISOString() ??
                   null,
+                sanctieDoorgezet:
+                  validatie.invoer
+                    .sanctieDoorgezet,
+                redenNietDoorzetten:
+                  validatie.invoer
+                    .redenNietDoorzetten,
               },
             },
           );
@@ -1264,6 +1276,12 @@ export async function bewerkOpvolgingSanctieDetail(
     sanctieEinddatum:
       validatie.invoer
         .sanctieEinddatum,
+    sanctieDoorgezet:
+      validatie.invoer
+        .sanctieDoorgezet,
+    redenNietDoorzetten:
+      validatie.invoer
+        .redenNietDoorzetten,
   };
 
   function auditDatum(
@@ -1335,6 +1353,10 @@ export async function bewerkOpvolgingSanctieDetail(
               auditDatum(
                 bestaande.sanctieEinddatum,
               ),
+            sanctieDoorgezet:
+              bestaande.sanctieDoorgezet,
+            redenNietDoorzetten:
+              bestaande.redenNietDoorzetten,
           },
           nieuweWaarde: {
             ...nieuweWaarde,

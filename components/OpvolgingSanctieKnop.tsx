@@ -50,6 +50,18 @@ export function OpvolgingSanctieKnop({
   ] = useState("");
 
   const [
+    sanctieDoorgezet,
+    setSanctieDoorgezet,
+  ] = useState<
+    "" | "ja" | "nee"
+  >("");
+
+  const [
+    redenNietDoorzetten,
+    setRedenNietDoorzetten,
+  ] = useState("");
+
+  const [
     fout,
     setFout,
   ] = useState("");
@@ -84,7 +96,9 @@ export function OpvolgingSanctieKnop({
     setFout("");
     setSucces("");
     setNcCategorie("CAT_0");
+    setSanctieDoorgezet("");
     setSanctieBegindatum("");
+    setRedenNietDoorzetten("");
     setDialoogOpen(true);
   }
 
@@ -282,6 +296,15 @@ export function OpvolgingSanctieKnop({
                         event.target
                           .value as OpvolgingNcCategorieWaarde,
                       );
+                      setSanctieDoorgezet(
+                        "",
+                      );
+                      setSanctieBegindatum(
+                        "",
+                      );
+                      setRedenNietDoorzetten(
+                        "",
+                      );
                     }}
                     disabled={isBezig}
                     className="h-11 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm text-slate-900 outline-none focus:border-emerald-600 focus:ring-2 focus:ring-emerald-100 disabled:bg-slate-100"
@@ -302,7 +325,108 @@ export function OpvolgingSanctieKnop({
                 </div>
 
                 {ncCategorie ===
-                "CAT_1" ? (
+                  "CAT_1" ||
+                ncCategorie ===
+                  "CAT_2" ? (
+                  <div>
+                    <label
+                      htmlFor={`sanctie-doorgezet-${bronType}-${bronId}`}
+                      className="mb-1.5 block text-sm font-bold text-slate-800"
+                    >
+                      Wordt de sanctie doorgezet?
+                    </label>
+
+                    <select
+                      id={`sanctie-doorgezet-${bronType}-${bronId}`}
+                      name="sanctieDoorgezet"
+                      required
+                      value={
+                        sanctieDoorgezet
+                      }
+                      onChange={(event) => {
+                        const waarde =
+                          event.target
+                            .value as
+                              | ""
+                              | "ja"
+                              | "nee";
+
+                        setSanctieDoorgezet(
+                          waarde,
+                        );
+
+                        if (
+                          waarde !== "ja"
+                        ) {
+                          setSanctieBegindatum(
+                            "",
+                          );
+                        }
+
+                        if (
+                          waarde !== "nee"
+                        ) {
+                          setRedenNietDoorzetten(
+                            "",
+                          );
+                        }
+                      }}
+                      disabled={isBezig}
+                      className="h-11 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm text-slate-900 outline-none focus:border-emerald-600 focus:ring-2 focus:ring-emerald-100 disabled:bg-slate-100"
+                    >
+                      <option value="">
+                        Kies een antwoord
+                      </option>
+                      <option value="ja">
+                        Ja
+                      </option>
+                      <option value="nee">
+                        Nee
+                      </option>
+                    </select>
+                  </div>
+                ) : null}
+
+                {(
+                  ncCategorie ===
+                    "CAT_1" ||
+                  ncCategorie ===
+                    "CAT_2"
+                ) &&
+                sanctieDoorgezet ===
+                  "nee" ? (
+                  <div>
+                    <label
+                      htmlFor={`reden-niet-doorzetten-${bronType}-${bronId}`}
+                      className="mb-1.5 block text-sm font-bold text-slate-800"
+                    >
+                      Reden niet doorzetten
+                    </label>
+
+                    <textarea
+                      id={`reden-niet-doorzetten-${bronType}-${bronId}`}
+                      name="redenNietDoorzetten"
+                      required
+                      maxLength={10_000}
+                      rows={4}
+                      value={
+                        redenNietDoorzetten
+                      }
+                      onChange={(event) => {
+                        setRedenNietDoorzetten(
+                          event.target.value,
+                        );
+                      }}
+                      disabled={isBezig}
+                      className="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm text-slate-900 outline-none focus:border-emerald-600 focus:ring-2 focus:ring-emerald-100 disabled:bg-slate-100"
+                    />
+                  </div>
+                ) : null}
+
+                {ncCategorie ===
+                "CAT_1" &&
+                sanctieDoorgezet ===
+                  "ja" ? (
                   <div className="space-y-4 rounded-xl border border-amber-200 bg-amber-50 p-4">
                     <p className="text-sm text-amber-900">
                       Voor Cat. 1 wordt de einddatum automatisch berekend als zes kalendermaanden na de aanvangsdatum.
@@ -359,7 +483,9 @@ export function OpvolgingSanctieKnop({
                 ) : null}
 
                 {ncCategorie ===
-                "CAT_2" ? (
+                "CAT_2" &&
+                sanctieDoorgezet ===
+                  "ja" ? (
                   <div className="space-y-4 rounded-xl border border-red-200 bg-red-50 p-4">
                     <p className="text-sm font-semibold text-red-900">
                       De sanctieperiode moet overeenkomen met de gegevens op het OVAM-certificatieplatform.

@@ -31,6 +31,8 @@ type Waarden = {
   ncCategorie: string;
   sanctieBegindatum: string;
   sanctieEinddatum: string;
+  sanctieDoorgezet: boolean | null;
+  redenNietDoorzetten: string;
 };
 
 type Props = {
@@ -77,6 +79,33 @@ export function OpvolgingSanctieDetailFormulier({
     setCategorie,
   ] = useState(
     waarden.ncCategorie,
+  );
+
+  const [
+    sanctieDoorgezet,
+    setSanctieDoorgezet,
+  ] = useState<
+    "" | "ja" | "nee"
+  >(
+    waarden.sanctieDoorgezet === true ||
+      (waarden.sanctieDoorgezet === null &&
+        Boolean(
+          waarden.sanctieBegindatum ||
+            waarden.sanctieEinddatum,
+        ))
+      ? "ja"
+      : waarden.sanctieDoorgezet === false ||
+          (waarden.sanctieDoorgezet === null &&
+            waarden.redenNietDoorzetten.trim() !== "")
+        ? "nee"
+        : "",
+  );
+
+  const [
+    redenNietDoorzetten,
+    setRedenNietDoorzetten,
+  ] = useState(
+    waarden.redenNietDoorzetten,
   );
 
   return (
@@ -236,6 +265,12 @@ export function OpvolgingSanctieDetailFormulier({
                 setCategorie(
                   event.target.value,
                 );
+                setSanctieDoorgezet(
+                  "",
+                );
+                setRedenNietDoorzetten(
+                  "",
+                );
               }}
               className={invoer}
             >
@@ -264,6 +299,79 @@ export function OpvolgingSanctieDetailFormulier({
           {categorie === "CAT_1" ||
           categorie === "CAT_2" ? (
             <label className="text-sm font-semibold text-slate-700">
+              Wordt de sanctie doorgezet? *
+              <select
+                name="sanctieDoorgezet"
+                required
+                value={
+                  sanctieDoorgezet
+                }
+                onChange={(event) => {
+                  const waarde =
+                    event.target.value as
+                      | ""
+                      | "ja"
+                      | "nee";
+
+                  setSanctieDoorgezet(
+                    waarde,
+                  );
+
+                  if (
+                    waarde !== "nee"
+                  ) {
+                    setRedenNietDoorzetten(
+                      "",
+                    );
+                  }
+                }}
+                className={invoer}
+              >
+                <option value="">
+                  Kies een antwoord
+                </option>
+                <option value="ja">
+                  Ja
+                </option>
+                <option value="nee">
+                  Nee
+                </option>
+              </select>
+            </label>
+          ) : null}
+
+          {(
+            categorie === "CAT_1" ||
+            categorie === "CAT_2"
+          ) &&
+          sanctieDoorgezet ===
+            "nee" ? (
+            <label className="text-sm font-semibold text-slate-700 md:col-span-2 lg:col-span-3">
+              Reden niet doorzetten *
+              <textarea
+                name="redenNietDoorzetten"
+                required
+                maxLength={10_000}
+                value={
+                  redenNietDoorzetten
+                }
+                onChange={(event) => {
+                  setRedenNietDoorzetten(
+                    event.target.value,
+                  );
+                }}
+                className={tekstvak}
+              />
+            </label>
+          ) : null}
+
+          {(
+            categorie === "CAT_1" ||
+            categorie === "CAT_2"
+          ) &&
+          sanctieDoorgezet ===
+            "ja" ? (
+            <label className="text-sm font-semibold text-slate-700">
               Sanctie begindatum *
               <input
                 name="sanctieBegindatum"
@@ -277,7 +385,9 @@ export function OpvolgingSanctieDetailFormulier({
             </label>
           ) : null}
 
-          {categorie === "CAT_2" ? (
+          {categorie === "CAT_2" &&
+          sanctieDoorgezet ===
+            "ja" ? (
             <>
               <label className="text-sm font-semibold text-slate-700">
                 Sanctie einddatum *

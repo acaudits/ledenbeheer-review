@@ -647,6 +647,9 @@ model OpvolgingSanctie {
   sanctieBegindatum DateTime? @map("sanctie_begindatum") @db.Date
   sanctieEinddatum  DateTime? @map("sanctie_einddatum") @db.Date
 
+  sanctieDoorgezet      Boolean? @map("sanctie_doorgezet")
+  redenNietDoorzetten   String?  @map("reden_niet_doorzetten") @db.Text
+
   aangemaaktDoorId Int? @map("aangemaakt_door_id")
 
   aangemaaktDoor ToegestaneGebruiker? @relation("OpvolgingSanctieAangemaaktDoor", fields: [aangemaaktDoorId], references: [id], onDelete: SetNull)

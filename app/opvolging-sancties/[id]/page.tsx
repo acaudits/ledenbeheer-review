@@ -274,6 +274,11 @@ export default async function OpvolgingSanctieDetailPage({
               datumInvoer(
                 registratie.sanctieEinddatum,
               ),
+            sanctieDoorgezet:
+              registratie.sanctieDoorgezet,
+            redenNietDoorzetten:
+              registratie.redenNietDoorzetten ??
+              "",
           }}
         />
       </section>

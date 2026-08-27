@@ -25,6 +25,8 @@ export type OpvolgingSanctieInvoer = {
   ncCategorie: OpvolgingNcCategorieWaarde;
   sanctieBegindatum: Date | null;
   sanctieEinddatum: Date | null;
+  sanctieDoorgezet: boolean | null;
+  redenNietDoorzetten: string | null;
 };
 
 export type OpvolgingValidatieResultaat =
@@ -332,6 +334,81 @@ export function valideerOpvolgingSanctieInvoer(
       ),
     );
 
+  const sanctieDoorgezet =
+    formData.get(
+      "sanctieDoorgezet",
+    );
+
+  const redenNietDoorzettenWaarde =
+    formData.get(
+      "redenNietDoorzetten",
+    );
+
+  const redenNietDoorzetten =
+    typeof redenNietDoorzettenWaarde ===
+      "string"
+      ? redenNietDoorzettenWaarde.trim()
+      : "";
+
+  if (
+    (
+      ncCategorie === "CAT_1" ||
+      ncCategorie === "CAT_2"
+    ) &&
+    sanctieDoorgezet !== null &&
+    sanctieDoorgezet !== "ja" &&
+    sanctieDoorgezet !== "nee"
+  ) {
+    return {
+      geldig: false,
+      melding:
+        "Selecteer of de sanctie wordt doorgezet.",
+    };
+  }
+
+  if (
+    (
+      ncCategorie === "CAT_1" ||
+      ncCategorie === "CAT_2"
+    ) &&
+    sanctieDoorgezet === "nee"
+  ) {
+    if (!redenNietDoorzetten) {
+      return {
+        geldig: false,
+        melding:
+          "Vul de reden in waarom de sanctie niet wordt doorgezet.",
+      };
+    }
+
+    if (
+      redenNietDoorzetten.length >
+      10_000
+    ) {
+      return {
+        geldig: false,
+        melding:
+          "De reden voor niet doorzetten mag maximaal 10.000 tekens bevatten.",
+      };
+    }
+
+    return {
+      geldig: true,
+      invoer: {
+        reden,
+        datumVaststelling,
+        ncCategorie,
+        sanctieBegindatum:
+          null,
+        sanctieEinddatum:
+          null,
+        sanctieDoorgezet:
+          false,
+        redenNietDoorzetten,
+      },
+    };
+  }
+
   if (ncCategorie === "CAT_1") {
     if (!sanctieBegindatum) {
       return {
@@ -347,6 +424,10 @@ export function valideerOpvolgingSanctieInvoer(
         reden,
         datumVaststelling,
         ncCategorie,
+        sanctieDoorgezet:
+          true,
+        redenNietDoorzetten:
+          null,
         sanctieBegindatum,
         sanctieEinddatum:
           berekenCat1Einddatum(
@@ -397,6 +478,10 @@ export function valideerOpvolgingSanctieInvoer(
         reden,
         datumVaststelling,
         ncCategorie,
+        sanctieDoorgezet:
+          true,
+        redenNietDoorzetten:
+          null,
         sanctieBegindatum,
         sanctieEinddatum,
       },
@@ -411,6 +496,8 @@ export function valideerOpvolgingSanctieInvoer(
       ncCategorie,
       sanctieBegindatum: null,
       sanctieEinddatum: null,
+      sanctieDoorgezet: null,
+      redenNietDoorzetten: null,
     },
   };
 }
