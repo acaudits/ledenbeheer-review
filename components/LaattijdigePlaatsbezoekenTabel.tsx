@@ -2,7 +2,6 @@
 
 import { BEHEER_TABEL_STIJLEN } from "@/components/BeheerTabelOnderdelen";
 import {
-  type ReactNode,
   useEffect,
   useMemo,
   useState,
@@ -12,6 +11,12 @@ import {
   LaattijdigePlaatsbezoekenKaart,
   type LaattijdigKaartbezoek,
 } from "@/components/LaattijdigePlaatsbezoekenKaart";
+import {
+  LaattijdigePlaatsbezoekenKaartKolombalk,
+} from "@/components/LaattijdigePlaatsbezoekenKaartKolombalk";
+import {
+  CopyButton,
+} from "@/components/CopyButton";
 import {
   useLaattijdigePlaatsbezoekenKaartQuery,
   useLaattijdigePlaatsbezoekenQuery,
@@ -161,21 +166,6 @@ const kolommen: Array<{
   },
 
 ];
-
-const maanden = [
-  ["01", "Januari"],
-  ["02", "Februari"],
-  ["03", "Maart"],
-  ["04", "April"],
-  ["05", "Mei"],
-  ["06", "Juni"],
-  ["07", "Juli"],
-  ["08", "Augustus"],
-  ["09", "September"],
-  ["10", "Oktober"],
-  ["11", "November"],
-  ["12", "December"],
-] as const;
 
 function bepaalTimerStatus(
   startMomentIso: string,
@@ -338,61 +328,6 @@ function googleMapsUrl(
   );
 }
 
-function celInhoud(
-  rij:
-    LaattijdigPlaatsbezoekRij,
-  sleutel:
-    KolomSleutel,
-  nu: number,
-): ReactNode {
-  if (
-    sleutel === "timer"
-  ) {
-    return (
-      <Timer
-        rij={rij}
-        nu={nu}
-      />
-    );
-  }
-
-  if (
-    sleutel ===
-    "inspectielocatie"
-  ) {
-    return (
-      <a
-        href={googleMapsUrl(
-          rij,
-        )}
-        target="_blank"
-        rel="noreferrer"
-        className="font-semibold text-blue-700 underline decoration-blue-300 underline-offset-2 hover:text-blue-900"
-      >
-        {
-          rij.inspectielocatie
-        }
-      </a>
-    );
-  }
-
-  if (
-    sleutel ===
-      "aantalAttesten" ||
-    sleutel ===
-      "aantalTerreincontroles"
-  ) {
-    return rij[sleutel];
-  }
-
-  const waarde =
-    rij[sleutel];
-
-  return (
-    waarde || "—"
-  );
-}
-
 export function LaattijdigePlaatsbezoekenTabel({
   rijen = [],
   referentieTijd = 0,
@@ -402,6 +337,13 @@ export function LaattijdigePlaatsbezoekenTabel({
     zoeken,
     setZoeken,
   ] = useState("");
+
+  const [
+    openKaartId,
+    setOpenKaartId,
+  ] = useState<number | null>(
+    null,
+  );
 
   const [
     filters,
@@ -595,34 +537,8 @@ export function LaattijdigePlaatsbezoekenTabel({
     );
   };
 
-  const sorteerOp = (
-    sleutel:
-      KolomSleutel,
-  ) => {
-    if (
-      sleutel ===
-      sorteerSleutel
-    ) {
-      setSorteerRichting(
-        (huidige) =>
-          huidige ===
-          "oplopend"
-            ? "aflopend"
-            : "oplopend",
-      );
-
-      return;
-    }
-
-    setSorteerSleutel(
-      sleutel,
-    );
-    setSorteerRichting(
-      "oplopend",
-    );
-  };
-
   const wisFilters = () => {
+    setOpenKaartId(null);
     setZoeken("");
     setFilters({});
     setDatumJaar("");
@@ -718,249 +634,328 @@ export function LaattijdigePlaatsbezoekenTabel({
         </div>
       </div>
 
-      <div className={BEHEER_TABEL_STIJLEN.kader}>
-        <div className={BEHEER_TABEL_STIJLEN.scroll}>
-          <table className={`${BEHEER_TABEL_STIJLEN.tabel} min-w-[2500px] text-sm`}>
-            <thead className={BEHEER_TABEL_STIJLEN.kop}>
-              <tr>
-                {kolommen.map(
-                  (kolom) => (
-                    <th
-                      key={
-                        kolom.sleutel
-                      }
-                      className={`px-3 py-3 align-top ${kolom.breedte ?? ""}`}
-                    >
-                      <button
-                        type="button"
-                        onClick={() => {
-                          sorteerOp(
-                            kolom.sleutel,
-                          );
-                        }}
-                        className="flex min-h-10 w-full items-start justify-between gap-2 text-left font-black hover:text-blue-700"
-                      >
-                        <span>
-                          {
-                            kolom.label
-                          }
-                        </span>
-
-                        <span aria-hidden="true">
-                          {sorteerSleutel ===
-                          kolom.sleutel
-                            ? sorteerRichting ===
-                                "oplopend"
-                              ? "↑"
-                              : "↓"
-                            : "↕"}
-                        </span>
-                      </button>
-
-                      {kolom.sleutel ===
-                      "datum" ? (
-                        <div className="mt-2 grid grid-cols-2 gap-2 normal-case tracking-normal">
-                          <select
-                            value={
-                              datumJaar
-                            }
-                            onChange={(
-                              gebeurtenis,
-                            ) => {
-                              setDatumJaar(
-                                gebeurtenis
-                                  .target
-                                  .value,
-                              );
-                            }}
-                            aria-label="Filterjaar datum plaatsbezoek"
-                            className="min-w-0 rounded-lg border border-slate-300 bg-white px-2 py-2 text-xs font-medium text-slate-700"
-                          >
-                            <option value="">
-                              Jaar
-                            </option>
-                            <option value="2027">
-                              2027
-                            </option>
-                            <option value="2026">
-                              2026
-                            </option>
-                            <option value="2025">
-                              2025
-                            </option>
-                          </select>
-
-                          <select
-                            value={
-                              datumMaand
-                            }
-                            onChange={(
-                              gebeurtenis,
-                            ) => {
-                              setDatumMaand(
-                                gebeurtenis
-                                  .target
-                                  .value,
-                              );
-                            }}
-                            aria-label="Filtermaand datum plaatsbezoek"
-                            className="min-w-0 rounded-lg border border-slate-300 bg-white px-2 py-2 text-xs font-medium text-slate-700"
-                          >
-                            <option value="">
-                              Maand
-                            </option>
-
-                            {maanden.map(
-                              ([
-                                waarde,
-                                label,
-                              ]) => (
-                                <option
-                                  key={
-                                    waarde
-                                  }
-                                  value={
-                                    waarde
-                                  }
-                                >
-                                  {
-                                    label
-                                  }
-                                </option>
-                              ),
-                            )}
-                          </select>
-                        </div>
-                      ) : (
-                        <input
-                          type="search"
-                          value={
-                            filters[
-                              kolom
-                                .sleutel
-                            ] ?? ""
-                          }
-                          onChange={(
-                            gebeurtenis,
-                          ) => {
-                            wijzigFilter(
-                              kolom.sleutel,
-                              gebeurtenis
-                                .target
-                                .value,
-                            );
-                          }}
-                          onClick={(
-                            gebeurtenis,
-                          ) => {
-                            gebeurtenis
-                              .stopPropagation();
-                          }}
-                          placeholder="Filter..."
-                          aria-label={`Filter ${kolom.label}`}
-                          className="mt-2 w-full rounded-lg border border-slate-300 bg-white px-2 py-2 text-xs font-medium normal-case tracking-normal text-slate-700 outline-none focus:border-blue-500"
-                        />
-                      )}
-                    </th>
-                  ),
-                )}
-              </tr>
-            </thead>
-
-            <tbody className="divide-y divide-slate-200">
-              {zichtbareRijen.map(
-                (rij) => {
-                  const status =
-                    bepaalTimerStatus(
-                      rij.startMomentIso,
-                      effectieveNu,
-                    );
-
-                  return (
-                    <tr
-                      key={rij.id}
-                      className={`align-top transition-colors ${
-                        rij.waarschuwingTerreincontrole
-                          ? "bg-red-50 hover:bg-red-100/80"
-                          : "bg-emerald-50 hover:bg-emerald-100/80"
-                      } ${
-                        status.soort ===
-                        "BEGONNEN"
-                          ? "plaatsbezoek-rij-knipper"
-                          : ""
-                      }`}
-                      title={
-                        rij.waarschuwingTerreincontrole
-                          ? "Terreincontrole nodig en laatste terreincontrole is langer dan 14 dagen geleden of werd nooit uitgevoerd."
-                          : rij.terreincontroleNodig
-                            ? "Terreincontrole nodig, maar de laatste terreincontrole is minder dan 14 dagen geleden."
-                            : "Terreincontroletarget behaald of geen terreincontrole vereist."
-                      }
-                    >
-                      {kolommen.map(
-                        (
-                          kolom,
-                        ) => (
-                          <td
-                            key={
-                              kolom
-                                .sleutel
-                            }
-                            className="whitespace-pre-wrap px-3 py-4 text-slate-700"
-                          >
-                            {celInhoud(
-                              rij,
-                              kolom.sleutel,
-                              effectieveNu,
-                            )}
-                          </td>
-                        ),
-                      )}
-                    </tr>
-                  );
-                },
-              )}
-            </tbody>
-          </table>
-        </div>
+      <div className="overflow-visible rounded-2xl border border-slate-200 bg-white shadow-sm">
+        <LaattijdigePlaatsbezoekenKaartKolombalk
+          kolommen={kolommen}
+          filters={filters}
+          sorteringen={[
+            {
+              sleutel: sorteerSleutel,
+              richting: sorteerRichting,
+            },
+          ]}
+          onFilterWijzigen={(sleutel, waarde) => {
+            wijzigFilter(
+              sleutel as KolomSleutel,
+              waarde,
+            );
+            setOpenKaartId(null);
+          }}
+          onSorteren={(sleutel, richting) => {
+            setSorteerSleutel(
+              sleutel as KolomSleutel,
+            );
+            setSorteerRichting(richting);
+            setOpenKaartId(null);
+          }}
+          onSorteringVerwijderen={() => {
+            setSorteerSleutel("aangemeldOp");
+            setSorteerRichting("aflopend");
+            setOpenKaartId(null);
+          }}
+          onSorteringVerplaatsen={() => {
+            void 0;
+          }}
+        />
 
         {serverModus &&
-        serverQuery
-          .isEersteKeerLaden ? (
+        serverQuery.isEersteKeerLaden &&
+        zichtbareRijen.length === 0 ? (
           <div className="px-6 py-16 text-center text-sm font-semibold text-slate-600">
             Laattijdige plaatsbezoeken laden...
           </div>
-        ) : null}
-
-        {!serverQuery
-          .isEersteKeerLaden &&
-        zichtbareRijen.length ===
-          0 ? (
+        ) : zichtbareRijen.length === 0 ? (
           <div className="px-6 py-16 text-center">
             <h2 className="text-lg font-black text-slate-900">
               Geen plaatsbezoeken gevonden
             </h2>
-
             <p className="mt-2 text-sm text-slate-500">
               Pas de zoekterm of filters aan.
             </p>
           </div>
-        ) : null}
+        ) : (
+          <div className="space-y-2 p-2 sm:p-3">
+            {zichtbareRijen.map((rij) => {
+              const geopend =
+                openKaartId === rij.id;
+              const inhoudId =
+                `laattijdig-plaatsbezoek-${rij.id}`;
+              const status =
+                bepaalTimerStatus(
+                  rij.startMomentIso,
+                  effectieveNu,
+                );
 
-        {serverModus &&
-        serverQuery.fout ? (
-          <div className="border-t border-red-200 bg-red-50 px-6 py-4 text-sm text-red-900">
+              const titel =
+                rij.waarschuwingTerreincontrole
+                  ? "Terreincontrole nodig en laatste terreincontrole is langer dan 14 dagen geleden of werd nooit uitgevoerd."
+                  : rij.terreincontroleNodig
+                    ? "Terreincontrole nodig, maar de laatste terreincontrole is minder dan 14 dagen geleden."
+                    : "Terreincontroletarget behaald of geen terreincontrole vereist.";
+
+              const overigeVelden = [
+                {
+                  label: "Aantal attesten",
+                  waarde: String(rij.aantalAttesten),
+                },
+                {
+                  label: "Datum laatste terreincontrole",
+                  waarde: rij.laatsteTerreincontrole || "—",
+                },
+                {
+                  label: "Aantal terreincontroles",
+                  waarde: String(rij.aantalTerreincontroles),
+                },
+                {
+                  label: "Gemeenschappelijke delen",
+                  waarde: rij.gemeenschappelijkeDelen || "—",
+                },
+                {
+                  label: "Extra adresdetails",
+                  waarde: rij.extraAdresdetails || "—",
+                },
+                {
+                  label: "Reden",
+                  waarde: rij.reden || "—",
+                },
+                {
+                  label: "Aangemeld op",
+                  waarde: rij.aangemeldOp || "—",
+                },
+                {
+                  label: "Referentie",
+                  waarde: rij.referentie || "—",
+                },
+              ];
+
+              return (
+                <article
+                  key={rij.id}
+                  className={`overflow-visible rounded-xl border shadow-sm transition ${
+                    rij.waarschuwingTerreincontrole
+                      ? "border-red-300 bg-red-50"
+                      : "border-emerald-200 bg-white"
+                  } ${
+                    status.soort === "BEGONNEN"
+                      ? "plaatsbezoek-rij-knipper"
+                      : ""
+                  } ${
+                    geopend
+                      ? "ring-1 ring-blue-200"
+                      : "hover:border-blue-300 hover:shadow"
+                  }`}
+                  title={titel}
+                >
+                  <div
+                    role="button"
+                    tabIndex={0}
+                    aria-expanded={geopend}
+                    aria-controls={inhoudId}
+                    onClick={(event) => {
+                      if (
+                        event.target instanceof Element &&
+                        event.target.closest(
+                          "button, a, input, select, textarea, details, summary",
+                        )
+                      ) {
+                        return;
+                      }
+
+                      setOpenKaartId((huidig) =>
+                        huidig === rij.id
+                          ? null
+                          : rij.id,
+                      );
+                    }}
+                    onKeyDown={(event) => {
+                      if (
+                        event.target !== event.currentTarget ||
+                        (
+                          event.key !== "Enter" &&
+                          event.key !== " "
+                        )
+                      ) {
+                        return;
+                      }
+
+                      event.preventDefault();
+                      setOpenKaartId((huidig) =>
+                        huidig === rij.id
+                          ? null
+                          : rij.id,
+                      );
+                    }}
+                    className="cursor-pointer rounded-xl p-3 outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-600"
+                  >
+                    <div className="flex items-start gap-2">
+                      <div className="min-w-0 flex-1">
+                        <div className="grid grid-cols-1 gap-x-3 gap-y-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+                          <div className="min-w-0">
+                            <p className="text-[10px] font-black uppercase tracking-wide text-slate-500">
+                              Timer
+                            </p>
+                            <div className="mt-1">
+                              <Timer
+                                rij={rij}
+                                nu={effectieveNu}
+                              />
+                            </div>
+                          </div>
+
+                          {[
+                            {
+                              label: "ADI",
+                              waarde: rij.naamAdi || "—",
+                            },
+                            {
+                              label: "Bedrijf",
+                              waarde: rij.bedrijfsnaam || "—",
+                            },
+                            {
+                              label: "Datum",
+                              waarde: rij.datum || "—",
+                            },
+                            {
+                              label: "Tijdstip",
+                              waarde: rij.tijdstip || "—",
+                            },
+                          ].map((veld) => (
+                            <div
+                              key={veld.label}
+                              className="min-w-0"
+                            >
+                              <p className="text-[10px] font-black uppercase tracking-wide text-slate-500">
+                                {veld.label}
+                              </p>
+                              <div className="mt-0.5 flex min-w-0 items-start justify-between gap-2 text-sm font-semibold text-slate-900">
+                                <span className="min-w-0 flex-1 break-words">
+                                  {veld.waarde}
+                                </span>
+                                <CopyButton
+                                  waarde={
+                                    veld.waarde === "—"
+                                      ? null
+                                      : veld.waarde
+                                  }
+                                  label={`${veld.label} kopiëren`}
+                                />
+                              </div>
+                            </div>
+                          ))}
+
+                          <div className="min-w-0">
+                            <p className="text-[10px] font-black uppercase tracking-wide text-slate-500">
+                              Inspectielocatie
+                            </p>
+                            <div className="mt-0.5 flex min-w-0 items-start justify-between gap-2 text-sm font-semibold">
+                              <a
+                                href={googleMapsUrl(rij)}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="min-w-0 flex-1 break-words text-blue-700 underline decoration-blue-300 underline-offset-2 hover:text-blue-900"
+                              >
+                                {rij.inspectielocatie || "—"}
+                              </a>
+                              <CopyButton
+                                waarde={rij.inspectielocatie || null}
+                                label="Inspectielocatie kopiëren"
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      <span
+                        aria-hidden="true"
+                        className={`mt-1 text-xs font-black text-slate-500 transition-transform ${
+                          geopend ? "rotate-180" : ""
+                        }`}
+                      >
+                        ▼
+                      </span>
+                    </div>
+                  </div>
+
+                  {geopend ? (
+                    <div
+                      id={inhoudId}
+                      className="border-t border-slate-200 px-3 py-3"
+                    >
+                      <p className="mb-2 text-[10px] font-black uppercase tracking-wide text-slate-500">
+                        Overige gegevens
+                      </p>
+
+                      <dl className="grid grid-cols-1 gap-x-4 gap-y-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                        {overigeVelden.map((veld) => (
+                          <div
+                            key={veld.label}
+                            className="min-w-0"
+                          >
+                            <dt className="text-[10px] font-black uppercase tracking-wide text-slate-500">
+                              {veld.label}
+                            </dt>
+                            <dd className="mt-0.5 flex min-w-0 items-start justify-between gap-2 whitespace-pre-wrap break-words text-sm font-medium text-slate-900">
+                              <span className="min-w-0 flex-1 break-words">
+                                {veld.waarde}
+                              </span>
+                              <CopyButton
+                                waarde={
+                                  veld.waarde === "—"
+                                    ? null
+                                    : veld.waarde
+                                }
+                                label={`${veld.label} kopiëren`}
+                              />
+                            </dd>
+                          </div>
+                        ))}
+                      </dl>
+                    </div>
+                  ) : null}
+
+                  {geopend ? (
+                    <div className="flex min-h-12 items-center justify-between gap-3 border-t border-slate-200 bg-slate-50/70 px-3 py-2">
+                      <a
+                        href={googleMapsUrl(rij)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex h-9 items-center rounded-lg border border-blue-300 bg-white px-3 text-xs font-bold text-blue-800 shadow-sm transition hover:bg-blue-50"
+                      >
+                        Open in Google Maps
+                      </a>
+
+                      {rij.waarschuwingTerreincontrole ? (
+                        <span className="rounded-full border border-red-300 bg-red-100 px-3 py-1 text-xs font-black text-red-900">
+                          Terreincontrole nodig
+                        </span>
+                      ) : null}
+                    </div>
+                  ) : null}
+                </article>
+              );
+            })}
+          </div>
+        )}
+
+        {serverModus && serverQuery.fout ? (
+          <div className="border-t border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900">
             <p className="font-bold">
-              {
-                serverQuery.fout
-              }
+              {serverQuery.fout}
             </p>
-
             <button
               type="button"
               onClick={() => {
-                void serverQuery
-                  .opnieuwLaden();
+                void serverQuery.opnieuwLaden();
               }}
               className={BEHEER_TABEL_STIJLEN.foutKnop}
             >
@@ -971,29 +966,20 @@ export function LaattijdigePlaatsbezoekenTabel({
 
         <div className={BEHEER_TABEL_STIJLEN.voet}>
           <p className="text-sm font-semibold text-slate-600">
-            {
-              zichtbareRijen.length
-            } van{" "}
-            {aantalTotaal} resultaten
+            {zichtbareRijen.length} van {aantalTotaal} resultaten
           </p>
 
           {serverModus &&
-          serverQuery
-            .heeftVolgendePagina ? (
+          serverQuery.heeftVolgendePagina ? (
             <button
               type="button"
-              disabled={
-                serverQuery
-                  .isVolgendePaginaLaden
-              }
+              disabled={serverQuery.isVolgendePaginaLaden}
               onClick={() => {
-                void serverQuery
-                  .laadVolgendePagina();
+                void serverQuery.laadVolgendePagina();
               }}
               className={BEHEER_TABEL_STIJLEN.meerKnop}
             >
-              {serverQuery
-                .isVolgendePaginaLaden
+              {serverQuery.isVolgendePaginaLaden
                 ? "Resultaten laden..."
                 : "Meer resultaten laden"}
             </button>

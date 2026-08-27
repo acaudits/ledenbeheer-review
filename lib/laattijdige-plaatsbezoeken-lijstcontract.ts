@@ -45,6 +45,8 @@ export const LAATTIJDIGE_PLAATSBEZOEKEN_TEKSTFILTERPARAMETERS = {
     "filterAantalTerreincontroles",
   inspectielocatie:
     "filterInspectielocatie",
+  datum:
+    "filterDatum",
   tijdstip:
     "filterTijdstip",
   gemeenschappelijkeDelen:
@@ -89,12 +91,19 @@ function normaliseerFilter(
       .replace(/\s+/g, " ")
       .trim();
 
+  const maximaleLengte =
+    genormaliseerd.startsWith(
+      "__excel__",
+    )
+      ? 200_000
+      : MAXIMALE_FILTERLENGTE;
+
   if (
     genormaliseerd.length >
-    MAXIMALE_FILTERLENGTE
+    maximaleLengte
   ) {
     throw new OngeldigePagineringFout(
-      `${label} mag maximaal ${MAXIMALE_FILTERLENGTE} tekens bevatten.`,
+      `${label} mag maximaal ${maximaleLengte} tekens bevatten.`,
     );
   }
 

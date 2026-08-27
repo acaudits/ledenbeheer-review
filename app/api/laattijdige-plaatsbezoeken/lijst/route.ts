@@ -11,8 +11,10 @@ import {
 import {
   LAATTIJDIGE_PLAATSBEZOEKEN_SORTERINGEN,
   leesLaattijdigePlaatsbezoekenLijstcontract,
+  type LaattijdigePlaatsbezoekenSortering,
 } from "@/lib/laattijdige-plaatsbezoeken-lijstcontract";
 import {
+  laadLaattijdigePlaatsbezoekenFilterwaarden,
   laadLaattijdigePlaatsbezoekenKaart,
   laadLaattijdigePlaatsbezoekenOverzicht,
   selecteerLaattijdigePlaatsbezoeken,
@@ -82,6 +84,78 @@ export async function GET(
       new URL(
         verzoek.url,
       );
+
+    const filterwaardenKolom =
+      url.searchParams.get(
+        "filterwaardenKolom",
+      );
+
+    if (
+      filterwaardenKolom !==
+      null
+    ) {
+      if (
+        !LAATTIJDIGE_PLAATSBEZOEKEN_SORTERINGEN.includes(
+          filterwaardenKolom as
+            LaattijdigePlaatsbezoekenSortering,
+        )
+      ) {
+        throw new OngeldigePagineringFout(
+          "De gekozen filterkolom is ongeldig.",
+        );
+      }
+
+      const filterwaardenZoekterm =
+        (
+          url.searchParams.get(
+            "filterwaardenZoekterm",
+          ) ?? ""
+        )
+          .replace(
+            /\s+/g,
+            " ",
+          )
+          .trim();
+
+      if (
+        filterwaardenZoekterm.length >
+        100
+      ) {
+        throw new OngeldigePagineringFout(
+          "De zoekterm voor filterwaarden is te lang.",
+        );
+      }
+
+      const waarden =
+        await laadLaattijdigePlaatsbezoekenFilterwaarden(
+          {
+            kolom:
+              filterwaardenKolom as
+                LaattijdigePlaatsbezoekenSortering,
+            zoekterm:
+              filterwaardenZoekterm,
+          },
+        );
+
+      const limiet =
+        filterwaardenKolom ===
+        "datum"
+          ? 2000
+          : 300;
+
+      return NextResponse.json(
+        {
+          waarden,
+          afgekapt:
+            waarden.length ===
+            limiet,
+        },
+        {
+          headers:
+            GEEN_TABEL_CACHE,
+        },
+      );
+    }
 
     const onderdeel =
       url.searchParams.get(

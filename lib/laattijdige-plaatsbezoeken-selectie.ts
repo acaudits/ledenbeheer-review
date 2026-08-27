@@ -5,6 +5,7 @@ import {
 } from "../generated/prisma/client";
 
 import {
+  LAATTIJDIGE_PLAATSBEZOEKEN_TEKSTFILTERPARAMETERS,
   type LaattijdigePlaatsbezoekenLijstcontract,
   type LaattijdigePlaatsbezoekenSortering,
   type LaattijdigePlaatsbezoekenTekstfilters,
@@ -77,6 +78,8 @@ const tekstExpressies: Record<
     Prisma.sql`b."aantalTerreincontroles"`,
   inspectielocatie:
     Prisma.sql`b."inspectielocatie"`,
+  datum:
+    Prisma.sql`b."datumSorteer"`,
   tijdstip:
     Prisma.sql`b."tijdstip"`,
   gemeenschappelijkeDelen:
@@ -103,6 +106,247 @@ function bevat(
       ),
       LOWER(${waarde})
     ) > 0
+  `;
+}
+
+const EXCEL_FILTER_PREFIX =
+  "__excel__";
+
+type ExcelWaardeFilter = {
+  modus:
+    | "insluiten"
+    | "uitsluiten";
+  waarden: string[];
+  legeCellenGeselecteerd:
+    boolean;
+};
+
+function leesExcelWaardeFilter(
+  waarde: string,
+): ExcelWaardeFilter | null {
+  if (
+    !waarde.startsWith(
+      EXCEL_FILTER_PREFIX,
+    )
+  ) {
+    return null;
+  }
+
+  try {
+    const inhoud =
+      JSON.parse(
+        decodeURIComponent(
+          waarde.slice(
+            EXCEL_FILTER_PREFIX.length,
+          ),
+        ),
+      ) as unknown;
+
+    if (
+      typeof inhoud !== "object" ||
+      inhoud === null
+    ) {
+      throw new Error(
+        "Ongeldige filterinhoud.",
+      );
+    }
+
+    const kandidaat =
+      inhoud as Record<
+        string,
+        unknown
+      >;
+
+    if (
+      (
+        kandidaat.modus !==
+          "insluiten" &&
+        kandidaat.modus !==
+          "uitsluiten"
+      ) ||
+      !Array.isArray(
+        kandidaat.waarden,
+      ) ||
+      typeof kandidaat
+        .legeCellenGeselecteerd !==
+        "boolean"
+    ) {
+      throw new Error(
+        "Ongeldige filtervelden.",
+      );
+    }
+
+    if (
+      kandidaat.waarden.length >
+      2000
+    ) {
+      throw new Error(
+        "Te veel filterwaarden.",
+      );
+    }
+
+    const waarden =
+      kandidaat.waarden.map(
+        (item) => {
+          if (
+            typeof item !==
+              "string" ||
+            item.length > 500
+          ) {
+            throw new Error(
+              "Ongeldige filterwaarde.",
+            );
+          }
+
+          return item.trim();
+        },
+      );
+
+    return {
+      modus:
+        kandidaat.modus,
+      waarden:
+        Array.from(
+          new Set(
+            waarden.filter(
+              (item) =>
+                item !== "",
+            ),
+          ),
+        ),
+      legeCellenGeselecteerd:
+        kandidaat
+          .legeCellenGeselecteerd,
+    };
+  } catch {
+    throw new Error(
+      "De gekozen filterwaarden zijn ongeldig.",
+    );
+  }
+}
+
+function maakTekstfilter(
+  expressie: Prisma.Sql,
+  waarde: string,
+) {
+  const excelFilter =
+    leesExcelWaardeFilter(
+      waarde,
+    );
+
+  if (!excelFilter) {
+    return bevat(
+      expressie,
+      waarde,
+    );
+  }
+
+  const genormaliseerd =
+    Prisma.sql`
+      COALESCE(
+        NULLIF(
+          BTRIM(
+            (${expressie})::text
+          ),
+          ''
+        ),
+        ''
+      )
+    `;
+
+  if (
+    excelFilter.modus ===
+    "insluiten"
+  ) {
+    const voorwaarden:
+      Prisma.Sql[] = [];
+
+    if (
+      excelFilter.waarden.length >
+      0
+    ) {
+      voorwaarden.push(
+        Prisma.sql`
+          ${genormaliseerd}
+          IN (
+            ${Prisma.join(
+              excelFilter.waarden,
+            )}
+          )
+        `,
+      );
+    }
+
+    if (
+      excelFilter
+        .legeCellenGeselecteerd
+    ) {
+      voorwaarden.push(
+        Prisma.sql`
+          ${genormaliseerd} = ''
+        `,
+      );
+    }
+
+    if (
+      voorwaarden.length === 0
+    ) {
+      return Prisma.sql`FALSE`;
+    }
+
+    return Prisma.sql`
+      (
+        ${Prisma.join(
+          voorwaarden,
+          " OR ",
+        )}
+      )
+    `;
+  }
+
+  const voorwaarden:
+    Prisma.Sql[] = [];
+
+  if (
+    excelFilter.waarden.length >
+    0
+  ) {
+    voorwaarden.push(
+      Prisma.sql`
+        ${genormaliseerd}
+        NOT IN (
+          ${Prisma.join(
+            excelFilter.waarden,
+          )}
+        )
+      `,
+    );
+  }
+
+  if (
+    !excelFilter
+      .legeCellenGeselecteerd
+  ) {
+    voorwaarden.push(
+      Prisma.sql`
+        ${genormaliseerd} <> ''
+      `,
+    );
+  }
+
+  if (
+    voorwaarden.length === 0
+  ) {
+    return Prisma.sql`TRUE`;
+  }
+
+  return Prisma.sql`
+    (
+      ${Prisma.join(
+        voorwaarden,
+        " AND ",
+      )}
+    )
   `;
 }
 
@@ -227,7 +471,7 @@ function maakFiltervoorwaarden({
     }
 
     voorwaarden.push(
-      bevat(
+      maakTekstfilter(
         tekstExpressies[
           sleutel
         ],
@@ -648,6 +892,263 @@ export async function selecteerLaattijdigePlaatsbezoeken({
       g.id ${richtingSql}
     LIMIT ${limiet + 1}
   `);
+}
+
+export type LaattijdigePlaatsbezoekenFilterwaarde = {
+  waarde: string;
+  aantal: number;
+};
+
+function formatteerFilterdatum(
+  datum: string,
+) {
+  const resultaat =
+    /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(
+      datum,
+    );
+
+  if (!resultaat) {
+    return datum.trim();
+  }
+
+  return `${resultaat[3]}-${resultaat[2]}-${resultaat[1]}`;
+}
+
+function bepaalTimerFilterwaarde(
+  startMomentIso: string,
+) {
+  const startMoment =
+    Date.parse(
+      startMomentIso,
+    );
+  const nu =
+    Date.now();
+
+  if (
+    !Number.isFinite(
+      startMoment,
+    )
+  ) {
+    return "";
+  }
+
+  if (startMoment > nu) {
+    return "Toekomstig Tot plaatsbezoek";
+  }
+
+  if (
+    startMoment >
+    nu - 60 * 60 * 1000
+  ) {
+    return "Begonnen";
+  }
+
+  return "Verlopen";
+}
+
+function leesFilterwaardeUitRij(
+  rij:
+    LaattijdigPlaatsbezoekSelectieRij,
+  kolom:
+    LaattijdigePlaatsbezoekenSortering,
+) {
+  switch (kolom) {
+    case "referentie":
+      return rij.referentie;
+    case "timer":
+      return bepaalTimerFilterwaarde(
+        rij.startMomentIso,
+      );
+    case "naamAdi":
+      return rij.naamAdi;
+    case "bedrijfsnaam":
+      return rij.bedrijfsnaam;
+    case "aantalAttesten":
+      return String(
+        rij.aantalAttesten,
+      );
+    case "laatsteTerreincontrole":
+      return rij.laatsteTerreincontrole;
+    case "aantalTerreincontroles":
+      return String(
+        rij.aantalTerreincontroles,
+      );
+    case "inspectielocatie":
+      return rij.inspectielocatie;
+    case "datum":
+      return formatteerFilterdatum(
+        rij.datum,
+      );
+    case "tijdstip":
+      return rij.tijdstip;
+    case "gemeenschappelijkeDelen":
+      return rij.gemeenschappelijkeDelen;
+    case "extraAdresdetails":
+      return rij.extraAdresdetails;
+    case "reden":
+      return rij.reden;
+    case "aangemeldOp":
+      return rij.aangemeldOp;
+  }
+}
+
+export async function laadLaattijdigePlaatsbezoekenFilterwaarden({
+  kolom,
+  zoekterm,
+}: {
+  kolom:
+    LaattijdigePlaatsbezoekenSortering;
+  zoekterm: string;
+}) {
+  const tekstfilters =
+    Object.fromEntries(
+      Object.keys(
+        LAATTIJDIGE_PLAATSBEZOEKEN_TEKSTFILTERPARAMETERS,
+      ).map(
+        (sleutel) => [
+          sleutel,
+          "",
+        ],
+      ),
+    ) as LaattijdigePlaatsbezoekenTekstfilters;
+
+  const contract:
+    LaattijdigePlaatsbezoekenLijstcontract = {
+      tekstfilters,
+      datumPlaatsbezoekJaar:
+        null,
+      datumPlaatsbezoekMaand:
+        null,
+    };
+
+  const tellingen =
+    new Map<
+      string,
+      number
+    >();
+
+  let cursorId:
+    number | null = null;
+
+  const paginalimiet =
+    1000;
+
+  while (true) {
+    const selectie =
+      await selecteerLaattijdigePlaatsbezoeken(
+        {
+          zoekterm: "",
+          contract,
+          sortering:
+            "referentie",
+          richting:
+            "asc",
+          limiet:
+            paginalimiet,
+          cursorId,
+        },
+      );
+
+    const pagina =
+      selectie.slice(
+        0,
+        paginalimiet,
+      );
+
+    for (const rij of pagina) {
+      const waarde =
+        leesFilterwaardeUitRij(
+          rij,
+          kolom,
+        ).trim();
+
+      if (
+        zoekterm &&
+        !waarde
+          .toLocaleLowerCase(
+            "nl-BE",
+          )
+          .includes(
+            zoekterm.toLocaleLowerCase(
+              "nl-BE",
+            ),
+          )
+      ) {
+        continue;
+      }
+
+      tellingen.set(
+        waarde,
+        (
+          tellingen.get(
+            waarde,
+          ) ?? 0
+        ) + 1,
+      );
+    }
+
+    if (
+      selectie.length <=
+      paginalimiet
+    ) {
+      break;
+    }
+
+    const laatsteRij =
+      pagina.at(-1);
+
+    if (!laatsteRij) {
+      break;
+    }
+
+    cursorId =
+      laatsteRij.id;
+  }
+
+  const limiet =
+    kolom === "datum"
+      ? 2000
+      : 300;
+
+  return Array.from(
+    tellingen,
+    ([
+      waarde,
+      aantal,
+    ]) => ({
+      waarde,
+      aantal,
+    }),
+  )
+    .sort(
+      (links, rechts) => {
+        if (
+          links.waarde === ""
+        ) {
+          return -1;
+        }
+
+        if (
+          rechts.waarde === ""
+        ) {
+          return 1;
+        }
+
+        return links.waarde.localeCompare(
+          rechts.waarde,
+          "nl-BE",
+          {
+            numeric: true,
+            sensitivity:
+              "base",
+          },
+        );
+      },
+    )
+    .slice(
+      0,
+      limiet,
+    );
 }
 
 export async function laadLaattijdigePlaatsbezoekenOverzicht() {

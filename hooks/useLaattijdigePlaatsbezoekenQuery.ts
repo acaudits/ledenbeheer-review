@@ -53,6 +53,8 @@ const TEKSTFILTERPARAMETERS = {
     "filterAantalTerreincontroles",
   inspectielocatie:
     "filterInspectielocatie",
+  datum:
+    "filterDatum",
   tijdstip:
     "filterTijdstip",
   gemeenschappelijkeDelen:
