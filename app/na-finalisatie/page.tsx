@@ -27,7 +27,7 @@ export default async function NaFinalisatiePage() {
 
   const magBeheren =
     heeftMachtiging(
-      gebruiker.rol,
+      gebruiker.rollen,
       "TERREINCONTROLES_BEHEREN",
     );
 

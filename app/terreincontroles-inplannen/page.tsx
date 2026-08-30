@@ -16,15 +16,15 @@ export const dynamic = "force-dynamic";
 export default async function TerreincontrolesPage() {
   const gebruiker = await vereisMachtiging("TERREINCONTROLES_BEKIJKEN");
 
-  const magBeheren = heeftMachtiging(gebruiker.rol, "TERREINCONTROLES_BEHEREN");
+  const magBeheren = heeftMachtiging(gebruiker.rollen, "TERREINCONTROLES_BEHEREN");
 
   const magExporteren = heeftMachtiging(
-    gebruiker.rol,
+    gebruiker.rollen,
     "TERREINCONTROLES_EXPORTEREN",
   );
 
   const magStatussenImporteren = heeftMachtiging(
-    gebruiker.rol,
+    gebruiker.rollen,
     "TERREINCONTROLES_STATUS_IMPORTEREN",
   );
 

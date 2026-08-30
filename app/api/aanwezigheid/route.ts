@@ -80,7 +80,7 @@ export async function GET() {
 
   if (
     !beheerder?.actief ||
-    beheerder.rol !== "BEHEERDER"
+    !beheerder.rollen.includes("BEHEERDER")
   ) {
     return NextResponse.json(
       { melding: "Geen toegang." },

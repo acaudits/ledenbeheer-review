@@ -35,7 +35,7 @@ export async function GET(verzoek: Request) {
       );
     }
 
-    if (!heeftMachtiging(gebruiker.rol, "DESKCONTROLES_BEKIJKEN")) {
+    if (!heeftMachtiging(gebruiker.rollen, "DESKCONTROLES_BEKIJKEN")) {
       return NextResponse.json(
         {
           fout: "Je hebt geen toegang tot deskcontroles.",

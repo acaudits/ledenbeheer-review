@@ -1,5 +1,4 @@
-import NextLink from "next/link";
-import type { ComponentProps } from "react";
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { DeskcontroleVaststellingenTabel } from "@/components/DeskcontroleVaststellingenTabel";
 import { DeskcontroleDetailSnelleActies } from "@/components/DeskcontroleDetailSnelleActies";
@@ -134,27 +133,9 @@ export default async function DeskcontroleDetailPage({
   const gebruiker = await vereisMachtiging("DESKCONTROLES_BEKIJKEN");
 
   const magBeheren = heeftMachtiging(
-    gebruiker.rol,
+    gebruiker.rollen,
     "DESKCONTROLES_BEHEREN",
   );
-
-  function Link(
-    props: ComponentProps<typeof NextLink>,
-  ) {
-    const bestemming =
-      typeof props.href === "string"
-        ? props.href
-        : "";
-
-    if (
-      !magBeheren &&
-      bestemming.endsWith("/bewerken")
-    ) {
-      return null;
-    }
-
-    return <NextLink {...props} />;
-  }
 
   const { id: idWaarde } =
     await params;
@@ -259,14 +240,14 @@ export default async function DeskcontroleDetailPage({
             <span className="inline-flex items-center rounded-xl border border-red-200 bg-red-50 px-4 py-2 text-sm font-bold text-red-700">
               Verwijderd
             </span>
-          ) : (
+          ) : magBeheren ? (
             <Link
               href={`/deskcontroles/${deskcontrole.id}/bewerken`}
               className="inline-flex items-center rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-bold text-slate-700 hover:bg-slate-50"
             >
               Bewerken
             </Link>
-          )}
+          ) : null}
 
         </div>
       </div>

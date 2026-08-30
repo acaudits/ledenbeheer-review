@@ -789,7 +789,9 @@ export async function importeerTerreincontroleUitExcel(
     prisma.toegestaneGebruiker.findMany({
       where: {
         actief: true,
-        rol: "AUDITEUR",
+        rollen: {
+          has: "AUDITEUR",
+        },
       },
       select: {
         id: true,

@@ -197,7 +197,7 @@ export async function bewerkBugRapport(
     );
 
   const isBeheerder =
-    gebruiker.rol === "BEHEERDER";
+    gebruiker.rollen.includes("BEHEERDER");
 
   const id = Number(formData.get("id"));
   const status = String(
@@ -295,7 +295,7 @@ export async function wijzigBugStatus(
       "CERTIFICATEN_BEKIJKEN",
     );
 
-  if (gebruiker.rol !== "BEHEERDER") {
+  if (!gebruiker.rollen.includes("BEHEERDER")) {
     redirect(
       "/bug-rapporteren?fout=geen-toegang",
     );
@@ -366,7 +366,7 @@ export async function verwijderBugRapport(
       "CERTIFICATEN_BEKIJKEN",
     );
 
-  if (gebruiker.rol !== "BEHEERDER") {
+  if (!gebruiker.rollen.includes("BEHEERDER")) {
     redirect(
       "/bug-rapporteren?fout=geen-toegang",
     );

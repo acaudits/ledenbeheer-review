@@ -6,7 +6,8 @@ import {
   haalIngelogdeGebruikerOp,
 } from "@/lib/auth";
 import {
-  isGebruikersrol,
+  bepaalPrimaireRol,
+  normaliseerRollen,
 } from "@/lib/autorisatie";
 
 export async function GET() {
@@ -14,18 +15,22 @@ export async function GET() {
     const gebruiker =
       await haalIngelogdeGebruikerOp();
 
+    const rollen =
+      normaliseerRollen(
+        gebruiker?.rollen,
+      );
+
     if (
       !gebruiker ||
       !gebruiker.actief ||
-      !isGebruikersrol(
-        gebruiker.rol,
-      )
+      rollen.length === 0
     ) {
       return NextResponse.json(
         {
           ingelogd: false,
           beheerder: false,
           rol: null,
+          rollen: [],
         },
         {
           status: 401,
@@ -35,16 +40,21 @@ export async function GET() {
 
     return NextResponse.json({
       ingelogd: true,
+      beheerder:
+        rollen.includes(
+          "BEHEERDER",
+        ),
 
       /*
-       * Tijdelijk behouden voor componenten
-       * die nog de oude eigenschap gebruiken.
+       * Tijdelijk behouden voor oudere
+       * clientcomponenten.
        */
-      beheerder:
-        gebruiker.rol ===
-        "BEHEERDER",
+      rol:
+        bepaalPrimaireRol(
+          rollen,
+        ),
 
-      rol: gebruiker.rol,
+      rollen,
       naam: gebruiker.naam,
       email: gebruiker.email,
     });
@@ -59,6 +69,7 @@ export async function GET() {
         ingelogd: false,
         beheerder: false,
         rol: null,
+        rollen: [],
       },
       {
         status: 500,

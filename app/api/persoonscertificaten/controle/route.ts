@@ -12,7 +12,7 @@ export async function GET(request: NextRequest) {
   if (
     !gebruiker?.actief ||
     !heeftMachtiging(
-      gebruiker.rol,
+      gebruiker.rollen,
       "CERTIFICATEN_BEHEREN",
     )
   ) {

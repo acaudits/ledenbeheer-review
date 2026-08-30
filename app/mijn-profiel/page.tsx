@@ -42,8 +42,8 @@ export default async function MijnProfielPage() {
             ""
           }
           toegelaten={
-            gebruiker.rol === "BEHEERDER" ||
-            gebruiker.rol === "AUDITEUR"
+            gebruiker.rollen.includes("BEHEERDER") ||
+            gebruiker.rollen.includes("AUDITEUR")
           }
         />
       </section>

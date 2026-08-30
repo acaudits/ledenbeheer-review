@@ -27,7 +27,7 @@ export default async function AfwezigeTerreincontrolesPage() {
 
   const magBeheren =
     heeftMachtiging(
-      gebruiker.rol,
+      gebruiker.rollen,
       "TERREINCONTROLES_BEHEREN",
     );
 

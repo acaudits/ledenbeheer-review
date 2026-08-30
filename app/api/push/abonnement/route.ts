@@ -20,11 +20,15 @@ type PushAbonnementInvoer = {
 };
 
 function magPushOntvangen(
-  rol: string,
+  rollen: readonly string[],
 ) {
   return (
-    rol === "BEHEERDER" ||
-    rol === "AUDITEUR"
+    rollen.includes(
+      "BEHEERDER",
+    ) ||
+    rollen.includes(
+      "AUDITEUR",
+    )
   );
 }
 
@@ -83,7 +87,7 @@ async function haalBevoegdeGebruikerOp() {
   if (
     !gebruiker?.actief ||
     !magPushOntvangen(
-      gebruiker.rol,
+      gebruiker.rollen,
     )
   ) {
     return null;

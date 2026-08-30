@@ -61,9 +61,8 @@ export async function POST(
   if (
     !gebruiker?.actief ||
     (
-      gebruiker.rol !==
-        "BEHEERDER" &&
-      gebruiker.rol !== "AUDITEUR"
+      !gebruiker.rollen.includes("BEHEERDER") &&
+      !gebruiker.rollen.includes("AUDITEUR")
     )
   ) {
     return NextResponse.json(

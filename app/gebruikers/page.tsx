@@ -1,11 +1,12 @@
 import { prisma } from "@/lib/prisma";
 import { vereisBeheerder } from "@/lib/auth";
-import { rolLabel } from "@/lib/autorisatie";
+import {
+  GebruikersRollenBeheer,
+} from "@/components/GebruikersRollenBeheer";
 import { PageHeader } from "@/components/PageHeader";
 import { GebruikerToevoegenForm } from "./GebruikerToevoegenForm";
 import { TijdelijkWachtwoordForm } from "./TijdelijkWachtwoordForm";
 import {
-  wijzigGebruikerRol,
   wijzigGebruikerStatus,
 } from "./actions";
 
@@ -86,7 +87,7 @@ export default async function GebruikersPage() {
                     </th>
 
                     <th className="px-5 py-3 text-xs font-semibold uppercase tracking-wider text-slate-500">
-                      Rol
+                      Rollen
                     </th>
 
                     <th className="px-5 py-3 text-xs font-semibold uppercase tracking-wider text-slate-500">
@@ -129,68 +130,19 @@ export default async function GebruikersPage() {
                           )}
                         </td>
 
-                        <td className="px-5 py-4">
-                          <div className="space-y-2">
-                            <span
-                              className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${
-                                gebruiker.rol ===
-                                "BEHEERDER"
-                                  ? "bg-violet-50 text-violet-700"
-                                  : gebruiker.rol ===
-                                      "ADMINISTRATIEF"
-                                    ? "bg-blue-50 text-blue-700"
-                                    : "bg-amber-50 text-amber-700"
-                              }`}
-                            >
-                              {rolLabel(
-                                gebruiker.rol,
-                              )}
-                            </span>
-
-                            {!isEigenAccount ? (
-                              <form
-                                action={
-                                  wijzigGebruikerRol
-                                }
-                                className="flex items-center gap-2"
-                              >
-                                <input
-                                  type="hidden"
-                                  name="id"
-                                  value={
-                                    gebruiker.id
-                                  }
-                                />
-
-                                <select
-                                  name="rol"
-                                  defaultValue={
-                                    gebruiker.rol
-                                  }
-                                  className="h-9 rounded-lg border border-slate-300 bg-white px-2 text-xs font-semibold text-slate-700"
-                                >
-                                  <option value="AUDITEUR">
-                                    Auditeur
-                                  </option>
-
-                                  <option value="ADMINISTRATIEF">
-                                    Administratief
-                                  </option>
-
-                                  <option value="BEHEERDER">
-                                    Beheerder
-                                  </option>
-                                </select>
-
-                                <button
-                                  type="submit"
-                                  className="h-9 rounded-lg border border-slate-300 bg-white px-3 text-xs font-semibold text-slate-700 transition hover:bg-slate-50"
-                                >
-                                  Rol opslaan
-                                </button>
-                              </form>
-                            ) : null}
-                          </div>
+                        <td className="w-[290px] px-5 py-4 align-middle">
+                          <GebruikersRollenBeheer
+                            key={`${gebruiker.id}-${gebruiker.rollen.join("-")}`}
+                            gebruikerId={
+                              gebruiker.id
+                            }
+                            rollen={
+                              gebruiker.rollen
+                            }
+                            eigenAccount={
+                              isEigenAccount
+                            }
+                          />
                         </td>
 
                         <td className="px-5 py-4">

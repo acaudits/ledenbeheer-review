@@ -71,7 +71,7 @@ export default async function TerreincontroleDetailPage({
 
   const magBeheren =
     heeftMachtiging(
-      gebruiker.rol,
+      gebruiker.rollen,
       "TERREINCONTROLES_BEHEREN",
     );
 

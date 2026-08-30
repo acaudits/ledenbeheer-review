@@ -51,7 +51,7 @@ export async function GET(
 
     if (
       !heeftMachtiging(
-        gebruiker.rol,
+        gebruiker.rollen,
         "TERREINCONTROLES_BEKIJKEN",
       )
     ) {

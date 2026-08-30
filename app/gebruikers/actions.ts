@@ -1,7 +1,11 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { isGebruikersrol } from "@/lib/autorisatie";
+import {
+  bepaalPrimaireRol,
+  isGebruikersrol,
+  type GebruikersrolWaarde,
+} from "@/lib/autorisatie";
 import { prisma } from "@/lib/prisma";
 import { vereisBeheerder } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -15,6 +19,31 @@ export type WachtwoordResetStatus = {
   succes: boolean;
   melding: string;
 };
+
+function leesRollen(
+  formData: FormData,
+): GebruikersrolWaarde[] | null {
+  const rollen = Array.from(
+    new Set(
+      formData
+        .getAll("rollen")
+        .map(String)
+        .filter(
+          isGebruikersrol,
+        ),
+    ),
+  );
+
+  if (
+    rollen.length === 0 ||
+    rollen.length !==
+      formData.getAll("rollen").length
+  ) {
+    return null;
+  }
+
+  return rollen;
+}
 
 function normaliseerEmail(
   waarde: FormDataEntryValue | null,
@@ -42,20 +71,24 @@ export async function maakGebruikerAan(
     formData.get("tijdelijkWachtwoord") ?? "",
   );
 
-  const rolWaarde = String(
-    formData.get("rol") ?? "",
-  );
+  const rollen =
+    leesRollen(formData);
 
-  if (!isGebruikersrol(rolWaarde)) {
+  if (!rollen) {
     return {
       succes: false,
       melding:
-        "Selecteer een geldige gebruikersrol.",
+        "Selecteer minimaal één geldige gebruikersrol.",
     };
   }
 
+  const rolWaarde =
+    bepaalPrimaireRol(rollen);
+
   const beheerder =
-    rolWaarde === "BEHEERDER";
+    rollen.includes(
+      "BEHEERDER",
+    );
 
   if (!email) {
     return {
@@ -128,6 +161,7 @@ export async function maakGebruikerAan(
         email,
         naam: naam || null,
         rol: rolWaarde,
+        rollen,
         beheerder,
         actief: true,
         wachtwoordWijzigen: true,
@@ -381,7 +415,7 @@ export async function wijzigGebruikerStatus(
 }
 
 
-export async function wijzigGebruikerRol(
+export async function wijzigGebruikerRollen(
   formData: FormData,
 ) {
   const huidigeBeheerder =
@@ -391,9 +425,8 @@ export async function wijzigGebruikerRol(
     formData.get("id"),
   );
 
-  const rolWaarde = String(
-    formData.get("rol") ?? "",
-  );
+  const rollen =
+    leesRollen(formData);
 
   if (
     !Number.isInteger(id) ||
@@ -404,13 +437,9 @@ export async function wijzigGebruikerRol(
     );
   }
 
-  if (
-    !isGebruikersrol(
-      rolWaarde,
-    )
-  ) {
+  if (!rollen) {
     throw new Error(
-      "Ongeldige gebruikersrol.",
+      "Selecteer minimaal één geldige gebruikersrol.",
     );
   }
 
@@ -432,12 +461,17 @@ export async function wijzigGebruikerRol(
   if (
     gebruiker.id ===
       huidigeBeheerder.id &&
-    rolWaarde !== "BEHEERDER"
+    !rollen.includes(
+      "BEHEERDER",
+    )
   ) {
     throw new Error(
       "Je kunt je eigen beheerdersrol niet verwijderen.",
     );
   }
+
+  const rol =
+    bepaalPrimaireRol(rollen);
 
   await prisma
     .toegestaneGebruiker
@@ -445,17 +479,13 @@ export async function wijzigGebruikerRol(
       where: {
         id,
       },
-
       data: {
-        rol: rolWaarde,
-
-        /*
-         * Tijdelijk synchroon houden zolang
-         * oudere componenten dit veld gebruiken.
-         */
+        rollen,
+        rol,
         beheerder:
-          rolWaarde ===
-          "BEHEERDER",
+          rollen.includes(
+            "BEHEERDER",
+          ),
       },
     });
 

@@ -19,7 +19,7 @@ export default async function BewerkBugRapportPage({
     );
 
   const isBeheerder =
-    gebruiker.rol === "BEHEERDER";
+    gebruiker.rollen.includes("BEHEERDER");
 
   const { id: idWaarde } = await params;
   const id = Number(idWaarde);

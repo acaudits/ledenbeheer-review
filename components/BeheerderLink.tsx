@@ -3,16 +3,18 @@
 import Link from "next/link";
 
 type BeheerderLinkProps = {
-  rol: string | null;
+  rollen: readonly string[];
   sluitMenu?: () => void;
 };
 
 export function BeheerderLink({
-  rol,
+  rollen,
   sluitMenu,
 }: BeheerderLinkProps) {
   if (
-    rol !== "BEHEERDER"
+    !rollen.includes(
+      "BEHEERDER",
+    )
   ) {
     return null;
   }

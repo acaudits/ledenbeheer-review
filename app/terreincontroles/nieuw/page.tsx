@@ -59,7 +59,9 @@ export default async function NieuweTerreincontrolePage({
     prisma.toegestaneGebruiker.findMany({
       where: {
         actief: true,
-        rol: "AUDITEUR",
+        rollen: {
+          has: "AUDITEUR",
+        },
       },
       orderBy: [
         { naam: "asc" },

@@ -124,25 +124,25 @@ export default async function VerwijderdeOpvolgingSanctiesPage() {
 
   const magDeskcontrolesBekijken =
     heeftMachtiging(
-      gebruiker.rol,
+      gebruiker.rollen,
       "DESKCONTROLES_BEKIJKEN",
     );
 
   const magTerreincontrolesBekijken =
     heeftMachtiging(
-      gebruiker.rol,
+      gebruiker.rollen,
       "TERREINCONTROLES_BEKIJKEN",
     );
 
   const magDeskcontrolesBeheren =
     heeftMachtiging(
-      gebruiker.rol,
+      gebruiker.rollen,
       "DESKCONTROLES_BEHEREN",
     );
 
   const magTerreincontrolesBeheren =
     heeftMachtiging(
-      gebruiker.rol,
+      gebruiker.rollen,
       "TERREINCONTROLES_BEHEREN",
     );
 

@@ -86,7 +86,7 @@ async function haalBronMomentopnameOp(
             select: {
               id: true,
               actief: true,
-              rol: true,
+              rollen: true,
             },
           },
           linkAttest: true,
@@ -113,8 +113,7 @@ async function haalBronMomentopnameOp(
 
     const actieveAuditeur =
       bron.auditeurGebruiker?.actief &&
-      bron.auditeurGebruiker.rol ===
-        "AUDITEUR"
+      bron.auditeurGebruiker.rollen.includes("AUDITEUR")
         ? bron.auditeurGebruiker.id
         : null;
 
@@ -151,7 +150,7 @@ async function haalBronMomentopnameOp(
             select: {
               id: true,
               actief: true,
-              rol: true,
+              rollen: true,
             },
           },
           naamAdi: true,
@@ -169,8 +168,7 @@ async function haalBronMomentopnameOp(
 
     const actieveAuditeur =
       bron.auditeurGebruiker?.actief &&
-      bron.auditeurGebruiker.rol ===
-        "AUDITEUR"
+      bron.auditeurGebruiker.rollen.includes("AUDITEUR")
         ? bron.auditeurGebruiker.id
         : null;
 
@@ -208,7 +206,7 @@ async function haalBronMomentopnameOp(
             select: {
               id: true,
               actief: true,
-              rol: true,
+              rollen: true,
             },
           },
           naamAdi: true,
@@ -225,8 +223,7 @@ async function haalBronMomentopnameOp(
 
     const actieveAuditeur =
       bron.auditeurGebruiker?.actief &&
-      bron.auditeurGebruiker.rol ===
-        "AUDITEUR"
+      bron.auditeurGebruiker.rollen.includes("AUDITEUR")
         ? bron.auditeurGebruiker.id
         : null;
 
@@ -664,7 +661,9 @@ export async function wijzigOpvolgingSanctieAfronding(
           id:
             geselecteerdeGebruikerId,
           actief: true,
-          rol: "AUDITEUR",
+          rollen: {
+          has: "AUDITEUR",
+        },
         },
         select: {
           id: true,
@@ -897,7 +896,9 @@ export async function bewerkOpvolgingSanctie(
               in: teControlerenIds,
             },
             actief: true,
-            rol: "AUDITEUR",
+            rollen: {
+          has: "AUDITEUR",
+        },
           },
           select: {
             id: true,
@@ -1384,7 +1385,9 @@ export async function bewerkOpvolgingSanctieDetail(
             ),
           },
           actief: true,
-          rol: "AUDITEUR",
+          rollen: {
+          has: "AUDITEUR",
+        },
         },
       });
 

@@ -16,7 +16,7 @@ export async function POST(request: Request) {
     if (
       !gebruiker?.actief ||
       !heeftMachtiging(
-        gebruiker.rol,
+        gebruiker.rollen,
         "CERTIFICATEN_BEHEREN",
       )
     ) {

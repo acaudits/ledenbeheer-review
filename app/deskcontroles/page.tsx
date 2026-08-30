@@ -126,15 +126,15 @@ const kolommen: DeskcontroleKolom[] = [
 export default async function DeskcontrolesPage() {
   const gebruiker = await vereisMachtiging("DESKCONTROLES_BEKIJKEN");
 
-  const magBeheren = heeftMachtiging(gebruiker.rol, "DESKCONTROLES_BEHEREN");
+  const magBeheren = heeftMachtiging(gebruiker.rollen, "DESKCONTROLES_BEHEREN");
 
   const magExporteren = heeftMachtiging(
-    gebruiker.rol,
+    gebruiker.rollen,
     "DESKCONTROLES_EXCEL_EXPORTEREN",
   );
 
   const magStatussenImporteren = heeftMachtiging(
-    gebruiker.rol,
+    gebruiker.rollen,
     "DESKCONTROLES_STATUS_IMPORTEREN",
   );
 

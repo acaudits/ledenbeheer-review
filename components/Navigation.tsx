@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -249,13 +250,13 @@ function isActief(pathname: string, href: string) {
 
 type MenuInhoudProps = {
   pathname: string;
-  rol: string | null;
+  rollen: string[];
   sluitMenu?: () => void;
 };
 
 function MenuInhoud({
   pathname,
-  rol,
+  rollen,
   sluitMenu,
 }: MenuInhoudProps) {
   return (
@@ -266,9 +267,12 @@ function MenuInhoud({
           onClick={sluitMenu}
           className="flex h-28 w-full items-center justify-center overflow-hidden rounded-2xl bg-white p-4 shadow-sm transition hover:bg-emerald-50"
         >
-          <img
+          <Image
             src="/skh-logo.svg"
             alt="SKH"
+            width={224}
+            height={80}
+            priority
             className="block max-h-20 w-full object-contain"
           />
         </Link>
@@ -278,7 +282,7 @@ function MenuInhoud({
         </p>
 
         <GebruikersAanwezigheid
-          rol={rol}
+          rollen={rollen}
           pathname={pathname}
         />
       </div>
@@ -330,7 +334,9 @@ function MenuInhoud({
             (item) =>
               item.href !==
                 "/atteststatistieken" ||
-              rol === "BEHEERDER",
+              rollen.includes(
+                "BEHEERDER",
+              ),
           )
           .map((item) => {
           const actief = isActief(pathname, item.href);
@@ -373,7 +379,7 @@ function MenuInhoud({
         />
 
         <BeheerderLink
-          rol={rol}
+          rollen={rollen}
           sluitMenu={sluitMenu}
         />
         <UitloggenButton sluitMenu={sluitMenu} />
@@ -389,7 +395,8 @@ function MenuInhoud({
 export function Navigation() {
   const pathname = usePathname();
   const [mobielOpen, setMobielOpen] = useState(false);
-  const [rol, setRol] = useState<string | null>(null);
+  const [rollen, setRollen] =
+    useState<string[]>([]);
 
   useEffect(() => {
     let actief = true;
@@ -416,16 +423,23 @@ export function Navigation() {
 
         if (
           actief &&
-          typeof gegevens.rol ===
-            "string"
+          Array.isArray(
+            gegevens.rollen,
+          )
         ) {
-          setRol(
-            gegevens.rol,
+          setRollen(
+            gegevens.rollen.filter(
+              (
+                rol: unknown,
+              ): rol is string =>
+                typeof rol ===
+                "string",
+            ),
           );
         }
       } catch (fout) {
         console.error(
-          "Gebruikersrol ophalen mislukt:",
+          "Gebruikersrollen ophalen mislukt:",
           fout,
         );
       }
@@ -452,7 +466,7 @@ export function Navigation() {
       <aside className="fixed inset-y-0 left-0 z-40 hidden w-72 flex-col overflow-y-auto border-r border-white/5 bg-[#071512] lg:flex">
         <MenuInhoud
           pathname={pathname}
-          rol={rol}
+          rollen={rollen}
         />
       </aside>
 
@@ -463,9 +477,12 @@ export function Navigation() {
           className="flex min-w-0 items-center gap-3"
         >
           <div className="flex h-10 w-24 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-white">
-            <img
+            <Image
               src="/skh-logo.svg"
               alt="SKH"
+              width={96}
+              height={36}
+              priority
               className="block max-h-9 w-full object-contain"
             />
           </div>
@@ -530,7 +547,7 @@ export function Navigation() {
 
             <MenuInhoud
               pathname={pathname}
-              rol={rol}
+              rollen={rollen}
               sluitMenu={sluitMobielMenu}
             />
           </aside>

@@ -279,26 +279,32 @@ enum Gebruikersrol {
   BEHEERDER
   ADMINISTRATIEF
   AUDITEUR
+  INTERNE_AUDITEUR
+  KLACHTENBEHANDELAAR
+  BEGELEIDER
+  HELPDESK
+  FACTURATIE
 }
 
 model ToegestaneGebruiker {
-  id                  Int           @id @default(autoincrement())
-  email               String        @unique
+  id                  Int             @id @default(autoincrement())
+  email               String          @unique
   naam                String?
   voornaam            String?
   achternaam          String?
-  profielVoltooidOp   DateTime?     @map("profiel_voltooid_op")
-  rol                 Gebruikersrol @default(AUDITEUR)
-  beheerder           Boolean       @default(false)
-  actief              Boolean       @default(true)
-  authUserId          String?       @unique @map("auth_user_id")
-  uitgenodigdOp       DateTime?     @map("uitgenodigd_op")
-  aangemaaktOp        DateTime      @default(now()) @map("aangemaakt_op")
-  bijgewerktOp        DateTime      @updatedAt @map("bijgewerkt_op")
-  wachtwoordWijzigen  Boolean       @default(true)
-  laatsteActiviteitOp DateTime?     @map("laatste_activiteit_op")
-  authSessionId       String?       @map("auth_session_id") @db.VarChar(255)
-  isIngelogd          Boolean       @default(false) @map("is_ingelogd")
+  profielVoltooidOp   DateTime?       @map("profiel_voltooid_op")
+  rol                 Gebruikersrol   @default(AUDITEUR)
+  rollen              Gebruikersrol[] @default([AUDITEUR])
+  beheerder           Boolean         @default(false)
+  actief              Boolean         @default(true)
+  authUserId          String?         @unique @map("auth_user_id")
+  uitgenodigdOp       DateTime?       @map("uitgenodigd_op")
+  aangemaaktOp        DateTime        @default(now()) @map("aangemaakt_op")
+  bijgewerktOp        DateTime        @updatedAt @map("bijgewerkt_op")
+  wachtwoordWijzigen  Boolean         @default(true)
+  laatsteActiviteitOp DateTime?       @map("laatste_activiteit_op")
+  authSessionId       String?         @map("auth_session_id") @db.VarChar(255)
+  isIngelogd          Boolean         @default(false) @map("is_ingelogd")
 
   deskcontroles                Deskcontrole[]               @relation("DeskcontroleAuditeur")
   terreincontroles             Terreincontrole[]            @relation("TerreincontroleAuditeur")
@@ -318,6 +324,7 @@ model ToegestaneGebruiker {
   @@index([actief])
   @@index([beheerder])
   @@index([rol])
+  @@index([rollen], type: Gin)
   @@index([laatsteActiviteitOp])
   @@map("toegestane_gebruikers")
 }
@@ -647,8 +654,8 @@ model OpvolgingSanctie {
   sanctieBegindatum DateTime? @map("sanctie_begindatum") @db.Date
   sanctieEinddatum  DateTime? @map("sanctie_einddatum") @db.Date
 
-  sanctieDoorgezet      Boolean? @map("sanctie_doorgezet")
-  redenNietDoorzetten   String?  @map("reden_niet_doorzetten") @db.Text
+  sanctieDoorgezet    Boolean? @map("sanctie_doorgezet")
+  redenNietDoorzetten String?  @map("reden_niet_doorzetten") @db.Text
 
   aangemaaktDoorId Int? @map("aangemaakt_door_id")
 

@@ -74,25 +74,25 @@ export default async function OpvolgingSanctiesPage() {
 
   const magDeskcontrolesBekijken =
     heeftMachtiging(
-      gebruiker.rol,
+      gebruiker.rollen,
       "DESKCONTROLES_BEKIJKEN",
     );
 
   const magTerreincontrolesBekijken =
     heeftMachtiging(
-      gebruiker.rol,
+      gebruiker.rollen,
       "TERREINCONTROLES_BEKIJKEN",
     );
 
   const magDeskcontrolesBeheren =
     heeftMachtiging(
-      gebruiker.rol,
+      gebruiker.rollen,
       "DESKCONTROLES_BEHEREN",
     );
 
   const magTerreincontrolesBeheren =
     heeftMachtiging(
-      gebruiker.rol,
+      gebruiker.rollen,
       "TERREINCONTROLES_BEHEREN",
     );
 
@@ -142,7 +142,9 @@ export default async function OpvolgingSanctiesPage() {
     await prisma.toegestaneGebruiker.findMany({
       where: {
         actief: true,
-        rol: "AUDITEUR",
+        rollen: {
+          has: "AUDITEUR",
+        },
       },
       select: {
         id: true,

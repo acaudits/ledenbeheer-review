@@ -50,7 +50,7 @@ export async function GET(verzoek: Request) {
       );
     }
 
-    if (!heeftMachtiging(gebruiker.rol, "CERTIFICATEN_BEKIJKEN")) {
+    if (!heeftMachtiging(gebruiker.rollen, "CERTIFICATEN_BEKIJKEN")) {
       return NextResponse.json(
         {
           fout: "Je hebt geen toegang tot procescertificaten.",

@@ -4,12 +4,15 @@ import { useActionState } from "react";
 import {
     maakGebruikerAan,
     type GebruikerFormulierStatus,
-  } from "@/app/gebruikers/actions";  
+  } from "@/app/gebruikers/actions";
+import {
+  GebruikersRollenVeld,
+} from "@/components/GebruikersRollenVeld";
   const beginStatus: GebruikerFormulierStatus = {
     succes: false,
     melding: "",
   };
-  
+
 
 export function GebruikerToevoegenForm() {
   const [status, formulierActie, bezig] = useActionState(
@@ -95,37 +98,10 @@ export function GebruikerToevoegenForm() {
       </div>
 
       <div>
-        <label
-          htmlFor="rol"
-          className="mb-2 block text-sm font-semibold text-slate-700"
-        >
-          Rol *
-        </label>
-
-        <select
-          id="rol"
-          name="rol"
-          required
-          defaultValue="AUDITEUR"
-          className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-slate-900 outline-none transition focus:border-emerald-600 focus:ring-4 focus:ring-emerald-100"
-        >
-          <option value="AUDITEUR">
-            Auditeur
-          </option>
-
-          <option value="ADMINISTRATIEF">
-            Administratief
-          </option>
-
-          <option value="BEHEERDER">
-            Beheerder
-          </option>
-        </select>
+        <GebruikersRollenVeld />
 
         <p className="mt-2 text-xs leading-5 text-slate-500">
-          Beheerders hebben volledige toegang.
-          Administratieve gebruikers beheren certificaten.
-          Auditeurs beheren controles.
+          Selecteer één of meerdere rollen. Nieuwe rollen geven voorlopig geen aanvullende machtigingen.
         </p>
       </div>
 

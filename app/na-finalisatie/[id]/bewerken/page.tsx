@@ -76,8 +76,7 @@ export default async function BewerkNaFinalisatiePage({
     prisma.toegestaneGebruiker.findMany({
       where: {
         actief: true,
-        rol: {
-          in: [
+        rollen: { hasSome: [
             "AUDITEUR",
             "BEHEERDER",
           ],

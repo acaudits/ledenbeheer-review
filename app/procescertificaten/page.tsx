@@ -45,7 +45,7 @@ const kolommen: CertificaatKolom[] = [
 export default async function ProcescertificatenPage() {
   const gebruiker = await vereisMachtiging("CERTIFICATEN_BEKIJKEN");
 
-  const magBeheren = heeftMachtiging(gebruiker.rol, "CERTIFICATEN_BEHEREN");
+  const magBeheren = heeftMachtiging(gebruiker.rollen, "CERTIFICATEN_BEHEREN");
 
   return (
     <div className="space-y-4">

@@ -107,7 +107,7 @@ export default async function BugRapporterenPage({
     );
 
   const isBeheerder =
-    gebruiker.rol === "BEHEERDER";
+    gebruiker.rollen.includes("BEHEERDER");
 
   const parameters =
     await searchParams;

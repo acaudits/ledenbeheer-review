@@ -11,7 +11,7 @@ type Gebruiker = {
 };
 
 type Props = {
-  rol: string | null;
+  rollen: readonly string[];
   pathname: string;
 };
 
@@ -94,7 +94,7 @@ const statusWeergave = {
 >;
 
 export function GebruikersAanwezigheid({
-  rol,
+  rollen,
   pathname,
 }: Props) {
   const [gebruikers, setGebruikers] =
@@ -178,7 +178,9 @@ export function GebruikersAanwezigheid({
   }, [pathname]);
 
   useEffect(() => {
-    if (rol !== "BEHEERDER") {
+    if (!rollen.includes(
+      "BEHEERDER",
+    )) {
       return;
     }
 
@@ -232,9 +234,11 @@ export function GebruikersAanwezigheid({
       actief = false;
       window.clearInterval(interval);
     };
-  }, [rol]);
+  }, [rollen]);
 
-  if (rol !== "BEHEERDER") {
+  if (!rollen.includes(
+      "BEHEERDER",
+    )) {
     return null;
   }
 

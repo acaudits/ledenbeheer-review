@@ -49,7 +49,7 @@ async function controleerToegang() {
 
   if (
     !heeftMachtiging(
-      gebruiker.rol,
+      gebruiker.rollen,
       "TERREINCONTROLES_BEKIJKEN",
     )
   ) {

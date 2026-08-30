@@ -112,16 +112,14 @@ export default async function MijnOverzichtPage({
     await searchParams;
 
   const magGebruikerKiezen =
-    ingelogdeGebruiker.rol ===
-    "BEHEERDER";
+    ingelogdeGebruiker.rollen.includes("BEHEERDER");
 
   const gebruikers =
     magGebruikerKiezen
       ? await prisma.toegestaneGebruiker.findMany({
           where: {
             actief: true,
-            rol: {
-              in: [
+            rollen: { hasSome: [
                 "AUDITEUR",
                 "BEHEERDER",
               ],
@@ -131,7 +129,7 @@ export default async function MijnOverzichtPage({
             id: true,
             naam: true,
             email: true,
-            rol: true,
+            rollen: true,
           },
           orderBy: [
             {
@@ -167,8 +165,7 @@ export default async function MijnOverzichtPage({
           where: {
             id: gekozenId,
             actief: true,
-            rol: {
-              in: [
+            rollen: { hasSome: [
                 "AUDITEUR",
                 "BEHEERDER",
               ],
@@ -910,8 +907,7 @@ export default async function MijnOverzichtPage({
                   >
                     {optie.naam ??
                       optie.email}
-                    {optie.rol ===
-                    "BEHEERDER"
+                    {optie.rollen.includes("BEHEERDER")
                       ? " (beheerder)"
                       : ""}
                   </option>

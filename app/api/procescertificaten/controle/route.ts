@@ -22,7 +22,7 @@ import {
     if (
       !gebruiker?.actief ||
       !heeftMachtiging(
-        gebruiker.rol,
+        gebruiker.rollen,
         "CERTIFICATEN_BEHEREN",
       )
     ) {

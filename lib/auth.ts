@@ -6,7 +6,7 @@ import {
 
 import {
   heeftMachtiging,
-  isGebruikersrol,
+  heeftRol,
   type GebruikersrolWaarde,
   type Machtiging,
 } from "@/lib/autorisatie";
@@ -32,8 +32,7 @@ export async function haalIngelogdeGebruikerOp() {
   }
 
   const emailClaim =
-    claimsData?.claims
-      ?.email;
+    claimsData?.claims?.email;
 
   if (
     typeof emailClaim !==
@@ -65,9 +64,7 @@ export async function vereisIngelogdeGebruiker() {
     await haalIngelogdeGebruikerOp();
 
   if (!gebruiker?.actief) {
-    redirect(
-      "/inloggen",
-    );
+    redirect("/inloggen");
   }
 
   return gebruiker;
@@ -80,14 +77,16 @@ export async function vereisRol(
   const gebruiker =
     await vereisIngelogdeGebruiker();
 
-  if (
-    !isGebruikersrol(
-      gebruiker.rol,
-    ) ||
-    !toegelatenRollen.includes(
-      gebruiker.rol,
-    )
-  ) {
+  const toegelaten =
+    toegelatenRollen.some(
+      (rol) =>
+        heeftRol(
+          gebruiker.rollen,
+          rol,
+        ),
+    );
+
+  if (!toegelaten) {
     redirect("/");
   }
 
@@ -102,7 +101,7 @@ export async function vereisMachtiging(
 
   if (
     !heeftMachtiging(
-      gebruiker.rol,
+      gebruiker.rollen,
       machtiging,
     )
   ) {

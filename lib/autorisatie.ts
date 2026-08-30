@@ -2,6 +2,11 @@ export const GEBRUIKERSROLLEN = [
   "BEHEERDER",
   "ADMINISTRATIEF",
   "AUDITEUR",
+  "INTERNE_AUDITEUR",
+  "KLACHTENBEHANDELAAR",
+  "BEGELEIDER",
+  "HELPDESK",
+  "FACTURATIE",
 ] as const;
 
 export type GebruikersrolWaarde =
@@ -102,22 +107,44 @@ export function isGebruikersrol(
   );
 }
 
+export function normaliseerRollen(
+  waarde: unknown,
+): GebruikersrolWaarde[] {
+  const waarden =
+    Array.isArray(waarde)
+      ? waarde
+      : [waarde];
+
+  return Array.from(
+    new Set(
+      waarden.filter(
+        isGebruikersrol,
+      ),
+    ),
+  );
+}
+
+export function heeftRol(
+  rollen: unknown,
+  rol: GebruikersrolWaarde,
+) {
+  return normaliseerRollen(
+    rollen,
+  ).includes(rol);
+}
+
 export function heeftMachtiging(
-  rolWaarde: unknown,
+  rollen: unknown,
   machtiging: Machtiging,
 ) {
-  if (
-    !isGebruikersrol(
-      rolWaarde,
-    )
-  ) {
-    return false;
-  }
+  const geldigeRollen =
+    normaliseerRollen(rollen);
 
-  return ROLLEN_PER_MACHTIGING[
-    machtiging
-  ].includes(
-    rolWaarde,
+  return geldigeRollen.some(
+    (rol) =>
+      ROLLEN_PER_MACHTIGING[
+        machtiging
+      ].includes(rol),
   );
 }
 
@@ -134,7 +161,44 @@ export function rolLabel(
     case "AUDITEUR":
       return "Auditeur";
 
+    case "INTERNE_AUDITEUR":
+      return "Interne Auditeur";
+
+    case "KLACHTENBEHANDELAAR":
+      return "Klachtenbehandelaar";
+
+    case "BEGELEIDER":
+      return "Begeleider";
+
+    case "HELPDESK":
+      return "Helpdesk";
+
+    case "FACTURATIE":
+      return "Facturatie";
+
     default:
       return "Onbekende rol";
   }
+}
+
+export function bepaalPrimaireRol(
+  rollen: readonly GebruikersrolWaarde[],
+): GebruikersrolWaarde {
+  const prioriteit:
+    readonly GebruikersrolWaarde[] = [
+      "BEHEERDER",
+      "AUDITEUR",
+      "ADMINISTRATIEF",
+      "INTERNE_AUDITEUR",
+      "KLACHTENBEHANDELAAR",
+      "BEGELEIDER",
+      "HELPDESK",
+      "FACTURATIE",
+    ];
+
+  return (
+    prioriteit.find((rol) =>
+      rollen.includes(rol),
+    ) ?? "AUDITEUR"
+  );
 }

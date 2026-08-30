@@ -399,8 +399,7 @@ export async function verwerkPushVoorNieuweLaattijdigeMelding({
       where: {
         gebruiker: {
           actief: true,
-          rol: {
-            in: [
+          rollen: { hasSome: [
               "BEHEERDER",
               "AUDITEUR",
             ],

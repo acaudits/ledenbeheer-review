@@ -122,7 +122,9 @@ export default async function OpvolgingSanctieDetailPage({
     await prisma.toegestaneGebruiker.findMany({
       where: {
         actief: true,
-        rol: "AUDITEUR",
+        rollen: {
+          has: "AUDITEUR",
+        },
       },
       select: {
         id: true,

@@ -47,15 +47,13 @@ export default async function NieuweNaFinalisatiePage() {
     );
 
   const isBeheerder =
-    gebruiker.rol ===
-    "BEHEERDER";
+    gebruiker.rollen.includes("BEHEERDER");
 
   const gebruikers =
     await prisma.toegestaneGebruiker.findMany({
       where: {
         actief: true,
-        rol: {
-          in: [
+        rollen: { hasSome: [
             "AUDITEUR",
             "BEHEERDER",
           ],

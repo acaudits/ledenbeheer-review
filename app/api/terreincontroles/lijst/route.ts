@@ -38,7 +38,7 @@ export async function GET(verzoek: Request) {
       );
     }
 
-    if (!heeftMachtiging(gebruiker.rol, "TERREINCONTROLES_BEKIJKEN")) {
+    if (!heeftMachtiging(gebruiker.rollen, "TERREINCONTROLES_BEKIJKEN")) {
       return NextResponse.json(
         {
           fout: "Je hebt geen toegang tot terreincontroles.",

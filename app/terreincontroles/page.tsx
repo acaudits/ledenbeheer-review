@@ -27,13 +27,13 @@ export default async function TerreincontrolesPage() {
 
   const magBeheren =
     heeftMachtiging(
-      gebruiker.rol,
+      gebruiker.rollen,
       "TERREINCONTROLES_BEHEREN",
     );
 
   const magExporteren =
     heeftMachtiging(
-      gebruiker.rol,
+      gebruiker.rollen,
       "TERREINCONTROLES_EXPORTEREN",
     );
 
