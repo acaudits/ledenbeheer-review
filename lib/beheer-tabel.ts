@@ -201,6 +201,80 @@ type FilterOpties = {
     BeheerTabelSortering;
 };
 
+const EXCEL_FILTER_PREFIX =
+  "__excel__";
+
+function voldoetAanExcelFilter(
+  waarde: BeheerTabelWaarde,
+  filter: string,
+) {
+  if (
+    !filter.startsWith(
+      EXCEL_FILTER_PREFIX,
+    )
+  ) {
+    return null;
+  }
+
+  try {
+    const inhoud = JSON.parse(
+      decodeURIComponent(
+        filter.slice(
+          EXCEL_FILTER_PREFIX.length,
+        ),
+      ),
+    ) as {
+      modus?: unknown;
+      waarden?: unknown;
+      legeCellenGeselecteerd?: unknown;
+    };
+
+    if (
+      (
+        inhoud.modus !==
+          "insluiten" &&
+        inhoud.modus !==
+          "uitsluiten"
+      ) ||
+      !Array.isArray(
+        inhoud.waarden,
+      ) ||
+      !inhoud.waarden.every(
+        (item) =>
+          typeof item ===
+          "string",
+      ) ||
+      typeof inhoud
+        .legeCellenGeselecteerd !==
+        "boolean"
+    ) {
+      return false;
+    }
+
+    const tekst =
+      String(
+        waarde ?? "",
+      ).trim();
+
+    if (!tekst) {
+      return inhoud
+        .legeCellenGeselecteerd;
+    }
+
+    const aanwezig =
+      inhoud.waarden.includes(
+        tekst,
+      );
+
+    return inhoud.modus ===
+      "insluiten"
+      ? aanwezig
+      : !aanwezig;
+  } catch {
+    return false;
+  }
+}
+
 export function filterEnSorteerBeheerRijen<
   Rij extends BeheerTabelRij,
 >(
@@ -239,6 +313,22 @@ export function filterEnSorteerBeheerRijen<
 
       return kolommen.every(
         (kolom) => {
+          const excelFilter =
+            voldoetAanExcelFilter(
+              rij[
+                kolom.sleutel
+              ],
+              opties.filters[
+                kolom.sleutel
+              ] ?? "",
+            );
+
+          if (
+            excelFilter !== null
+          ) {
+            return excelFilter;
+          }
+
           if (
             kolom.type ===
             "datum"

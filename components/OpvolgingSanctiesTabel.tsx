@@ -3,26 +3,30 @@
 import {
   useMemo,
   useState,
+  type ReactNode,
 } from "react";
 
 import {
-  BeheerActieKolomKop,
   BeheerFilterPaneel,
   BeheerLegeToestand,
-  BeheerTabel,
   BeheerTabelKader,
-  BeheerTabelKolomKop,
-  BeheerTabelKop,
-  BeheerTabelScroll,
   BeheerTabelVoet,
 } from "@/components/BeheerTabelOnderdelen";
 import {
   OpvolgingSanctieActies,
 } from "@/components/OpvolgingSanctieActies";
 import {
+  OpvolgingSanctieAfronding,
+} from "@/components/OpvolgingSanctieAfronding";
+import {
+  OpvolgingSanctieKaartKolombalk,
+} from "@/components/OpvolgingSanctieKaartKolombalk";
+import {
+  CopyButton,
+} from "@/components/CopyButton";
+import {
   beschikbareBeheerJaren,
   filterEnSorteerBeheerRijen,
-  wijzigBeheerSortering,
   type BeheerDatumFilter,
   type BeheerTabelKolom,
   type BeheerTabelRij,
@@ -201,11 +205,80 @@ function toonWaarde(
   return tekst || "—";
 }
 
+function OpvolgingSanctieKaartWaarde({
+  label,
+  waarde,
+  weergave,
+  breed = false,
+  sterk = false,
+}: {
+  label: string;
+  waarde:
+    | string
+    | number
+    | boolean
+    | null
+    | undefined;
+  weergave?: ReactNode;
+  breed?: boolean;
+  sterk?: boolean;
+}) {
+  const kopieerWaarde =
+    waarde === null ||
+    waarde === undefined
+      ? ""
+      : String(waarde).trim();
+
+  const getoondeWaarde =
+    weergave ?? kopieerWaarde;
+
+  return (
+    <div
+      className={
+        breed
+          ? "sm:col-span-2 lg:col-span-3"
+          : ""
+      }
+    >
+      <dt className="text-[11px] font-bold uppercase tracking-wide text-slate-500">
+        {label}
+      </dt>
+
+      <dd
+        className={`mt-1 flex items-start gap-1.5 break-words text-sm text-slate-900 ${
+          sterk
+            ? "font-semibold"
+            : "font-medium"
+        }`}
+      >
+        <span className="min-w-0 flex-1 whitespace-pre-wrap break-words">
+          {getoondeWaarde || "—"}
+        </span>
+
+        <CopyButton
+          waarde={
+            kopieerWaarde &&
+            kopieerWaarde !== "—"
+              ? kopieerWaarde
+              : null
+          }
+          label={`${label} kopiëren`}
+        />
+      </dd>
+    </div>
+  );
+}
+
 export function OpvolgingSanctiesTabel({
   rijen,
   auditeurs,
 }: Props) {
-  void auditeurs;
+  const [
+    openKaartId,
+    setOpenKaartId,
+  ] = useState<number | null>(
+    null,
+  );
 
   const [
     zoekterm,
@@ -250,6 +323,115 @@ export function OpvolgingSanctiesTabel({
         kolom.sleutel ===
         actieveFilterSleutel,
     ) ?? null;
+
+  const hoofdKolomSleutels =
+    new Set([
+      "auditeur",
+      "naamAdi",
+      "opvolgingAfgerondTekst",
+      "attestnummer",
+      "datumVaststelling",
+      "ncCategorie",
+    ]);
+
+  const hoofdKolommen =
+    kolommen.filter((kolom) =>
+      hoofdKolomSleutels.has(
+        kolom.sleutel,
+      ),
+    );
+
+  const meerKolomSleutels =
+    new Set([
+      "reden",
+      "opmerkingen",
+      "redenNietDoorzetten",
+    ]);
+
+  const overigeKolommen = [
+    ...kolommen.filter(
+      (kolom) =>
+        !hoofdKolomSleutels.has(
+          kolom.sleutel,
+        ) &&
+        kolom.sleutel !==
+          "linkAttest" &&
+        !meerKolomSleutels.has(
+          kolom.sleutel,
+        ),
+    ),
+    ...kolommen.filter(
+      (kolom) =>
+        meerKolomSleutels.has(
+          kolom.sleutel,
+        ),
+    ),
+  ];
+
+  const waardenPerKolom =
+    useMemo(
+      () =>
+        Object.fromEntries(
+          kolommen.map(
+            (kolom) => {
+              const aantallen =
+                new Map<
+                  string,
+                  number
+                >();
+
+              for (
+                const rij of rijen
+              ) {
+                const waarde =
+                  String(
+                    rij[
+                      kolom.sleutel
+                    ] ?? "",
+                  ).trim();
+
+                aantallen.set(
+                  waarde,
+                  (
+                    aantallen.get(
+                      waarde,
+                    ) ?? 0
+                  ) + 1,
+                );
+              }
+
+              return [
+                kolom.sleutel,
+                Array.from(
+                  aantallen,
+                  ([
+                    waarde,
+                    aantal,
+                  ]) => ({
+                    waarde,
+                    aantal,
+                  }),
+                ).sort(
+                  (
+                    eerste,
+                    tweede,
+                  ) =>
+                    eerste.waarde.localeCompare(
+                      tweede.waarde,
+                      "nl-BE",
+                      {
+                        numeric: true,
+                        sensitivity:
+                          "base",
+                      },
+                    ),
+                ),
+              ];
+            },
+          ),
+        ),
+      [rijen],
+    );
 
   const zichtbareRijen =
     useMemo(
@@ -348,27 +530,6 @@ export function OpvolgingSanctiesTabel({
     setSortering(null);
     setActieveFilterSleutel(
       null,
-    );
-  }
-
-  function heeftKolomFilter(
-    kolom:
-      BeheerTabelKolom,
-  ) {
-    return (
-      Boolean(
-        filters[
-          kolom.sleutel
-        ]?.trim(),
-      ) ||
-      Boolean(
-        datumFilters[
-          kolom.sleutel
-        ]?.jaar ||
-        datumFilters[
-          kolom.sleutel
-        ]?.maand,
-      )
     );
   }
 
@@ -618,7 +779,7 @@ export function OpvolgingSanctiesTabel({
       }
       footer={
         <BeheerTabelVoet>
-          Klik op een kolomnaam om te sorteren en op het filtericoon om te filteren.
+          Klik op een kaart om de overige gegevens en acties te bekijken. Gebruik de kolombalk om te sorteren en filteren.
         </BeheerTabelVoet>
       }
     >
@@ -634,92 +795,301 @@ export function OpvolgingSanctiesTabel({
           beschrijving="Pas de zoekterm of actieve filters aan."
         />
       ) : (
-        <BeheerTabelScroll>
-          <BeheerTabel>
-            <BeheerTabelKop>
-              <tr>
-                {kolommen.map(
-                  (kolom) => (
-                    <BeheerTabelKolomKop
-                      key={
-                        kolom.sleutel
-                      }
-                      label={
-                        kolom.label
-                      }
-                      sleutel={
-                        kolom.sleutel
-                      }
-                      sortering={
-                        sortering
-                      }
-                      heeftFilter={heeftKolomFilter(
-                        kolom,
-                      )}
-                      onSorteren={(
-                        sleutel,
-                      ) => {
-                        setSortering(
-                          (huidige) =>
-                            wijzigBeheerSortering(
-                              huidige,
-                              sleutel,
-                            ),
-                        );
-                      }}
-                      onFilteren={
-                        setActieveFilterSleutel
-                      }
-                    />
-                  ),
-                )}
+        <>
+          <OpvolgingSanctieKaartKolombalk
+            kolommen={kolommen}
+            filters={filters}
+            waardenPerKolom={
+              waardenPerKolom
+            }
+            sorteringen={
+              sortering
+                ? [sortering]
+                : []
+            }
+            onFilterWijzigen={(
+              sleutel,
+              waarde,
+            ) => {
+              setFilters(
+                (huidige) => ({
+                  ...huidige,
+                  [sleutel]:
+                    waarde,
+                }),
+              );
 
-                <BeheerActieKolomKop />
-              </tr>
-            </BeheerTabelKop>
+              setDatumFilters(
+                (huidige) => {
+                  const volgende = {
+                    ...huidige,
+                  };
 
-            <tbody className="divide-y divide-slate-100">
-              {zichtbareRijen.map(
-                (rij) => (
-                  <tr
+                  delete volgende[
+                    sleutel
+                  ];
+
+                  return volgende;
+                },
+              );
+            }}
+            onSorteren={(
+              sleutel,
+              richting,
+            ) => {
+              setSortering({
+                sleutel,
+                richting,
+              });
+            }}
+            onSorteringVerwijderen={(
+              sleutel,
+            ) => {
+              setSortering(
+                (huidige) =>
+                  huidige?.sleutel ===
+                  sleutel
+                    ? null
+                    : huidige,
+              );
+            }}
+            onSorteringVerplaatsen={() => {
+              // Deze lijst gebruikt één actieve sortering.
+            }}
+          />
+
+          <div className="space-y-1.5 p-2">
+            {zichtbareRijen.map(
+              (rij) => {
+                const geopend =
+                  openKaartId ===
+                  rij.id;
+
+                const kaartNaam =
+                  String(
+                    rij.attestnummer ??
+                      `registratie ${rij.id}`,
+                  );
+
+                return (
+                  <article
                     key={rij.id}
-                    className="group bg-white align-top transition hover:bg-emerald-50/40"
-                  >
-                    {kolommen.map(
-                      (kolom) => (
-                        <td
-                          key={
-                            kolom.sleutel
-                          }
-                          className="max-w-80 whitespace-pre-wrap break-words px-3 py-3 text-xs text-slate-700"
-                        >
-                          {renderCel(
-                            rij,
-                            kolom,
-                          )}
-                        </td>
-                      ),
-                    )}
+                    role="button"
+                    tabIndex={0}
+                    aria-expanded={
+                      geopend
+                    }
+                    aria-label={`Opvolging of sanctie ${kaartNaam}`}
+                    onClick={(
+                      event,
+                    ) => {
+                      if (
+                        event.target instanceof
+                          Element &&
+                        event.target.closest(
+                          "a, button, form, input, select, textarea, details, summary",
+                        )
+                      ) {
+                        return;
+                      }
 
-                    <td className="sticky right-0 w-20 min-w-20 z-10 has-[details[open]]:z-50 whitespace-nowrap border-l border-slate-200 bg-inherit px-3 py-3 text-left group-hover:bg-[#f7fcfa]">
-                      {rij.magBeheren ? (
-                        <OpvolgingSanctieActies
-                          registratie={{
-                            id: rij.id,
+                      setOpenKaartId(
+                        (huidig) =>
+                          huidig ===
+                          rij.id
+                            ? null
+                            : rij.id,
+                      );
+                    }}
+                    onKeyDown={(
+                      event,
+                    ) => {
+                      if (
+                        event.target !==
+                          event.currentTarget ||
+                        (
+                          event.key !==
+                            "Enter" &&
+                          event.key !==
+                            " "
+                        )
+                      ) {
+                        return;
+                      }
+
+                      event.preventDefault();
+
+                      setOpenKaartId(
+                        (huidig) =>
+                          huidig ===
+                          rij.id
+                            ? null
+                            : rij.id,
+                      );
+                    }}
+                    className={`group relative z-0 cursor-pointer rounded-xl border shadow-sm outline-none transition hover:shadow-md focus-within:z-40 has-[details[open]]:z-50 focus-visible:ring-4 focus-visible:ring-emerald-200 ${
+                      rij.opvolgingAfgerond
+                        ? "border-emerald-400 bg-emerald-100/80 hover:border-emerald-500 hover:bg-emerald-100"
+                        : "border-slate-200 bg-white hover:border-emerald-300 hover:bg-emerald-50/35"
+                    } ${
+                      geopend
+                        ? "ring-1 ring-emerald-300"
+                        : ""
+                    }`}
+                  >
+                    <div className="relative p-2.5 pr-10">
+                      <span
+                        aria-hidden="true"
+                        className={`absolute right-2.5 top-2.5 inline-flex size-6 items-center justify-center rounded-full bg-white/80 text-sm font-black text-slate-600 shadow-sm transition ${
+                          geopend
+                            ? "rotate-180 bg-emerald-100 text-emerald-800"
+                            : ""
+                        }`}
+                      >
+                        ↓
+                      </span>
+
+                      <dl className="grid gap-x-4 gap-y-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 xl:items-start">
+                        {hoofdKolommen.map(
+                          (kolom) =>
+                            kolom.sleutel ===
+                            "opvolgingAfgerondTekst" ? (
+                              <OpvolgingSanctieAfronding
+                                key={`${rij.id}-${rij.opvolgingAfgerond}-${rij.datumAfgerondInvoer}-${rij.afgerondDoorGebruikerId ?? ""}`}
+                                id={rij.id}
+                                afgerond={
+                                  rij.opvolgingAfgerond
+                                }
+                                datumAfgerond={
+                                  rij.datumAfgerondInvoer
+                                }
+                                afgerondDoorGebruikerId={
+                                  rij.afgerondDoorGebruikerId
+                                }
+                                auditeurs={
+                                  auditeurs
+                                }
+                                magBeheren={
+                                  rij.magBeheren
+                                }
+                              />
+                            ) : (
+                              <OpvolgingSanctieKaartWaarde
+                                key={
+                                  kolom.sleutel
+                                }
+                                label={
+                                  kolom.label
+                                }
+                                waarde={
+                                  rij[
+                                    kolom.sleutel
+                                  ]
+                                }
+                                weergave={renderCel(
+                                  rij,
+                                  kolom,
+                                )}
+                                sterk
+                              />
+                            ),
+                        )}
+                      </dl>
+                    </div>
+
+                    {geopend ? (
+                      <div
+                        className={`border-t p-2.5 ${
+                          rij.opvolgingAfgerond
+                            ? "border-emerald-300 bg-emerald-50/80"
+                            : "border-slate-200 bg-white/55"
+                        }`}
+                      >
+                        <p className="mb-2 text-[11px] font-black uppercase tracking-wider text-slate-600">
+                          Overige gegevens
+                        </p>
+
+                        <dl className="grid gap-x-4 gap-y-2 sm:grid-cols-2 lg:grid-cols-3">
+                          {overigeKolommen.map(
+                            (kolom) => (
+                              <OpvolgingSanctieKaartWaarde
+                                key={
+                                  kolom.sleutel
+                                }
+                                label={
+                                  kolom.label
+                                }
+                                waarde={
+                                  rij[
+                                    kolom.sleutel
+                                  ]
+                                }
+                                weergave={renderCel(
+                                  rij,
+                                  kolom,
+                                )}
+                                breed={[
+                                  "reden",
+                                  "opmerkingen",
+                                  "redenNietDoorzetten",
+                                ].includes(
+                                  kolom.sleutel,
+                                )}
+                              />
+                            ),
+                          )}
+                        </dl>
+
+                        <div
+                          className="mt-4 flex flex-wrap items-center justify-between gap-2 border-t border-slate-200 pt-3"
+                          onClick={(
+                            event,
+                          ) => {
+                            event.stopPropagation();
                           }}
-                        />
-                      ) : (
-                        <span className="text-xs text-slate-400">
-                          —
-                        </span>
-                      )}
-                    </td>
-                  </tr>
-                ),
-              )}
-            </tbody>
-          </BeheerTabel>
-        </BeheerTabelScroll>
+                          onKeyDown={(
+                            event,
+                          ) => {
+                            event.stopPropagation();
+                          }}
+                        >
+                          <div className="flex flex-wrap items-center gap-2">
+                            {rij.linkAttest ? (
+                              <a
+                                href={
+                                  rij.linkAttest
+                                }
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex h-9 items-center rounded-xl border border-sky-200 bg-white px-3 text-xs font-bold text-sky-800 hover:bg-sky-50"
+                              >
+                                Attest bekijken
+                                <span
+                                  aria-hidden="true"
+                                  className="ml-1"
+                                >
+                                  ↗
+                                </span>
+                              </a>
+                            ) : null}
+                          </div>
+
+                          {rij.magBeheren ? (
+                            <OpvolgingSanctieActies
+                              registratie={{
+                                id: rij.id,
+                              }}
+                            />
+                          ) : null}
+                        </div>
+                      </div>
+                    ) : null}
+                  </article>
+                );
+              },
+            )}
+          </div>
+        </>
       )}
     </BeheerTabelKader>
   );

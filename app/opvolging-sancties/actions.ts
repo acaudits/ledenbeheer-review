@@ -555,6 +555,194 @@ function leesOptioneelGebruikerId(
   return id;
 }
 
+export type WijzigOpvolgingSanctieAfrondingStatus = {
+  fout?: string;
+  succes?: string;
+};
+
+export async function wijzigOpvolgingSanctieAfronding(
+  id: number,
+  _vorigeStatus: WijzigOpvolgingSanctieAfrondingStatus,
+  formData: FormData,
+): Promise<WijzigOpvolgingSanctieAfrondingStatus> {
+  if (!geldigeBronId(id)) {
+    return {
+      fout:
+        "De geselecteerde opvolging is ongeldig.",
+    };
+  }
+
+  const bestaande =
+    await prisma.opvolgingSanctie.findFirst({
+      where: {
+        id,
+        verwijderdOp: null,
+      },
+      select: {
+        id: true,
+        bronType: true,
+        opvolgingAfgerond: true,
+        datumAfgerond: true,
+        afgerondDoorGebruikerId: true,
+      },
+    });
+
+  if (!bestaande) {
+    return {
+      fout:
+        "De opvolging bestaat niet meer of werd verwijderd.",
+    };
+  }
+
+  const gebruiker =
+    await vereisMachtigingVoorBron(
+      bestaande.bronType,
+    );
+
+  const keuze = String(
+    formData.get(
+      "opvolgingAfgerond",
+    ) ?? "nee",
+  );
+
+  if (
+    keuze !== "ja" &&
+    keuze !== "nee"
+  ) {
+    return {
+      fout:
+        "Selecteer Ja of Nee bij opvolging afgerond.",
+    };
+  }
+
+  const opvolgingAfgerond =
+    keuze === "ja";
+
+  let datumAfgerond:
+    Date | null = null;
+
+  let afgerondDoorGebruikerId:
+    number | null = null;
+
+  if (opvolgingAfgerond) {
+    datumAfgerond =
+      ontleedDatumInvoer(
+        formData.get(
+          "datumAfgerond",
+        ),
+      );
+
+    const geselecteerdeGebruikerId =
+      leesOptioneelGebruikerId(
+        formData.get(
+          "afgerondDoorGebruikerId",
+        ),
+      );
+
+    if (!datumAfgerond) {
+      return {
+        fout:
+          "Vul een geldige datum afgerond in.",
+      };
+    }
+
+    if (
+      geselecteerdeGebruikerId ===
+        null ||
+      geselecteerdeGebruikerId ===
+        undefined
+    ) {
+      return {
+        fout:
+          "Selecteer wie de opvolging heeft afgerond.",
+      };
+    }
+
+    const geldigeAuditeur =
+      await prisma.toegestaneGebruiker.findFirst({
+        where: {
+          id:
+            geselecteerdeGebruikerId,
+          actief: true,
+          rol: "AUDITEUR",
+        },
+        select: {
+          id: true,
+        },
+      });
+
+    if (!geldigeAuditeur) {
+      return {
+        fout:
+          "De geselecteerde gebruiker is niet meer actief.",
+      };
+    }
+
+    afgerondDoorGebruikerId =
+      geldigeAuditeur.id;
+  }
+
+  await prisma.$transaction(
+    async (database) => {
+      await database.opvolgingSanctie.update({
+        where: {
+          id,
+        },
+        data: {
+          opvolgingAfgerond,
+          datumAfgerond,
+          afgerondDoorGebruikerId,
+        },
+      });
+
+      await schrijfAuditlog(
+        database,
+        gebruiker,
+        {
+          actie:
+            "OPVOLGING_SANCTIE_GEWIJZIGD",
+          entiteit:
+            "OpvolgingSanctie",
+          entiteitId: id,
+          omschrijving:
+            "Afrondingsstatus van opvolging/sanctie gewijzigd.",
+          oudeWaarde: {
+            opvolgingAfgerond:
+              bestaande.opvolgingAfgerond,
+            datumAfgerond:
+              bestaande.datumAfgerond
+                ?.toISOString() ??
+              null,
+            afgerondDoorGebruikerId:
+              bestaande.afgerondDoorGebruikerId,
+          },
+          nieuweWaarde: {
+            opvolgingAfgerond,
+            datumAfgerond:
+              datumAfgerond
+                ?.toISOString() ??
+              null,
+            afgerondDoorGebruikerId,
+          },
+        },
+      );
+    },
+  );
+
+  revalidatePath(
+    "/opvolging-sancties",
+  );
+  revalidatePath(
+    `/opvolging-sancties/${id}`,
+  );
+
+  return {
+    succes: opvolgingAfgerond
+      ? "De opvolging is afgerond."
+      : "De opvolging is opnieuw geopend.",
+  };
+}
+
 export async function bewerkOpvolgingSanctie(
   id: number,
   formData: FormData,

@@ -1,10 +1,13 @@
 "use client";
 
-import { TerreincontroleDatumFilterBoom } from "@/components/TerreincontroleDatumFilterBoom";
+import { PersoonscertificaatDatumFilterBoom } from "@/components/PersoonscertificaatDatumFilterBoom";
 
-import { useEffect, useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 
-import type { TerreincontroleCardSortering } from "@/hooks/useTerreincontrolesQuery";
+export type OpvolgingSanctieCardSortering = {
+  sleutel: string;
+  richting: "oplopend" | "aflopend";
+};
 
 type Kolom = {
   sleutel: string;
@@ -15,9 +18,8 @@ type Kolom = {
 type Props = {
   kolommen: Kolom[];
   filters: Record<string, string>;
-  sorteringen: TerreincontroleCardSortering[];
-  filterwaardenEndpoint?: string;
-  datumSleutel?: string;
+  waardenPerKolom: Record<string, BeschikbareWaarde[]>;
+  sorteringen: OpvolgingSanctieCardSortering[];
   onFilterWijzigen: (sleutel: string, waarde: string) => void;
   onSorteren: (sleutel: string, richting: "oplopend" | "aflopend") => void;
   onSorteringVerwijderen: (sleutel: string) => void;
@@ -32,7 +34,7 @@ type ExcelWaardeFilter = {
   legeCellenGeselecteerd: boolean;
 };
 
-type BeschikbareWaarde = {
+export type BeschikbareWaarde = {
   waarde: string;
   aantal: number;
 };
@@ -86,11 +88,10 @@ function codeerExcelFilter(filter: ExcelWaardeFilter) {
 type KolomMenuProps = {
   kolom: Kolom;
   filter: string;
-  sortering: TerreincontroleCardSortering | undefined;
+  waardenPerKolom: Record<string, BeschikbareWaarde[]>;
+  sortering: OpvolgingSanctieCardSortering | undefined;
   prioriteit: number | null;
   aantalSorteringen: number;
-  filterwaardenEndpoint: string;
-  datumSleutel: string;
   onFilterWijzigen: (waarde: string) => void;
   onSorteren: (richting: "oplopend" | "aflopend") => void;
   onSorteringVerwijderen: () => void;
@@ -100,11 +101,10 @@ type KolomMenuProps = {
 function KolomMenu({
   kolom,
   filter,
+  waardenPerKolom,
   sortering,
   prioriteit,
   aantalSorteringen,
-  filterwaardenEndpoint,
-  datumSleutel,
   onFilterWijzigen,
   onSorteren,
   onSorteringVerwijderen,
@@ -114,92 +114,56 @@ function KolomMenu({
 
   const [menuGeopend, setMenuGeopend] = useState(false);
   const [zoekwaarde, setZoekwaarde] = useState("");
-  const [waarden, setWaarden] = useState<BeschikbareWaarde[]>([]);
-  const [waardenLaden, setWaardenLaden] = useState(false);
-  const [waardenFout, setWaardenFout] = useState<string | null>(null);
   const [conceptFilter, setConceptFilter] = useState<ExcelWaardeFilter>(() =>
     leesExcelFilter(filter),
   );
 
-  useEffect(() => {
-    if (!menuGeopend) {
-      return;
-    }
-
-    const controller = new AbortController();
-    const timer = window.setTimeout(async () => {
-      setWaardenLaden(true);
-      setWaardenFout(null);
-
-      try {
-        const parameters = new URLSearchParams({
-          filterwaardenKolom: kolom.sleutel,
-        });
-
-        if (zoekwaarde.trim() && kolom.sleutel !== datumSleutel) {
-          parameters.set("filterwaardenZoekterm", zoekwaarde.trim());
-        }
-
-        const antwoord = await fetch(
-          `${filterwaardenEndpoint}?${parameters.toString()}`,
-          {
-            credentials: "include",
-            cache: "no-store",
-            signal: controller.signal,
-            headers: {
-              Accept: "application/json",
-            },
-          },
-        );
-
-        if (!antwoord.ok) {
-          throw new Error("Filterwaarden laden mislukt.");
-        }
-
-        const inhoud = (await antwoord.json()) as {
-          waarden?: unknown;
-        };
-
-        if (!Array.isArray(inhoud.waarden)) {
-          throw new Error("Ongeldig antwoord voor filterwaarden.");
-        }
-
-        const geldigeWaarden = inhoud.waarden.filter(
-          (item): item is BeschikbareWaarde =>
-            typeof item === "object" &&
-            item !== null &&
-            typeof (item as BeschikbareWaarde).waarde === "string" &&
-            typeof (item as BeschikbareWaarde).aantal === "number",
-        );
-
-        setWaarden(geldigeWaarden);
-      } catch (fout) {
-        if (!controller.signal.aborted) {
-          setWaardenFout(
-            fout instanceof Error
-              ? fout.message
-              : "Filterwaarden laden mislukt.",
-          );
-        }
-      } finally {
-        if (!controller.signal.aborted) {
-          setWaardenLaden(false);
-        }
+  const waarden =
+    useMemo(() => {
+      if (!menuGeopend) {
+        return [];
       }
-    }, 200);
 
-    return () => {
-      window.clearTimeout(timer);
-      controller.abort();
-    };
-  }, [
-    datumSleutel,
-    filter,
-    filterwaardenEndpoint,
-    kolom.sleutel,
-    menuGeopend,
-    zoekwaarde,
-  ]);
+      const zoekterm =
+        zoekwaarde
+          .trim()
+          .toLocaleLowerCase(
+            "nl-BE",
+          );
+
+      const beschikbareWaarden =
+        waardenPerKolom[
+          kolom.sleutel
+        ] ?? [];
+
+      if (
+        !zoekterm ||
+        kolom.type === "datum"
+      ) {
+        return beschikbareWaarden;
+      }
+
+      return beschikbareWaarden.filter(
+        (item) =>
+          item.waarde
+            .toLocaleLowerCase(
+              "nl-BE",
+            )
+            .includes(
+              zoekterm,
+            ),
+      );
+    }, [
+      kolom.sleutel,
+      kolom.type,
+      menuGeopend,
+      zoekwaarde,
+      waardenPerKolom,
+    ]);
+
+  const waardenLaden = false;
+  const waardenFout: string | null =
+    null;
 
   const allesGeselecteerd =
     conceptFilter.modus === "uitsluiten" &&
@@ -276,7 +240,7 @@ function KolomMenu({
     <details
       ref={menuRef}
       className="group relative z-0 min-w-0 open:z-[100]"
-      data-terreincontrole-kolommenu="true"
+      data-opvolging-sanctie-kolommenu="true"
       onToggle={(event) => {
         const geopendMenu = event.currentTarget;
 
@@ -291,7 +255,7 @@ function KolomMenu({
 
         document
           .querySelectorAll<HTMLDetailsElement>(
-            'details[data-terreincontrole-kolommenu="true"][open]',
+            'details[data-opvolging-sanctie-kolommenu="true"][open]',
           )
           .forEach((menu) => {
             if (menu !== geopendMenu) {
@@ -331,72 +295,87 @@ function KolomMenu({
         </span>
       </summary>
 
-      <div className="absolute left-0 right-0 top-full z-[120] mt-1 max-h-[min(28rem,calc(100vh-1rem))] min-w-60 overflow-y-auto rounded-xl border border-slate-200 bg-white p-2.5 shadow-2xl ring-1 ring-slate-900/5">
-        <p className="text-[11px] font-black uppercase tracking-wide text-slate-500">
-          {kolom.label}
-        </p>
+      <div className="absolute left-0 right-0 top-full z-[120] mt-1 flex max-h-[min(28rem,calc(100vh-1rem))] min-w-60 flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-2xl ring-1 ring-slate-900/5">
+        <div className="shrink-0 border-b border-slate-200 bg-white p-2.5">
+          <p className="text-[11px] font-black uppercase tracking-wide text-slate-500">
+            {kolom.label}
+          </p>
 
-        <div className="mt-3 grid grid-cols-2 gap-2">
-          <button
-            type="button"
-            onClick={() => {
-              onSorteren("oplopend");
-              sluitMenu();
-            }}
-            className={`rounded-lg border px-2 py-1.5 text-left text-[11px] font-bold transition ${
-              sortering?.richting === "oplopend"
-                ? "border-emerald-500 bg-emerald-100 text-emerald-900"
-                : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
-            }`}
-          >
-            ↑ Oplopend
-          </button>
+          <div className="mt-3 grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                onSorteren("oplopend");
+                sluitMenu();
+              }}
+              className={`rounded-lg border px-2 py-1.5 text-left text-[11px] font-bold transition ${
+                sortering?.richting === "oplopend"
+                  ? "border-emerald-500 bg-emerald-100 text-emerald-900"
+                  : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
+              }`}
+            >
+              ↑ Oplopend
+            </button>
 
-          <button
-            type="button"
-            onClick={() => {
-              onSorteren("aflopend");
-              sluitMenu();
-            }}
-            className={`rounded-lg border px-2 py-1.5 text-left text-[11px] font-bold transition ${
-              sortering?.richting === "aflopend"
-                ? "border-emerald-500 bg-emerald-100 text-emerald-900"
-                : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
-            }`}
-          >
-            ↓ Aflopend
-          </button>
+            <button
+              type="button"
+              onClick={() => {
+                onSorteren("aflopend");
+                sluitMenu();
+              }}
+              className={`rounded-lg border px-2 py-1.5 text-left text-[11px] font-bold transition ${
+                sortering?.richting === "aflopend"
+                  ? "border-emerald-500 bg-emerald-100 text-emerald-900"
+                  : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
+              }`}
+            >
+              ↓ Aflopend
+            </button>
+          </div>
+
+          {sortering ? (
+            <div className="mt-2 rounded-lg border border-slate-200 bg-slate-50 p-2">
+              <p className="text-[11px] font-bold text-slate-600">
+                Sorteerprioriteit {prioriteit}
+              </p>
+
+              <div className="mt-2 grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  disabled={prioriteit === 1}
+                  onClick={() => onSorteringVerplaatsen(-1)}
+                  className="rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-[11px] font-bold text-slate-700 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  ← Eerder
+                </button>
+
+                <button
+                  type="button"
+                  disabled={prioriteit === aantalSorteringen}
+                  onClick={() => onSorteringVerplaatsen(1)}
+                  className="rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-[11px] font-bold text-slate-700 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  Later →
+                </button>
+              </div>
+            </div>
+          ) : null}
+
+          {sortering ? (
+            <button
+              type="button"
+              onClick={() => {
+                onSorteringVerwijderen();
+                sluitMenu();
+              }}
+              className="mt-2 w-full rounded-lg border border-red-200 bg-red-50 px-2.5 py-1.5 text-left text-[11px] font-bold text-red-700 hover:bg-red-100"
+            >
+              Sortering wissen
+            </button>
+          ) : null}
         </div>
 
-        {sortering ? (
-          <div className="mt-2 rounded-lg border border-slate-200 bg-slate-50 p-2">
-            <p className="text-[11px] font-bold text-slate-600">
-              Sorteerprioriteit {prioriteit}
-            </p>
-
-            <div className="mt-2 grid grid-cols-2 gap-2">
-              <button
-                type="button"
-                disabled={prioriteit === 1}
-                onClick={() => onSorteringVerplaatsen(-1)}
-                className="rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-[11px] font-bold text-slate-700 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40"
-              >
-                ← Eerder
-              </button>
-
-              <button
-                type="button"
-                disabled={prioriteit === aantalSorteringen}
-                onClick={() => onSorteringVerplaatsen(1)}
-                className="rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-[11px] font-bold text-slate-700 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40"
-              >
-                Later →
-              </button>
-            </div>
-          </div>
-        ) : null}
-
-        <div className="mt-2 border-t border-slate-200 pt-2">
+        <div className="min-h-0 flex-1 overflow-y-auto p-2.5">
           <label className="block">
             <span className="sr-only">
               Zoek in de waarden van {kolom.label}
@@ -442,8 +421,8 @@ function KolomMenu({
               <p className="px-2 py-3 text-center text-[11px] text-slate-500">
                 Geen waarden gevonden.
               </p>
-            ) : kolom.sleutel === datumSleutel ? (
-              <TerreincontroleDatumFilterBoom
+            ) : kolom.type === "datum" ? (
+              <PersoonscertificaatDatumFilterBoom
                 key={waarden.map((item) => item.waarde).join("|")}
                 waarden={waarden}
                 zoekwaarde={zoekwaarde}
@@ -473,8 +452,10 @@ function KolomMenu({
               ))
             )}
           </div>
+        </div>
 
-          <div className="mt-2 grid grid-cols-2 gap-1.5">
+        <div className="shrink-0 border-t border-slate-200 bg-white p-2.5">
+          <div className="grid grid-cols-2 gap-1.5">
             <button
               type="button"
               onClick={() => {
@@ -497,29 +478,17 @@ function KolomMenu({
               Annuleren
             </button>
           </div>
-        </div>
 
-        <div className="mt-2 flex flex-wrap gap-1.5 border-t border-slate-200 pt-2">
           {filter ? (
             <button
               type="button"
-              onClick={() => onFilterWijzigen("")}
-              className="rounded-lg border border-amber-300 bg-amber-50 px-2.5 py-1.5 text-[11px] font-bold text-amber-900 hover:bg-amber-100"
-            >
-              Filter wissen
-            </button>
-          ) : null}
-
-          {sortering ? (
-            <button
-              type="button"
               onClick={() => {
-                onSorteringVerwijderen();
+                onFilterWijzigen("");
                 sluitMenu();
               }}
-              className="rounded-lg border border-red-200 bg-red-50 px-2.5 py-1.5 text-[11px] font-bold text-red-700 hover:bg-red-100"
+              className="mt-1.5 w-full rounded-lg border border-amber-300 bg-amber-50 px-2.5 py-1.5 text-left text-[11px] font-bold text-amber-900 hover:bg-amber-100"
             >
-              Sortering wissen
+              Filter wissen
             </button>
           ) : null}
         </div>
@@ -528,122 +497,141 @@ function KolomMenu({
   );
 }
 
-export function TerreincontroleKaartKolombalk({
+export function OpvolgingSanctieKaartKolombalk({
   kolommen,
   filters,
+  waardenPerKolom,
   sorteringen,
-  filterwaardenEndpoint = "/api/terreincontroles/lijst",
-  datumSleutel = "datumControle",
   onFilterWijzigen,
   onSorteren,
   onSorteringVerwijderen,
   onSorteringVerplaatsen,
 }: Props) {
-
   const [
     meerGeopend,
     setMeerGeopend,
   ] = useState(false);
 
-  const uitgeslotenSleutels = new Set(["timer", "gemeenschappelijkeDelen"]);
+  const meerSleutels =
+    new Set([
+      "reden",
+      "opmerkingen",
+      "redenNietDoorzetten",
+    ]);
 
-  const meerSleutels = new Set([
-    "bouwjaar",
-    "vloeroppervlakte",
-    "vloeroppervlakteM2",
-    "postcode",
-    "gemeente",
-    "straat",
-    "huisnummer",
-    "extraAdresdetails",
-    "extraAdresDetails",
-    "adresExtra",
-    "busnummer",
-    "perceelGemeente",
-    "perceelAfdeling",
-    "perceelSectie",
-    "id",
-    "ovamId",
-    "opmerkingen",
-  ]);
-
-  const meerLabels = new Set([
-    "bouwjaar",
-    "vloeroppervlakte",
-    "vloeroppervlakte m2",
-    "vloeroppervlakte m²",
-    "postcode",
-    "gemeente",
-    "straat",
-    "huisnummer",
-    "extra adresdetails",
-    "extra adres details",
-    "perceel gemeente",
-    "perceel afdeling",
-    "perceel sectie",
-    "id",
-    "ovam id",
-    "opmerkingen",
-  ]);
-
-  function normaliseerLabel(label: string) {
-    return label.trim().toLocaleLowerCase("nl-BE");
-  }
-
-  const sorteerbareKolommen = kolommen.filter(
-    (kolom) =>
-      kolom.type !== "acties" &&
-      kolom.type !== "maps" &&
-      !uitgeslotenSleutels.has(kolom.sleutel) &&
-      !["timer", "gemeenschappelijke delen"].includes(
-        normaliseerLabel(kolom.label),
-      ),
-  );
-
-  const meerKolommen = sorteerbareKolommen.filter(
-    (kolom) =>
-      meerSleutels.has(kolom.sleutel) ||
-      meerLabels.has(normaliseerLabel(kolom.label)),
-  );
-
-  const primaireKolommen = sorteerbareKolommen.filter(
-    (kolom) => !meerKolommen.includes(kolom),
-  );
-
-  const aantalActieveMeerKolommen = meerKolommen.filter(
-    (kolom) =>
-      Boolean(filters[kolom.sleutel]) ||
-      sorteringen.some((sortering) => sortering.sleutel === kolom.sleutel),
-  ).length;
-
-  function renderKolomMenu(kolom: Kolom) {
-    const index = sorteringen.findIndex(
-      (sortering) => sortering.sleutel === kolom.sleutel,
+  const beschikbareKolommen =
+    kolommen.filter(
+      (kolom) =>
+        kolom.type !==
+          "acties" &&
+        kolom.type !==
+          "maps",
     );
+
+  const sorteerbareKolommen =
+    beschikbareKolommen.filter(
+      (kolom) =>
+        !meerSleutels.has(
+          kolom.sleutel,
+        ),
+    );
+
+  const meerKolommen =
+    beschikbareKolommen.filter(
+      (kolom) =>
+        meerSleutels.has(
+          kolom.sleutel,
+        ),
+    );
+
+  const meerActief =
+    meerKolommen.some(
+      (kolom) =>
+        Boolean(
+          filters[
+            kolom.sleutel
+          ],
+        ) ||
+        sorteringen.some(
+          (sortering) =>
+            sortering.sleutel ===
+            kolom.sleutel,
+        ),
+    );
+
+  function toonKolomMenu(
+    kolom: Kolom,
+  ) {
+    const index =
+      sorteringen.findIndex(
+        (sortering) =>
+          sortering.sleutel ===
+          kolom.sleutel,
+      );
 
     return (
       <KolomMenu
         key={kolom.sleutel}
         kolom={kolom}
-        filter={filters[kolom.sleutel] ?? ""}
-        sortering={index >= 0 ? sorteringen[index] : undefined}
-        prioriteit={index >= 0 ? index + 1 : null}
-        aantalSorteringen={sorteringen.length}
-        filterwaardenEndpoint={filterwaardenEndpoint}
-        datumSleutel={datumSleutel}
-        onFilterWijzigen={(waarde) => onFilterWijzigen(kolom.sleutel, waarde)}
-        onSorteren={(richting) => onSorteren(kolom.sleutel, richting)}
-        onSorteringVerwijderen={() => onSorteringVerwijderen(kolom.sleutel)}
-        onSorteringVerplaatsen={(verschil) =>
-          onSorteringVerplaatsen(kolom.sleutel, verschil)
+        filter={
+          filters[
+            kolom.sleutel
+          ] ?? ""
+        }
+        waardenPerKolom={
+          waardenPerKolom
+        }
+        sortering={
+          index >= 0
+            ? sorteringen[
+                index
+              ]
+            : undefined
+        }
+        prioriteit={
+          index >= 0
+            ? index + 1
+            : null
+        }
+        aantalSorteringen={
+          sorteringen.length
+        }
+        onFilterWijzigen={(
+          waarde,
+        ) =>
+          onFilterWijzigen(
+            kolom.sleutel,
+            waarde,
+          )
+        }
+        onSorteren={(
+          richting,
+        ) =>
+          onSorteren(
+            kolom.sleutel,
+            richting,
+          )
+        }
+        onSorteringVerwijderen={() =>
+          onSorteringVerwijderen(
+            kolom.sleutel,
+          )
+        }
+        onSorteringVerplaatsen={(
+          verschil,
+        ) =>
+          onSorteringVerplaatsen(
+            kolom.sleutel,
+            verschil,
+          )
         }
       />
     );
   }
 
   return (
-    <div className="relative z-[70] overflow-visible">
-      <div className="mb-1.5 flex items-center justify-between gap-2">
+    <div className="relative z-[70] overflow-visible border-b border-slate-200 bg-slate-50/70 px-3 py-2.5">
+      <div className="mb-2 flex items-center justify-between gap-2">
         <p className="text-[11px] font-black uppercase tracking-wide text-slate-600">
           Filteren en sorteren
         </p>
@@ -655,14 +643,15 @@ export function TerreincontroleKaartKolombalk({
         ) : null}
       </div>
 
-      <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-        {primaireKolommen.map(renderKolomMenu)}
+      <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-7">
+        {sorteerbareKolommen.map(
+          toonKolomMenu,
+        )}
 
         {meerKolommen.length > 0 ? (
           <button
             type="button"
             aria-expanded={meerGeopend}
-            aria-controls="terreincontrole-meer-filters"
             onClick={() => {
               setMeerGeopend(
                 (huidig) =>
@@ -670,7 +659,7 @@ export function TerreincontroleKaartKolombalk({
               );
             }}
             className={`flex min-h-8 w-full items-center justify-between gap-2 rounded-lg border px-2.5 py-1.5 text-left text-[11px] font-bold leading-tight transition ${
-              aantalActieveMeerKolommen > 0
+              meerActief
                 ? "border-emerald-400 bg-emerald-50 text-emerald-900"
                 : "border-slate-300 bg-white text-slate-700 hover:border-emerald-300 hover:bg-emerald-50"
             }`}
@@ -678,12 +667,11 @@ export function TerreincontroleKaartKolombalk({
             <span>Meer</span>
 
             <span className="ml-auto inline-flex items-center gap-1.5">
-              {aantalActieveMeerKolommen > 0 ? (
-                <span className="inline-flex min-w-5 items-center justify-center rounded-full bg-emerald-700 px-1.5 py-0.5 text-[9px] font-black text-white">
-                  {
-                    aantalActieveMeerKolommen
-                  }
-                </span>
+              {meerActief ? (
+                <span
+                  className="size-1.5 rounded-full bg-amber-500"
+                  aria-label="Filter of sortering actief"
+                />
               ) : null}
 
               <span
@@ -703,18 +691,15 @@ export function TerreincontroleKaartKolombalk({
 
       {meerGeopend &&
       meerKolommen.length > 0 ? (
-        <section
-          id="terreincontrole-meer-filters"
-          className="mt-2 rounded-xl border border-slate-200 bg-white p-3 shadow-sm"
-        >
-          <div className="mb-3 flex items-start justify-between gap-3">
+        <section className="mt-2 rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
+          <div className="mb-3 flex items-center justify-between gap-3">
             <div>
               <h3 className="text-[11px] font-black uppercase tracking-wide text-slate-600">
                 Meer filters en sorteringen
               </h3>
 
-              <p className="mt-1 text-[11px] text-slate-500">
-                Filter of sorteer op aanvullende dossiergegevens.
+              <p className="mt-0.5 text-[11px] text-slate-500">
+                Reden, opmerkingen en reden niet doorzetten
               </p>
             </div>
 
@@ -725,16 +710,16 @@ export function TerreincontroleKaartKolombalk({
                   false,
                 );
               }}
+              className="inline-flex size-8 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-white text-sm font-bold text-slate-500 transition hover:bg-slate-100 hover:text-slate-800"
               aria-label="Meer filters sluiten"
-              className="inline-flex size-8 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-white text-base font-bold text-slate-500 transition hover:bg-slate-100 hover:text-slate-800"
             >
               ×
             </button>
           </div>
 
-          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
             {meerKolommen.map(
-              renderKolomMenu,
+              toonKolomMenu,
             )}
           </div>
         </section>
