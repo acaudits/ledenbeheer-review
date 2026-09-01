@@ -190,23 +190,13 @@ function isGeldigeTijd(
 
 async function zoekActiefLid(
   naamAdi: string,
-  bedrijfsnaam: string,
+  persoonsId: string,
 ) {
-  /*
-   * Eerst worden alle actieve personen
-   * van hetzelfde bedrijf opgehaald.
-   * Binnen deze beperkte selectie zoeken
-   * we eerst exact en daarna op eventueel
-   * ontbrekende middennamen of initialen.
-   */
-  const kandidaten =
-    await prisma.lid.findMany({
+  const kandidaat =
+    await prisma.lid.findFirst({
       where: {
         verwijderdOp: null,
-        bedrijf: {
-          equals: bedrijfsnaam,
-          mode: "insensitive",
-        },
+        ovamId: persoonsId,
       },
       select: {
         id: true,
@@ -216,55 +206,20 @@ async function zoekActiefLid(
       },
     });
 
-  const exacteKandidaten =
-    kandidaten.filter(
-      (kandidaat) =>
-        kandidaat.naamPersoon.localeCompare(
-          naamAdi,
-          "nl-BE",
-          {
-            sensitivity: "accent",
-            usage: "search",
-          },
-        ) === 0,
-    );
-
-  /*
-   * Bij meerdere personen met exact
-   * dezelfde naam en hetzelfde bedrijf
-   * wordt niet willekeurig gekoppeld.
-   */
-  if (
-    exacteKandidaten.length === 1
-  ) {
-    return exacteKandidaten[0];
+  if (!kandidaat) {
+    return null;
   }
 
   if (
-    exacteKandidaten.length > 1
+    !komenPersoonsnamenOvereen(
+      naamAdi,
+      kandidaat.naamPersoon,
+    )
   ) {
     return null;
   }
 
-  const overeenkomendeKandidaten =
-    kandidaten.filter(
-      (kandidaat) =>
-        komenPersoonsnamenOvereen(
-          naamAdi,
-          kandidaat.naamPersoon,
-        ),
-    );
-
-  /*
-   * Alleen automatisch koppelen wanneer
-   * precies één kandidaat overeenkomt.
-   * Bij nul of meerdere kandidaten wordt
-   * nooit gegokt.
-   */
-  return overeenkomendeKandidaten
-    .length === 1
-    ? overeenkomendeKandidaten[0]
-    : null;
+  return kandidaat;
 }
 
 export async function meldLaattijdigePlaatsbezoeken(
@@ -367,9 +322,10 @@ export async function meldLaattijdigePlaatsbezoeken(
     formData.get("naamAdi"),
   );
 
-  const bedrijfsnaam = normaliseerTekst(
-    formData.get("bedrijfsnaam"),
-  );
+  const persoonsId =
+    normaliseerTekst(
+      formData.get("persoonsId"),
+    );
 
   if (
     naamAdi.length < 2 ||
@@ -382,12 +338,12 @@ export async function meldLaattijdigePlaatsbezoeken(
   }
 
   if (
-    bedrijfsnaam.length < 2 ||
-    bedrijfsnaam.length > 500
+    persoonsId.length < 2 ||
+    persoonsId.length > 255
   ) {
     return {
       fout:
-        "Vul een geldige bedrijfsnaam in.",
+        "Vul een geldige persoonsId in.",
     };
   }
 
@@ -605,7 +561,7 @@ export async function meldLaattijdigePlaatsbezoeken(
 
   const lid = await zoekActiefLid(
     naamAdi,
-    bedrijfsnaam,
+    persoonsId,
   );
 
   if (!lid || !lid.bedrijf) {

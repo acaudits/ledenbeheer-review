@@ -142,8 +142,8 @@ export function LaattijdigePlaatsbezoekenFormulier() {
     useState("");
 
   const [
-    bedrijfsnaam,
-    setBedrijfsnaam,
+    persoonsId,
+    setPersoonsId,
   ] = useState("");
 
 
@@ -459,28 +459,42 @@ export function LaattijdigePlaatsbezoekenFormulier() {
             />
           </label>
 
-          <label>
-            <span className="text-sm font-bold">
-              Naam bedrijf *
-            </span>
-            <input
-              name="bedrijfsnaam"
-              autoComplete="off"
-              aria-autocomplete="none"
-              spellCheck={false}
-              data-lpignore="true"
-              data-form-type="other"
-              required
-              maxLength={500}
-              value={bedrijfsnaam}
-              onChange={(event) => {
-                setBedrijfsnaam(
-                  event.target.value,
-                );
-              }}
-              className={invoerStijl}
-            />
-          </label>
+          <label className="block">
+          <span className="text-sm font-bold text-slate-800">
+            PersoonsID *
+          </span>
+
+          <input
+            type="text"
+            name="persoonsId"
+            required
+            maxLength={255}
+            value={persoonsId}
+            onChange={(event) => {
+              setPersoonsId(
+                event.target.value,
+              );
+            }}
+            autoComplete="off"
+            autoCapitalize="none"
+            spellCheck={false}
+            className={invoerStijl}
+          />
+
+          <span className="mt-1.5 block text-xs leading-5 text-slate-600">
+            Bent u uw PersoonsID vergeten? Meld u aan via{" "}
+            <a
+              href="https://asbestinventaris.ovam.be/account"
+              target="_blank"
+              rel="noopener noreferrer"
+              referrerPolicy="no-referrer"
+              className="font-semibold text-emerald-800 underline underline-offset-2 hover:text-emerald-950"
+            >
+              asbestinventarisdatabank
+            </a>{" "}
+            om deze te raadplegen.
+          </span>
+        </label>
         </div>
 
       </section>
