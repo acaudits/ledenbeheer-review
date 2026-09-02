@@ -53,6 +53,72 @@ function gelijk(
   ) === 0;
 }
 
+async function wacht(
+  milliseconden: number,
+) {
+  await new Promise<void>(
+    (resolve) => {
+      setTimeout(
+        resolve,
+        milliseconden,
+      );
+    },
+  );
+}
+
+async function fetchMetNieuwePogingen(
+  url: URL,
+  accept: string,
+  dienst: string,
+) {
+  let laatsteFout: unknown;
+
+  for (
+    let poging = 1;
+    poging <= 3;
+    poging += 1
+  ) {
+    try {
+      const antwoord = await fetch(
+        url,
+        {
+          headers: {
+            Accept: accept,
+          },
+          cache: "no-store",
+          signal:
+            AbortSignal.timeout(
+              7000,
+            ),
+        },
+      );
+
+      if (antwoord.ok) {
+        return antwoord;
+      }
+
+      laatsteFout = new Error(
+        `${dienst} antwoordde met status ${antwoord.status}.`,
+      );
+    } catch (fout) {
+      laatsteFout = fout;
+    }
+
+    if (poging < 3) {
+      await wacht(
+        poging * 350,
+      );
+    }
+  }
+
+  throw new Error(
+    `${dienst} is na drie pogingen niet bereikbaar.`,
+    {
+      cause: laatsteFout,
+    },
+  );
+}
+
 async function locaties(
   zoektekst: string,
   type:
@@ -68,19 +134,12 @@ async function locaties(
   url.searchParams.set("type", type);
   url.searchParams.set("c", "5");
 
-  const antwoord = await fetch(url, {
-    headers: {
-      Accept: "application/json",
-    },
-    cache: "no-store",
-    signal: AbortSignal.timeout(7000),
-  });
-
-  if (!antwoord.ok) {
-    throw new Error(
-      "GeoPunt is niet bereikbaar.",
+  const antwoord =
+    await fetchMetNieuwePogingen(
+      url,
+      "application/json",
+      "GeoPunt",
     );
-  }
 
   const data = (await antwoord.json()) as {
     LocationResult?: unknown;
@@ -250,19 +309,12 @@ export async function zoekBusnummers({
   );
   url.searchParams.set("limit", "100");
 
-  const antwoord = await fetch(url, {
-    headers: {
-      Accept: "application/ld+json",
-    },
-    cache: "no-store",
-    signal: AbortSignal.timeout(7000),
-  });
-
-  if (!antwoord.ok) {
-    throw new Error(
-      "Adressenregister niet bereikbaar.",
+  const antwoord =
+    await fetchMetNieuwePogingen(
+      url,
+      "application/ld+json",
+      "Adressenregister",
     );
-  }
 
   const data = (await antwoord.json()) as {
     adressen?: unknown;
@@ -370,15 +422,28 @@ export async function valideerAdres({
 
   const latitude =
     typeof location.Lat_WGS84 ===
-      "number"
+      "number" &&
+    Number.isFinite(
+      location.Lat_WGS84,
+    )
       ? location.Lat_WGS84
       : null;
 
   const longitude =
     typeof location.Lon_WGS84 ===
-      "number"
+      "number" &&
+    Number.isFinite(
+      location.Lon_WGS84,
+    )
       ? location.Lon_WGS84
       : null;
+
+  if (
+    latitude === null ||
+    longitude === null
+  ) {
+    return null;
+  }
 
   const busTekst =
     bus ? ` bus ${bus}` : "";

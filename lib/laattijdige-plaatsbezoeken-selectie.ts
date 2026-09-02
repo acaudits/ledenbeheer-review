@@ -669,7 +669,7 @@ export async function selecteerLaattijdigePlaatsbezoeken({
                 'Europe/Brussels' >
               CURRENT_TIMESTAMP
             THEN
-              'Toekomstig Tot plaatsbezoek'
+              'Toekomstige plaatsbezoek'
             WHEN (
               p."datum_plaatsbezoek" +
               p."tijdstip"
@@ -680,7 +680,37 @@ export async function selecteerLaattijdigePlaatsbezoeken({
             THEN
               'Begonnen'
             ELSE
-              'Verlopen'
+              CASE
+                WHEN (
+                  COALESCE(
+                    c."aantalTerreincontroles",
+                    0
+                  ) <
+                  GREATEST(
+                    1,
+                    CEIL(
+                      COALESCE(
+                        a."aantalAttesten",
+                        0
+                      )::numeric / 10
+                    )::integer
+                  )
+                  AND (
+                    c."laatsteTerreincontrole"
+                      IS NULL
+                    OR
+                    c."laatsteTerreincontrole" <
+                      (
+                        CURRENT_TIMESTAMP
+                          AT TIME ZONE 'UTC'
+                      )::date - 14
+                  )
+                )
+                THEN
+                  'Verlopen Terreincontrole nodig'
+                ELSE
+                  'Verlopen'
+              END
           END AS "timerTekst",
           m."naam_adi"
             AS "naamAdi",
@@ -933,7 +963,7 @@ function bepaalTimerFilterwaarde(
   }
 
   if (startMoment > nu) {
-    return "Toekomstig Tot plaatsbezoek";
+    return "Toekomstige plaatsbezoek";
   }
 
   if (
@@ -955,10 +985,19 @@ function leesFilterwaardeUitRij(
   switch (kolom) {
     case "referentie":
       return rij.referentie;
-    case "timer":
-      return bepaalTimerFilterwaarde(
-        rij.startMomentIso,
-      );
+    case "timer": {
+      const timerWaarde =
+        bepaalTimerFilterwaarde(
+          rij.startMomentIso,
+        );
+
+      return (
+        timerWaarde === "Verlopen" &&
+        rij.waarschuwingTerreincontrole
+      )
+        ? "Verlopen Terreincontrole nodig"
+        : timerWaarde;
+    }
     case "naamAdi":
       return rij.naamAdi;
     case "bedrijfsnaam":

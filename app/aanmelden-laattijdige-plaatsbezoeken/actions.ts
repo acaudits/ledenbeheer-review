@@ -521,7 +521,14 @@ export async function meldLaattijdigePlaatsbezoeken(
         huisnummer,
         busnummer,
       });
-    } catch {
+    } catch (fout) {
+      console.error(
+        `Geocodering van plaatsbezoek ${nummer} is na drie pogingen mislukt.`,
+        fout instanceof Error
+          ? fout.message
+          : "Onbekende geocodingfout",
+      );
+
       locatie = null;
     }
 

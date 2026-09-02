@@ -6,6 +6,7 @@ import {
   useEffect,
   useMemo,
   useRef,
+  useState,
 } from "react";
 
 export type LaattijdigKaartbezoek = {
@@ -161,9 +162,9 @@ function tekenMarkers(
     L.circleMarker(
       positie,
       {
-        radius: 10,
+        radius: 5,
         color: kleuren.lijn,
-        weight: 3,
+        weight: 2,
         fillColor:
           kleuren.vulling,
         fillOpacity: 0.9,
@@ -223,7 +224,17 @@ export function LaattijdigePlaatsbezoekenKaart({
       import("leaflet").Map | null
     >(null);
 
-  const geldigeRijen =
+  const [
+    kaartKleuren,
+    setKaartKleuren,
+  ] = useState<
+    Array<"ROOD" | "GROEN">
+  >([
+    "ROOD",
+    "GROEN",
+  ]);
+
+  const alleGeldigeRijen =
     useMemo(
       () =>
         rijen.filter(
@@ -236,6 +247,21 @@ export function LaattijdigePlaatsbezoekenKaart({
             ),
         ),
       [rijen],
+    );
+
+  const geldigeRijen =
+    useMemo(
+      () =>
+        alleGeldigeRijen.filter(
+          (rij) =>
+            kaartKleuren.includes(
+              rij.status,
+            ),
+        ),
+      [
+        alleGeldigeRijen,
+        kaartKleuren,
+      ],
     );
 
   const leafletInstantie =
@@ -452,16 +478,78 @@ export function LaattijdigePlaatsbezoekenKaart({
           </p>
         </div>
 
-        <div className="flex items-center gap-4 text-xs font-bold">
-          <span className="inline-flex items-center gap-1.5 text-emerald-800">
-            <span className="size-3 rounded-full bg-emerald-500" />
-            Geen dringende terreincontrole
-          </span>
+        <div
+          className="flex flex-wrap justify-end gap-2 text-xs font-bold"
+          aria-label="Filter plaatsbezoeken op terreincontrole"
+        >
+          {[
+            {
+              kleur:
+                "ROOD" as const,
+              label:
+                "Terreincontrole nodig",
+              stijl:
+                "border-red-200 bg-red-50 text-red-800 hover:bg-red-100 focus:ring-red-500",
+              actieveStijl:
+                "ring-red-500",
+            },
+            {
+              kleur:
+                "GROEN" as const,
+              label:
+                "Geen dringende terreincontrole",
+              stijl:
+                "border-emerald-200 bg-emerald-50 text-emerald-800 hover:bg-emerald-100 focus:ring-emerald-500",
+              actieveStijl:
+                "ring-emerald-500",
+            },
+          ].map(
+            ({
+              kleur,
+              label,
+              stijl,
+              actieveStijl,
+            }) => {
+              const geselecteerd =
+                kaartKleuren.includes(
+                  kleur,
+                );
 
-          <span className="inline-flex items-center gap-1.5 text-red-800">
-            <span className="size-3 rounded-full bg-red-500" />
-            Terreincontrole nodig
-          </span>
+              return (
+                <button
+                  key={kleur}
+                  type="button"
+                  aria-pressed={
+                    geselecteerd
+                  }
+                  onClick={() => {
+                    setKaartKleuren(
+                      (huidige) =>
+                        geselecteerd
+                          ? huidige.filter(
+                              (
+                                huidigeKleur,
+                              ) =>
+                                huidigeKleur !==
+                                kleur,
+                            )
+                          : [
+                              ...huidige,
+                              kleur,
+                            ],
+                    );
+                  }}
+                  className={`rounded-full border px-3 py-1 transition focus:outline-none focus:ring-2 ${stijl} ${
+                    geselecteerd
+                      ? `ring-2 ${actieveStijl} ring-offset-1`
+                      : "opacity-45"
+                  }`}
+                >
+                  {label}
+                </button>
+              );
+            },
+          )}
         </div>
       </div>
 
@@ -476,7 +564,7 @@ export function LaattijdigePlaatsbezoekenKaart({
         0 ? (
           <div className="pointer-events-none absolute bottom-4 left-1/2 z-[500] -translate-x-1/2 rounded-xl border border-slate-300 bg-white/95 px-4 py-2 text-center text-sm font-semibold text-slate-600 shadow">
             Er zijn momenteel geen
-            groene of gele
+            rode of groene
             plaatsbezoeken met geldige
             coördinaten.
           </div>

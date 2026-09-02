@@ -89,7 +89,7 @@ export function DeskcontroleMeerMenu({
   return (
     <div
       ref={menuRef}
-      className="relative"
+      className={geopend ? "relative z-[200]" : "relative"}
     >
       <button
         type="button"
@@ -156,7 +156,7 @@ export function DeskcontroleMeerMenu({
       {geopend ? (
         <div
           role="menu"
-          className="absolute right-full top-0 z-50 mr-2 w-[min(92vw,34rem)] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl"
+          className="absolute right-full top-0 z-[210] mr-2 w-[min(92vw,34rem)] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl"
         >
           <div className="p-2">
             {magBeheren ? (

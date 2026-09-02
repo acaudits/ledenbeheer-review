@@ -981,13 +981,13 @@ export function NaFinalisatieTabel({
 
                       <span
                         aria-hidden="true"
-                        className={`mt-1 text-xs font-black text-slate-500 transition-transform ${
+                        className={`inline-flex size-7 shrink-0 items-center justify-center rounded-full bg-white/80 text-sm font-black text-slate-600 shadow-sm transition ${
                           geopend
-                            ? "rotate-180"
+                            ? "rotate-180 bg-emerald-100 text-emerald-800"
                             : ""
                         }`}
                       >
-                        ▼
+                        ↓
                       </span>
                     </div>
                   </div>

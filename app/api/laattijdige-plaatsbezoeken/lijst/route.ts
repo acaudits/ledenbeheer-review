@@ -202,7 +202,7 @@ export async function GET(
           toegelatenSorteringen:
             LAATTIJDIGE_PLAATSBEZOEKEN_SORTERINGEN,
           standaardSortering:
-            "aangemeldOp",
+            "datum",
           standaardRichting:
             "desc",
           standaardLimiet:

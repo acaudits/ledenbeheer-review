@@ -18,7 +18,6 @@ import {
   CopyButton,
 } from "@/components/CopyButton";
 import {
-  useLaattijdigePlaatsbezoekenKaartQuery,
   useLaattijdigePlaatsbezoekenQuery,
 } from "@/hooks/useLaattijdigePlaatsbezoekenQuery";
 
@@ -268,13 +267,11 @@ function Timer({
   const stijl =
     rij.waarschuwingTerreincontrole
       ? "border-red-300 bg-red-100 text-red-950"
-      : status.soort ===
-          "BEGONNEN"
-        ? "border-amber-300 bg-amber-100 text-amber-950"
-        : status.soort ===
-            "TOEKOMSTIG"
-          ? "border-emerald-300 bg-emerald-100 text-emerald-950"
-          : "border-slate-300 bg-slate-100 text-slate-700";
+      : status.soort === "VERLOPEN"
+        ? "border-slate-300 bg-slate-100 text-slate-700"
+        : status.soort === "BEGONNEN"
+          ? "border-amber-300 bg-amber-100 text-amber-950"
+          : "border-emerald-300 bg-emerald-100 text-emerald-950";
 
   return (
     <div
@@ -363,18 +360,31 @@ export function LaattijdigePlaatsbezoekenTabel({
   ] = useState("");
 
   const [
-    sorteerSleutel,
-    setSorteerSleutel,
-  ] = useState<KolomSleutel>(
-    "aangemeldOp",
-  );
+    sorteringen,
+    setSorteringen,
+  ] = useState<
+    Array<{
+      sleutel: KolomSleutel;
+      richting: Sorteerrichting;
+    }>
+  >([
+    {
+      sleutel: "datum",
+      richting: "aflopend",
+    },
+    {
+      sleutel: "tijdstip",
+      richting: "aflopend",
+    },
+  ]);
 
-  const [
-    sorteerRichting,
-    setSorteerRichting,
-  ] = useState<Sorteerrichting>(
-    "aflopend",
-  );
+  const primaireSortering =
+    sorteringen[0] ?? {
+      sleutel:
+        "datum" as KolomSleutel,
+      richting:
+        "aflopend" as Sorteerrichting,
+    };
 
   const [
     nu,
@@ -391,7 +401,7 @@ export function LaattijdigePlaatsbezoekenTabel({
             Date.now(),
           );
         },
-        60_000,
+        1_000,
       );
 
     return () => {
@@ -413,18 +423,10 @@ export function LaattijdigePlaatsbezoekenTabel({
         datumMaand,
         sortering: {
           sleutel:
-            sorteerSleutel,
+            primaireSortering.sleutel,
           richting:
-            sorteerRichting,
+            primaireSortering.richting,
         },
-      },
-    );
-
-  const kaartQuery =
-    useLaattijdigePlaatsbezoekenKaartQuery(
-      {
-        ingeschakeld:
-          serverModus,
       },
     );
 
@@ -445,13 +447,170 @@ export function LaattijdigePlaatsbezoekenTabel({
         : 0;
 
   const zichtbareRijen =
-    serverModus
-      ? serverQuery.rijen
-      : rijen;
+    useMemo(() => {
+      const bron =
+        serverModus
+          ? serverQuery.rijen
+          : rijen;
+
+      const sorteerWaarde = (
+        rij: LaattijdigPlaatsbezoekRij,
+        sleutel: KolomSleutel,
+      ): string | number => {
+        if (sleutel === "timer") {
+          return new Date(
+            rij.startMomentIso,
+          ).getTime();
+        }
+
+        if (
+          sleutel === "aantalAttesten" ||
+          sleutel ===
+            "aantalTerreincontroles"
+        ) {
+          return Number(
+            rij[sleutel],
+          );
+        }
+
+        if (
+          sleutel === "tijdstip"
+        ) {
+          const tijd =
+            /^(\d{1,2}):(\d{2})/.exec(
+              String(
+                rij.tijdstip ?? "",
+              ).trim(),
+            );
+
+          if (tijd) {
+            return (
+              Number(tijd[1]) *
+                60 +
+              Number(tijd[2])
+            );
+          }
+
+          return 0;
+        }
+
+        if (
+          sleutel === "datum" ||
+          sleutel ===
+            "laatsteTerreincontrole" ||
+          sleutel ===
+            "aangemeldOp"
+        ) {
+          const datumTekst =
+            String(
+              rij[sleutel] ?? "",
+            ).trim();
+
+          const belgischeDatum =
+            /^(\d{1,2})\/(\d{1,2})\/(\d{4})/.exec(
+              datumTekst,
+            );
+
+          if (belgischeDatum) {
+            const dag =
+              Number(
+                belgischeDatum[1],
+              );
+            const maand =
+              Number(
+                belgischeDatum[2],
+              );
+            const jaar =
+              Number(
+                belgischeDatum[3],
+              );
+
+            return Date.UTC(
+              jaar,
+              maand - 1,
+              dag,
+            );
+          }
+
+          const tijdstip =
+            Date.parse(
+              datumTekst,
+            );
+
+          return Number.isFinite(
+            tijdstip,
+          )
+            ? tijdstip
+            : 0;
+        }
+
+        return String(
+          rij[sleutel] ?? "",
+        );
+      };
+
+      return [...bron].sort(
+        (a, b) => {
+          for (
+            const sortering
+            of sorteringen
+          ) {
+            const waardeA =
+              sorteerWaarde(
+                a,
+                sortering.sleutel,
+              );
+            const waardeB =
+              sorteerWaarde(
+                b,
+                sortering.sleutel,
+              );
+
+            const vergelijking =
+              typeof waardeA ===
+                "number" &&
+              typeof waardeB ===
+                "number"
+                ? waardeA -
+                  waardeB
+                : String(
+                    waardeA,
+                  ).localeCompare(
+                    String(
+                      waardeB,
+                    ),
+                    "nl-BE",
+                    {
+                      numeric: true,
+                      sensitivity:
+                        "base",
+                    },
+                  );
+
+            if (
+              vergelijking !== 0
+            ) {
+              return sortering
+                .richting ===
+                "oplopend"
+                ? vergelijking
+                : -vergelijking;
+            }
+          }
+
+          return a.id - b.id;
+        },
+      );
+    }, [
+      serverModus,
+      serverQuery.rijen,
+      rijen,
+      sorteringen,
+    ]);
 
   const lokaleKaartRijen =
     useMemo(() => {
-      return rijen.flatMap(
+      return zichtbareRijen.flatMap(
         (
           rij,
         ): LaattijdigKaartbezoek[] => {
@@ -506,14 +665,12 @@ export function LaattijdigePlaatsbezoekenTabel({
         },
       );
     }, [
-      rijen,
+      zichtbareRijen,
       effectieveNu,
     ]);
 
   const kaartRijen =
-    serverModus
-      ? kaartQuery.rijen
-      : lokaleKaartRijen;
+    lokaleKaartRijen;
 
   const aantalTotaal =
     serverModus
@@ -543,12 +700,18 @@ export function LaattijdigePlaatsbezoekenTabel({
     setFilters({});
     setDatumJaar("");
     setDatumMaand("");
-    setSorteerSleutel(
-      "aangemeldOp",
-    );
-    setSorteerRichting(
-      "aflopend",
-    );
+    setSorteringen([
+      {
+        sleutel:
+          "datum",
+        richting:
+          "aflopend",
+      },
+      {
+        sleutel: "tijdstip",
+        richting: "aflopend",
+      },
+    ]);
   };
 
   const heeftFilters =
@@ -567,26 +730,6 @@ export function LaattijdigePlaatsbezoekenTabel({
       <LaattijdigePlaatsbezoekenKaart
         rijen={kaartRijen}
       />
-
-      {serverModus &&
-      kaartQuery.fout ? (
-        <div className="rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-950">
-          <p className="font-bold">
-            De kaart kon niet worden bijgewerkt.
-          </p>
-
-          <button
-            type="button"
-            onClick={() => {
-              void kaartQuery
-                .opnieuwLaden();
-            }}
-            className={BEHEER_TABEL_STIJLEN.foutKnop}
-          >
-            Opnieuw proberen
-          </button>
-        </div>
-      ) : null}
 
       <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
@@ -638,12 +781,7 @@ export function LaattijdigePlaatsbezoekenTabel({
         <LaattijdigePlaatsbezoekenKaartKolombalk
           kolommen={kolommen}
           filters={filters}
-          sorteringen={[
-            {
-              sleutel: sorteerSleutel,
-              richting: sorteerRichting,
-            },
-          ]}
+          sorteringen={sorteringen}
           onFilterWijzigen={(sleutel, waarde) => {
             wijzigFilter(
               sleutel as KolomSleutel,
@@ -652,19 +790,98 @@ export function LaattijdigePlaatsbezoekenTabel({
             setOpenKaartId(null);
           }}
           onSorteren={(sleutel, richting) => {
-            setSorteerSleutel(
-              sleutel as KolomSleutel,
+            const nieuweSleutel =
+              sleutel as KolomSleutel;
+
+            setSorteringen(
+              (huidige) => {
+                const index =
+                  huidige.findIndex(
+                    (item) =>
+                      item.sleutel ===
+                      nieuweSleutel,
+                  );
+
+                if (index === -1) {
+                  return [
+                    ...huidige,
+                    {
+                      sleutel:
+                        nieuweSleutel,
+                      richting,
+                    },
+                  ];
+                }
+
+                return huidige.map(
+                  (
+                    item,
+                    itemIndex,
+                  ) =>
+                    itemIndex === index
+                      ? {
+                          ...item,
+                          richting,
+                        }
+                      : item,
+                );
+              },
             );
-            setSorteerRichting(richting);
+
             setOpenKaartId(null);
           }}
-          onSorteringVerwijderen={() => {
-            setSorteerSleutel("aangemeldOp");
-            setSorteerRichting("aflopend");
+          onSorteringVerwijderen={(sleutel) => {
+            setSorteringen(
+              (huidige) =>
+                huidige.filter(
+                  (item) =>
+                    item.sleutel !==
+                    sleutel,
+                ),
+            );
             setOpenKaartId(null);
           }}
-          onSorteringVerplaatsen={() => {
-            void 0;
+          onSorteringVerplaatsen={(
+            sleutel,
+            verschil,
+          ) => {
+            setSorteringen(
+              (huidige) => {
+                const index =
+                  huidige.findIndex(
+                    (item) =>
+                      item.sleutel ===
+                      sleutel,
+                  );
+                const nieuweIndex =
+                  index + verschil;
+
+                if (
+                  index < 0 ||
+                  nieuweIndex < 0 ||
+                  nieuweIndex >=
+                    huidige.length
+                ) {
+                  return huidige;
+                }
+
+                const volgende = [
+                  ...huidige,
+                ];
+
+                [
+                  volgende[index],
+                  volgende[nieuweIndex],
+                ] = [
+                  volgende[nieuweIndex],
+                  volgende[index],
+                ];
+
+                return volgende;
+              },
+            );
+
+            setOpenKaartId(null);
           }}
         />
 
@@ -694,6 +911,18 @@ export function LaattijdigePlaatsbezoekenTabel({
                 bepaalTimerStatus(
                   rij.startMomentIso,
                   effectieveNu,
+                );
+
+              const heeftKaartCoordinaten =
+                typeof rij.latitude ===
+                  "number" &&
+                typeof rij.longitude ===
+                  "number" &&
+                Number.isFinite(
+                  rij.latitude,
+                ) &&
+                Number.isFinite(
+                  rij.longitude,
                 );
 
               const titel =
@@ -741,20 +970,40 @@ export function LaattijdigePlaatsbezoekenTabel({
               return (
                 <article
                   key={rij.id}
-                  className={`overflow-visible rounded-xl border shadow-sm transition ${
-                    rij.waarschuwingTerreincontrole
-                      ? "border-red-300 bg-red-50"
-                      : "border-emerald-200 bg-white"
+                  style={
+                    !heeftKaartCoordinaten
+                      ? {
+                          backgroundColor:
+                            "#faf5ff",
+                          borderColor:
+                            "#d8b4fe",
+                        }
+                      : undefined
+                  }
+                  className={`relative overflow-visible rounded-xl border shadow-sm transition ${
+                    status.soort === "VERLOPEN"
+                      ? "border-slate-300 bg-slate-100"
+                      : rij.waarschuwingTerreincontrole
+                        ? "border-red-300 bg-red-50"
+                        : "border-emerald-200 bg-white"
                   } ${
                     status.soort === "BEGONNEN"
                       ? "plaatsbezoek-rij-knipper"
                       : ""
                   } ${
                     geopend
-                      ? "ring-1 ring-blue-200"
-                      : "hover:border-blue-300 hover:shadow"
+                      ? status.soort === "VERLOPEN"
+                        ? "ring-1 ring-slate-300"
+                        : "ring-1 ring-blue-200"
+                      : status.soort === "VERLOPEN"
+                        ? "hover:border-slate-400 hover:shadow"
+                        : "hover:border-blue-300 hover:shadow"
                   }`}
-                  title={titel}
+                  title={
+                    heeftKaartCoordinaten
+                      ? titel
+                      : `${titel} Coördinaten niet gevonden.`
+                  }
                 >
                   <div
                     role="button"
@@ -822,6 +1071,10 @@ export function LaattijdigePlaatsbezoekenTabel({
                               waarde: rij.bedrijfsnaam || "—",
                             },
                             {
+                              label: "Inspectielocatie",
+                              waarde: rij.inspectielocatie || "—",
+                            },
+                            {
                               label: "Datum",
                               waarde: rij.datum || "—",
                             },
@@ -838,9 +1091,21 @@ export function LaattijdigePlaatsbezoekenTabel({
                                 {veld.label}
                               </p>
                               <div className="mt-0.5 flex min-w-0 items-start justify-between gap-2 text-sm font-semibold text-slate-900">
-                                <span className="min-w-0 flex-1 break-words">
-                                  {veld.waarde}
-                                </span>
+                                {veld.label ===
+                                "Inspectielocatie" ? (
+                                  <a
+                                    href={googleMapsUrl(rij)}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="min-w-0 flex-1 break-words text-blue-700 underline decoration-blue-300 underline-offset-2 hover:text-blue-900"
+                                  >
+                                    {veld.waarde}
+                                  </a>
+                                ) : (
+                                  <span className="min-w-0 flex-1 break-words">
+                                    {veld.waarde}
+                                  </span>
+                                )}
                                 <CopyButton
                                   waarde={
                                     veld.waarde === "—"
@@ -853,38 +1118,30 @@ export function LaattijdigePlaatsbezoekenTabel({
                             </div>
                           ))}
 
-                          <div className="min-w-0">
-                            <p className="text-[10px] font-black uppercase tracking-wide text-slate-500">
-                              Inspectielocatie
-                            </p>
-                            <div className="mt-0.5 flex min-w-0 items-start justify-between gap-2 text-sm font-semibold">
-                              <a
-                                href={googleMapsUrl(rij)}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="min-w-0 flex-1 break-words text-blue-700 underline decoration-blue-300 underline-offset-2 hover:text-blue-900"
-                              >
-                                {rij.inspectielocatie || "—"}
-                              </a>
-                              <CopyButton
-                                waarde={rij.inspectielocatie || null}
-                                label="Inspectielocatie kopiëren"
-                              />
-                            </div>
-                          </div>
                         </div>
                       </div>
 
                       <span
                         aria-hidden="true"
-                        className={`mt-1 text-xs font-black text-slate-500 transition-transform ${
-                          geopend ? "rotate-180" : ""
+                        className={`inline-flex size-7 shrink-0 items-center justify-center rounded-full bg-white/80 text-sm font-black text-slate-600 shadow-sm transition ${
+                          geopend
+                            ? "rotate-180 bg-emerald-100 text-emerald-800"
+                            : ""
                         }`}
                       >
-                        ▼
+                        ↓
                       </span>
                     </div>
                   </div>
+
+                  {!heeftKaartCoordinaten &&
+                  !geopend ? (
+                    <div className="pointer-events-none absolute bottom-2 right-3 z-10">
+                      <span className="inline-flex rounded-full border border-purple-300 bg-purple-100 px-2.5 py-1 text-[11px] font-black text-purple-800 shadow-sm">
+                        Geen weergave op kaart
+                      </span>
+                    </div>
+                  ) : null}
 
                   {geopend ? (
                     <div

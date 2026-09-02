@@ -232,7 +232,7 @@ export function leesLaattijdigePlaatsbezoekenLijstcontract(
   return {
     sortering:
       sorteerparameter ??
-      "aangemeldOp",
+      "datum",
     richting,
     contract: {
       tekstfilters,
