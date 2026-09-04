@@ -1,4 +1,5 @@
 import {
+  BeheerActieLink,
   BeheerOverzichtHeader,
 } from "@/components/BeheerOverzichtHeader";
 import {
@@ -98,6 +99,13 @@ export default async function AtteststatistiekenPage() {
             Unieke attesten per persoon en bedrijf,
             aangevuld met handmatige correcties.
           </>
+        }
+        acties={
+          <BeheerActieLink
+            href="/atteststatistieken/export"
+            variant="secundair"
+            kinderen="Export naar Excel"
+          />
         }
       />
 
