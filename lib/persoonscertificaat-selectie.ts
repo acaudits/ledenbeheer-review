@@ -500,16 +500,27 @@ export async function laadPersoonscertificaatSelectie(invoer: SelectieInvoer) {
         ON dc."lid_id" = l.id
       LEFT JOIN (
         SELECT
-          "lid_id",
+          t."ovam_id",
           COUNT(*)::integer
             AS aantal
         FROM
-          "terreincontrole_dossiers"
-        WHERE "verwijderd_op"
-          IS NULL
-        GROUP BY "lid_id"
+          "terreincontroles" t
+        WHERE
+          t."verwijderd_op"
+            IS NULL
+          AND t."afwezig_op"
+            IS NULL
+          AND NULLIF(
+            BTRIM(
+              t."ovam_id"
+            ),
+            ''
+          ) IS NOT NULL
+        GROUP BY
+          t."ovam_id"
       ) tc
-        ON tc."lid_id" = l.id
+        ON tc."ovam_id" =
+          l."ovam_id"
       WHERE l."verwijderd_op"
         IS NULL
       ${algemeenZoekfilter}

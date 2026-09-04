@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 
+import { Prisma } from "@/generated/prisma/client";
 import { heeftMachtiging } from "@/lib/autorisatie";
 import { haalIngelogdeGebruikerOp } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
@@ -257,20 +258,34 @@ export async function GET(verzoek: Request) {
             },
           }),
 
-      lidIds.length === 0
+      ovamIds.length === 0
         ? Promise.resolve([])
-        : prisma.terreincontroleDossier.groupBy({
-            by: ["lidId"],
-            where: {
-              verwijderdOp: null,
-              lidId: {
-                in: lidIds,
-              },
-            },
-            _count: {
-              _all: true,
-            },
-          }),
+        : prisma.$queryRaw<
+            {
+              ovamId: string;
+              aantal: number;
+            }[]
+          >(
+            Prisma.sql`
+              SELECT
+                t."ovam_id"
+                  AS "ovamId",
+                COUNT(*)::integer
+                  AS "aantal"
+              FROM
+                "terreincontroles" t
+              WHERE
+                t."verwijderd_op"
+                  IS NULL
+                AND t."afwezig_op"
+                  IS NULL
+                AND t."ovam_id" IN (
+                  ${Prisma.join(ovamIds)}
+                )
+              GROUP BY
+                t."ovam_id"
+            `,
+          ),
     ]);
 
     const attestenPerPersoon = new Map(
@@ -287,11 +302,13 @@ export async function GET(verzoek: Request) {
       ]),
     );
 
-    const terreincontrolesPerLid = new Map(
-      terreincontroletellingen.map((telling) => [
-        telling.lidId,
-        telling._count._all,
-      ]),
+    const terreincontrolesPerPersoon = new Map(
+      terreincontroletellingen.map(
+        (telling) => [
+          telling.ovamId,
+          telling.aantal,
+        ],
+      ),
     );
 
     const rijen = leden.map((lid) => {
@@ -299,7 +316,10 @@ export async function GET(verzoek: Request) {
 
       const aantalDeskcontroles = deskcontrolesPerLid.get(lid.id) ?? 0;
 
-      const aantalTerreincontroles = terreincontrolesPerLid.get(lid.id) ?? 0;
+      const aantalTerreincontroles =
+        terreincontrolesPerPersoon.get(
+          lid.ovamId,
+        ) ?? 0;
 
       const targetDeskcontroles =
         aantalAttesten === 0 ? 0 : Math.ceil(aantalAttesten * 0.05);
