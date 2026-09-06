@@ -1,0 +1,601 @@
+<!doctype html>
+<html lang="nl">
+  <head>
+    <meta charset="UTF-8">
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1"
+    >
+    <title>Asbest CRM</title>
+    <link
+      rel="stylesheet"
+      href="pagina.css"
+    >
+  </head>
+
+  <body>
+    <div class="app-shell">
+      <aside class="zijbalk">
+        <div class="merk">
+          <div class="merk-icoon">
+            <img
+              class="merk-logo"
+              src="icons/skh-logo-128.png"
+              alt=""
+              aria-hidden="true"
+            >
+          </div>
+
+          <div>
+            <p class="merk-titel">
+              Asbest CRM
+            </p>
+          </div>
+        </div>
+
+        <nav
+          class="zijbalk-navigatie"
+          aria-label="Hoofdnavigatie"
+        >
+          <button
+            class="zijbalk-link actief"
+            type="button"
+            data-tab="deskcontrole"
+          >
+            <span class="nav-icoon">D</span>
+            Deskcontrole opvolging
+          </button>
+
+          <button
+            class="zijbalk-link"
+            type="button"
+            data-tab="terreincontrole"
+          >
+            <span class="nav-icoon">T</span>
+            Inplannen terreincontrole
+          </button>
+
+          <button
+            class="zijbalk-link"
+            type="button"
+            data-tab="atteststatistieken"
+          >
+            <span class="nav-icoon">A</span>
+            Atteststatistieken
+          </button>
+        </nav>
+
+        <div class="zijbalk-voet">
+          <span class="status-punt"></span>
+          Lokale experimentele omgeving
+        </div>
+      </aside>
+
+      <main class="inhoud">
+        <header class="bovenbalk">
+          <div>
+            <h1 id="pagina-titel">
+              Deskcontrole opvolging
+            </h1>
+          </div>
+
+        </header>
+
+        <div
+          class="mobiele-tabs"
+          role="tablist"
+          aria-label="Extensieonderdelen"
+        >
+          <button
+            type="button"
+            role="tab"
+            aria-selected="true"
+            class="mobiele-tab actief"
+            data-tab="deskcontrole"
+          >
+            Deskcontrole opvolging
+          </button>
+
+          <button
+            type="button"
+            role="tab"
+            aria-selected="false"
+            class="mobiele-tab"
+            data-tab="terreincontrole"
+          >
+            Inplannen terreincontrole
+          </button>
+
+          <button
+            type="button"
+            role="tab"
+            aria-selected="false"
+            class="mobiele-tab"
+            data-tab="atteststatistieken"
+          >
+            Atteststatistieken
+          </button>
+        </div>
+
+        <section
+          id="tab-deskcontrole"
+          class="tab-paneel actief"
+          data-paneel="deskcontrole"
+        >
+          <div class="pagina-intro">
+            <div>
+              <p>
+                Voer één of meerdere attest-ID’s handmatig in.
+                Plaats ieder ID op een afzonderlijke regel of
+                scheid de ID’s met een komma of puntkomma.
+              </p>
+            </div>
+          </div>
+
+          <div class="deskcontrole-layout">
+            <article class="kaart formulier-kaart">
+              <div class="kaart-kop">
+                <div>
+                  <h3>
+                    Attest-ID’s verwerken
+                  </h3>
+
+                  <button
+                    id="openstaande-attest-ids-ophalen"
+                    class="secundaire-knop ophaal-knop"
+                    type="button"
+                  >
+                    Haal openstaande attest-ID’s op
+                  </button>
+                </div>
+
+              </div>
+
+              <form id="deskcontrole-form">
+                <div class="veld invoer-veld">
+                  <label for="attest-id-invoer">
+                    Attest-ID’s
+                  </label>
+
+                  <textarea
+                    id="attest-id-invoer"
+                    name="attestIds"
+                    rows="10"
+                    maxlength="50000"
+                    spellcheck="false"
+                    placeholder="Voorbeeld:&#10;attest-id-1&#10;attest-id-2&#10;attest-id-3"
+                    required
+                  ></textarea>
+
+                  <p class="veld-hulp">
+                    Dubbele en lege waarden worden automatisch
+                    verwijderd. Er kunnen maximaal 500 unieke
+                    attest-ID’s per verwerking worden gebruikt.
+                  </p>
+                </div>
+
+                <div class="formulier-acties deskcontrole-acties">
+                  <button
+                    id="verwerken"
+                    class="primaire-knop"
+                    type="submit"
+                  >
+                    Verwerking starten
+                  </button>
+
+                  <button
+                    id="verwerking-stoppen"
+                    class="secundaire-knop"
+                    type="button"
+                    disabled
+                  >
+                    Stoppen
+                  </button>
+
+                  <button
+                    id="invoer-wissen"
+                    class="tekst-knop"
+                    type="button"
+                  >
+                    Invoer wissen
+                  </button>
+                </div>
+
+                <div
+                  id="verwerking-status"
+                  class="formulier-status status-blok"
+                  role="status"
+                  aria-live="polite"
+                >
+                  Nog geen verwerking gestart.
+                </div>
+
+                <div
+                  id="voortgang"
+                  class="voortgang"
+                  hidden
+                >
+                  <div class="voortgang-boven">
+                    <span>Voortgang</span>
+                    <span id="voortgang-tekst">0 van 0</span>
+                  </div>
+
+                  <div
+                    class="voortgang-spoor"
+                    role="progressbar"
+                    aria-label="Voortgang attestverwerking"
+                    aria-valuemin="0"
+                    aria-valuemax="100"
+                    aria-valuenow="0"
+                  >
+                    <div
+                      id="voortgang-balk"
+                      class="voortgang-balk"
+                    ></div>
+                  </div>
+                </div>
+              </form>
+            </article>
+
+            <aside class="kaart info-kaart">
+              <h3>
+                Verwerkingsresultaten
+              </h3>
+
+              <div class="teller-grid">
+                <div class="resultaat-teller">
+                  <span>Totaal</span>
+                  <strong id="teller-totaal">0</strong>
+                </div>
+
+                <div class="resultaat-teller succes-teller">
+                  <span>Geslaagd</span>
+                  <strong id="teller-geslaagd">0</strong>
+                </div>
+
+                <div class="resultaat-teller fout-teller">
+                  <span>Mislukt</span>
+                  <strong id="teller-mislukt">0</strong>
+                </div>
+              </div>
+
+            </aside>
+          </div>
+
+          <article class="kaart resultaten-kaart">
+            <div class="resultaten-kop">
+              <div>
+                <h3>
+                  Deskcontroleoverzicht
+                </h3>
+
+                <div
+                  id="opslag-resultaat-status"
+                  class="opslag-resultaat-status status-blok"
+                  role="status"
+                  aria-live="polite"
+                  hidden
+                ></div>
+              </div>
+
+              <div class="resultaten-acties">
+                <button
+                  id="resultaten-opslaan"
+                  class="secundaire-knop"
+                  type="button"
+                  disabled
+                >
+                  Statussen opslaan
+                </button>
+
+                <button
+                  id="resultaten-exporteren"
+                  class="secundaire-knop"
+                  type="button"
+                  disabled
+                >
+                  Resultaten exporteren
+                </button>
+
+                <button
+                  id="resultaten-wissen"
+                  class="tekst-knop"
+                  type="button"
+                  disabled
+                >
+                  Resultaten wissen
+                </button>
+              </div>
+            </div>
+
+            <div class="tabel-omhulsel">
+              <table class="resultaten-tabel">
+                <thead>
+                  <tr>
+                    <th>Attest-ID</th>
+                    <th>Copy-ID</th>
+                    <th>AIA-nummer</th>
+                    <th>Copy state</th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
+
+                <tbody id="resultaten-lichaam">
+                  <tr class="lege-rij">
+                    <td colspan="5">
+                      Nog geen resultaten beschikbaar.
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </article>
+        </section>
+
+        <section
+          id="tab-terreincontrole"
+          class="tab-paneel"
+          data-paneel="terreincontrole"
+          hidden
+        >
+          <div class="pagina-intro">
+            <div>
+              <p>
+                Haal openstaande terreincontroles op of voer
+                één of meerdere attest-ID’s handmatig in.
+              </p>
+            </div>
+          </div>
+
+          <div class="deskcontrole-layout">
+            <article class="kaart formulier-kaart">
+              <div class="kaart-kop">
+                <div>
+                  <h3>
+                    Attest-ID’s verwerken
+                  </h3>
+
+                  <button
+                    id="terrein-openstaande-ophalen"
+                    class="secundaire-knop ophaal-knop"
+                    type="button"
+                  >
+                    Haal openstaande attest-ID’s op
+                  </button>
+                </div>
+              </div>
+
+              <form id="terreincontrole-form">
+                <div class="veld invoer-veld">
+                  <label for="terrein-attest-id-invoer">
+                    Attest-ID’s
+                  </label>
+
+                  <textarea
+                    id="terrein-attest-id-invoer"
+                    name="terreinAttestIds"
+                    rows="10"
+                    maxlength="50000"
+                    spellcheck="false"
+                    placeholder="Voorbeeld:&#10;b0ad1531-1ffd-4533-89fe-65c702ddd2ea"
+                    required
+                  ></textarea>
+
+                  <p class="veld-hulp">
+                    Alleen terreincontroles met status
+                    IN_OPMAAK of zonder status worden
+                    automatisch opgehaald. Er kunnen maximaal
+                    500 unieke attest-ID’s worden verwerkt.
+                  </p>
+                </div>
+
+                <div class="formulier-acties deskcontrole-acties">
+                  <button
+                    id="terrein-verwerken"
+                    class="primaire-knop"
+                    type="submit"
+                  >
+                    Verwerking starten
+                  </button>
+
+                  <button
+                    id="terrein-verwerking-stoppen"
+                    class="secundaire-knop"
+                    type="button"
+                    disabled
+                  >
+                    Stoppen
+                  </button>
+
+                  <button
+                    id="terrein-invoer-wissen"
+                    class="tekst-knop"
+                    type="button"
+                  >
+                    Invoer wissen
+                  </button>
+                </div>
+
+                <div
+                  id="terrein-verwerking-status"
+                  class="formulier-status status-blok"
+                  role="status"
+                  aria-live="polite"
+                >
+                  Nog geen verwerking gestart.
+                </div>
+
+                <div
+                  id="terrein-voortgang"
+                  class="voortgang"
+                  hidden
+                >
+                  <div class="voortgang-boven">
+                    <span>Voortgang</span>
+                    <span id="terrein-voortgang-tekst">
+                      0 van 0
+                    </span>
+                  </div>
+
+                  <div
+                    id="terrein-voortgang-spoor"
+                    class="voortgang-spoor"
+                    role="progressbar"
+                    aria-label="Voortgang terreincontroleverwerking"
+                    aria-valuemin="0"
+                    aria-valuemax="100"
+                    aria-valuenow="0"
+                  >
+                    <div
+                      id="terrein-voortgang-balk"
+                      class="voortgang-balk"
+                    ></div>
+                  </div>
+                </div>
+              </form>
+            </article>
+
+            <aside class="kaart info-kaart">
+              <h3>
+                Verwerkingsresultaten
+              </h3>
+
+              <div class="teller-grid">
+                <div class="resultaat-teller">
+                  <span>Totaal</span>
+                  <strong id="terrein-teller-totaal">0</strong>
+                </div>
+
+                <div class="resultaat-teller succes-teller">
+                  <span>Geslaagd</span>
+                  <strong id="terrein-teller-geslaagd">0</strong>
+                </div>
+
+                <div class="resultaat-teller fout-teller">
+                  <span>Mislukt</span>
+                  <strong id="terrein-teller-mislukt">0</strong>
+                </div>
+              </div>
+            </aside>
+          </div>
+
+          <article class="kaart resultaten-kaart">
+            <div class="resultaten-kop">
+              <div>
+                <h3>
+                  Terreincontroleoverzicht
+                </h3>
+
+                <div
+                  id="terrein-opslag-resultaat-status"
+                  class="opslag-resultaat-status status-blok"
+                  role="status"
+                  aria-live="polite"
+                  hidden
+                ></div>
+              </div>
+
+              <div class="resultaten-acties">
+                <button
+                  id="terrein-resultaten-opslaan"
+                  class="secundaire-knop"
+                  type="button"
+                  disabled
+                >
+                  Statussen opslaan
+                </button>
+
+                <button
+                  id="terrein-resultaten-exporteren"
+                  class="secundaire-knop"
+                  type="button"
+                  disabled
+                >
+                  Resultaten exporteren
+                </button>
+
+                <button
+                  id="terrein-resultaten-wissen"
+                  class="tekst-knop"
+                  type="button"
+                  disabled
+                >
+                  Resultaten wissen
+                </button>
+              </div>
+            </div>
+
+            <div class="tabel-omhulling">
+              <table class="resultaten-tabel">
+                <thead>
+                  <tr>
+                    <th>Attest-ID</th>
+                    <th>OVAM-status</th>
+                    <th>Foutmelding</th>
+                  </tr>
+                </thead>
+
+                <tbody id="terrein-resultaten-lichaam">
+                  <tr class="lege-rij">
+                    <td colspan="3">
+                      Nog geen resultaten beschikbaar.
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </article>
+        </section>
+        <section
+          id="tab-atteststatistieken"
+          class="tab-paneel"
+          data-paneel="atteststatistieken"
+          hidden
+        >
+          <div class="pagina-intro">
+            <div>
+              <p class="sectie-label">
+                Rapportering
+              </p>
+              <h2>
+                Atteststatistieken
+              </h2>
+              <p>
+                Bekijk statistieken, targets en de
+                Excel-export in de bestaande webapp.
+              </p>
+            </div>
+          </div>
+
+          <article class="kaart lege-module">
+            <div class="module-icoon">
+              A
+            </div>
+            <h3>
+              Attesten en targets
+            </h3>
+            <p>
+              Open het volledige statistiekenoverzicht
+              om de actuele gegevens te bekijken.
+            </p>
+            <a
+              id="link-atteststatistieken"
+              class="secundaire-knop"
+              href="#"
+              target="_blank"
+              rel="noreferrer"
+            >
+              Open atteststatistieken
+            </a>
+          </article>
+        </section>
+      </main>
+    </div>
+
+    <script src="config.js"></script>
+    <script src="pagina.js"></script>
+    <script src="terreincontrole.js"></script>
+    <script src="xlsx.full.min.js"></script>
+    <script src="gedeelde-resultaten-ui.js"></script>
+  </body>
+</html>
