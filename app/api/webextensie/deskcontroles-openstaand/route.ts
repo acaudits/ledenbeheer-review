@@ -25,20 +25,58 @@ function toegestaneOrigin() {
   return origin;
 }
 
-function aanvraagHeeftToegestaneOrigin(
+function aanvraagKomtVanToegestaneExtensie(
   request: Request,
 ) {
-  const verwacht =
+  const verwachtOrigin =
     toegestaneOrigin();
 
-  const ontvangen =
+  if (!verwachtOrigin) {
+    return false;
+  }
+
+  const ontvangenOrigin =
     request.headers.get(
       "origin",
     ) ?? "";
 
+  /*
+   * Gebruik de standaard Origin wanneer Chrome die meestuurt.
+   */
+  if (ontvangenOrigin) {
+    return (
+      ontvangenOrigin ===
+      verwachtOrigin
+    );
+  }
+
+  /*
+   * Bevoorrechte extension-fetches met host permission kunnen
+   * zonder Origin worden verstuurd. Controleer in dat geval de
+   * expliciete extensie-ID en browsergestuurde Fetch Metadata.
+   */
+  const verwachtId =
+    verwachtOrigin.replace(
+      "chrome-extension://",
+      "",
+    );
+
+  const ontvangenId =
+    request.headers.get(
+      "x-webextensie-id",
+    ) ?? "";
+
   return (
-    verwacht.length > 0 &&
-    ontvangen === verwacht
+    ontvangenId === verwachtId &&
+    request.headers.get(
+      "sec-fetch-site",
+    ) === "none" &&
+    request.headers.get(
+      "sec-fetch-mode",
+    ) === "cors" &&
+    request.headers.get(
+      "sec-fetch-dest",
+    ) === "empty"
   );
 }
 
@@ -59,17 +97,24 @@ function responseHeaders(
       "no-referrer",
   };
 
+  const origin =
+    request.headers.get(
+      "origin",
+    );
+
+  /*
+   * Voeg alleen CORS-headers toe als daadwerkelijk een Origin
+   * aanwezig is en deze exact overeenkomt. Een bevoorrechte
+   * extension-fetch zonder Origin heeft deze headers niet nodig.
+   */
   if (
-    aanvraagHeeftToegestaneOrigin(
-      request,
-    )
+    origin &&
+    origin ===
+      toegestaneOrigin()
   ) {
     headers[
       "Access-Control-Allow-Origin"
-    ] =
-      request.headers.get(
-        "origin",
-      )!;
+    ] = origin;
 
     headers[
       "Access-Control-Allow-Credentials"
@@ -103,7 +148,7 @@ export async function GET(
    * chrome-extension://-origin toegestaan.
    */
   if (
-    !aanvraagHeeftToegestaneOrigin(
+    !aanvraagKomtVanToegestaneExtensie(
       request,
     )
   ) {
