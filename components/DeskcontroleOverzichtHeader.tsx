@@ -10,6 +10,9 @@ import {
   BeheerOverzichtHeader,
 } from "@/components/BeheerOverzichtHeader";
 import {
+  LaatsteStatusAanpassing,
+} from "@/components/LaatsteStatusAanpassing";
+import {
   DeskcontroleMeerMenu,
 } from "@/components/DeskcontroleMeerMenu";
 import {
@@ -22,6 +25,7 @@ type DeskcontroleOverzichtHeaderProps = {
   magBeheren: boolean;
   magExporteren: boolean;
   magStatussenImporteren: boolean;
+  laatsteStatusAanpassing: string | null;
   serverModus?: boolean;
 };
 
@@ -30,6 +34,7 @@ export function DeskcontroleOverzichtHeader({
   magBeheren,
   magExporteren,
   magStatussenImporteren,
+  laatsteStatusAanpassing,
   serverModus = false,
 }: DeskcontroleOverzichtHeaderProps) {
   const [
@@ -81,13 +86,24 @@ export function DeskcontroleOverzichtHeader({
       bovenTitel="Deskcontroles"
       titel="Deskcontrole opvolging"
       omschrijving={
-        getoondAantal === null
-          ? "Actieve deskcontroles laden..."
-          : `${getoondAantal} actieve ${
-              getoondAantal === 1
+        getoondAantal === null ? (
+          "Actieve deskcontroles laden..."
+        ) : (
+          <span className="inline-flex flex-wrap items-center gap-x-2 gap-y-1">
+            <span>
+              {getoondAantal} actieve{" "}
+              {getoondAantal === 1
                 ? "deskcontrole"
-                : "deskcontroles"
-            }`
+                : "deskcontroles"}
+            </span>
+
+            <LaatsteStatusAanpassing
+              waarde={
+                laatsteStatusAanpassing
+              }
+            />
+          </span>
+        )
       }
       acties={
         <>

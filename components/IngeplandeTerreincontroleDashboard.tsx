@@ -10,6 +10,9 @@ import {
   type IngeplandeTerreincontroleDashboardTellingen,
   type IngeplandeTerreincontroleServergegevens,
 } from "@/hooks/useIngeplandeTerreincontrolesQuery";
+import {
+  LaatsteStatusAanpassing,
+} from "@/components/LaatsteStatusAanpassing";
 
 function useIngeplandeTerreincontroleDashboard() {
   const [
@@ -50,7 +53,11 @@ function useIngeplandeTerreincontroleDashboard() {
   return dashboard;
 }
 
-export function IngeplandeTerreincontroleAantalTekst() {
+export function IngeplandeTerreincontroleAantalTekst({
+  laatsteStatusAanpassing,
+}: {
+  laatsteStatusAanpassing: string | null;
+}) {
   const dashboard =
     useIngeplandeTerreincontroleDashboard();
 
@@ -63,13 +70,21 @@ export function IngeplandeTerreincontroleAantalTekst() {
   }
 
   return (
-    <span>
-      {dashboard.plaatsbezoeken}{" "}
-      actieve{" "}
-      {dashboard.plaatsbezoeken ===
-      1
-        ? "terreincontrole"
-        : "terreincontroles"}
+    <span className="inline-flex flex-wrap items-center gap-x-2 gap-y-1">
+      <span>
+        {dashboard.plaatsbezoeken}{" "}
+        actieve{" "}
+        {dashboard.plaatsbezoeken ===
+        1
+          ? "terreincontrole"
+          : "terreincontroles"}
+      </span>
+
+      <LaatsteStatusAanpassing
+        waarde={
+          laatsteStatusAanpassing
+        }
+      />
     </span>
   );
 }

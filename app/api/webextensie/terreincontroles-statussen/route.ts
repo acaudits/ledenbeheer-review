@@ -575,6 +575,55 @@ export async function POST(
     }
   }
 
+  /*
+   * Registreer iedere volledig verwerkte synchronisatie,
+   * ook wanneer alle statussen al correct waren.
+   *
+   * Alleen totaalaantallen worden opgeslagen. Er komen geen
+   * attest-ID's, payloads of OVAM-resultaten in de auditlog.
+   */
+  try {
+    await prisma.$transaction(
+      async (transactie) => {
+        await schrijfAuditlog(
+          transactie,
+          gebruiker,
+          {
+            actie: "TERREINCONTROLES_STATUSSYNCHRONISATIE_WEBEXTENSIE",
+            entiteit: "TERREINCONTROLE",
+            omschrijving:
+              "Terreincontrolestatussen via de webextensie gecontroleerd.",
+            metadata: {
+              aangeboden:
+                invoer.resultaten.length,
+              verwerkt:
+                geldigeResultaten.size,
+              bijgewerkt,
+              ongewijzigd,
+              overgeslagenFout,
+              ongeldig,
+              nietGevonden,
+              conflict,
+              beschermd,
+              mislukt,
+            },
+          },
+        );
+      },
+    );
+  } catch (fout) {
+    /*
+     * Geen attest-ID's, payloads of databasegegevens loggen.
+     * De reeds verwerkte statussen blijven geldig.
+     */
+    console.error(
+      "Tijdstip van webextensie-synchronisatie registreren mislukt:",
+      fout instanceof Error
+        ? fout.name
+        : "Onbekende auditlogfout",
+    );
+  }
+
   return antwoord(
     request,
     {

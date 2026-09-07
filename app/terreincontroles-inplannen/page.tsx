@@ -10,11 +10,19 @@ import { IngeplandeTerreincontroleMeerMenu } from "@/components/IngeplandeTerrei
 import { TerreincontrolesTabel } from "@/components/TerreincontrolesTabel";
 import { heeftMachtiging } from "@/lib/autorisatie";
 import { vereisMachtiging } from "@/lib/auth";
+import {
+  haalLaatsteWebextensieStatusaanpassing,
+} from "@/lib/laatste-webextensie-statusaanpassing";
 
 export const dynamic = "force-dynamic";
 
 export default async function TerreincontrolesPage() {
   const gebruiker = await vereisMachtiging("TERREINCONTROLES_BEKIJKEN");
+
+  const laatsteStatusAanpassing =
+    await haalLaatsteWebextensieStatusaanpassing(
+      "TERREINCONTROLE",
+    );
 
   const magBeheren = heeftMachtiging(gebruiker.rollen, "TERREINCONTROLES_BEHEREN");
 
@@ -32,7 +40,14 @@ export default async function TerreincontrolesPage() {
     <div className="space-y-4">
       <BeheerOverzichtHeader
         titel="Inplannen terreincontrole"
-        omschrijving={<IngeplandeTerreincontroleAantalTekst />}
+        omschrijving={
+          <IngeplandeTerreincontroleAantalTekst
+            laatsteStatusAanpassing={
+              laatsteStatusAanpassing
+                ?.toISOString() ?? null
+            }
+          />
+        }
         acties={
           <>
             {magBeheren ? (

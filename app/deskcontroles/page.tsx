@@ -6,6 +6,9 @@ import {
 } from "@/components/DeskcontrolesTabel";
 import { vereisMachtiging } from "@/lib/auth";
 import { heeftMachtiging } from "@/lib/autorisatie";
+import {
+  haalLaatsteWebextensieStatusaanpassing,
+} from "@/lib/laatste-webextensie-statusaanpassing";
 
 export const dynamic = "force-dynamic";
 
@@ -126,6 +129,11 @@ const kolommen: DeskcontroleKolom[] = [
 export default async function DeskcontrolesPage() {
   const gebruiker = await vereisMachtiging("DESKCONTROLES_BEKIJKEN");
 
+  const laatsteStatusAanpassing =
+    await haalLaatsteWebextensieStatusaanpassing(
+      "DESKCONTROLE",
+    );
+
   const magBeheren = heeftMachtiging(gebruiker.rollen, "DESKCONTROLES_BEHEREN");
 
   const magExporteren = heeftMachtiging(
@@ -145,6 +153,10 @@ export default async function DeskcontrolesPage() {
         magBeheren={magBeheren}
         magExporteren={magExporteren}
         magStatussenImporteren={magStatussenImporteren}
+        laatsteStatusAanpassing={
+          laatsteStatusAanpassing
+            ?.toISOString() ?? null
+        }
         serverModus
       />
 
