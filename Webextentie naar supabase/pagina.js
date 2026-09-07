@@ -3,7 +3,7 @@
 const tabNamen = {
   deskcontrole: "Deskcontrole opvolging",
   terreincontrole: "Inplannen terreincontrole",
-  atteststatistieken: "Atteststatistieken",
+
 };
 
 const tabKnoppen = [...document.querySelectorAll("[data-tab]")];
@@ -69,11 +69,6 @@ function stelOptioneleLinkHrefIn(id, href) {
 stelOptioneleLinkHrefIn(
   "link-terreincontrole",
   `${runtimeBasis}/terreincontroles-inplannen`,
-);
-
-stelOptioneleLinkHrefIn(
-  "link-atteststatistieken",
-  `${runtimeBasis}/atteststatistieken`,
 );
 
 const deskcontroleFormulier = document.getElementById("deskcontrole-form");

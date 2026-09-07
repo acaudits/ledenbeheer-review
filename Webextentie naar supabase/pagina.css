@@ -1137,7 +1137,7 @@ body {
 /* Compacte horizontale navigatietabs 1.8.1 */
 .zijbalk-navigatie {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 6px;
   margin-top: 14px;
 }
@@ -1183,7 +1183,7 @@ body {
 @media (max-width: 960px) {
   .zijbalk-navigatie {
     display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 6px;
     margin-top: 12px;
   }
@@ -1200,7 +1200,7 @@ body {
 
 @media (max-width: 430px) {
   .zijbalk-navigatie {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 5px;
   }
 
