@@ -14,6 +14,69 @@
   </head>
 
   <body>
+
+    <section
+      id="webextensie-auth-gate"
+      class="webextensie-auth-gate"
+      aria-live="polite"
+      aria-hidden="false"
+    >
+      <div class="webextensie-auth-kaart">
+        <div
+          class="webextensie-auth-logo"
+          aria-hidden="true"
+        >
+          <img
+            src="icons/skh-logo-128.png"
+            alt=""
+          >
+        </div>
+
+        <p class="webextensie-auth-label">
+          Asbest CRM
+        </p>
+
+        <h1 id="webextensie-auth-titel">
+          Aanmelding controleren
+        </h1>
+
+        <p id="webextensie-auth-bericht">
+          Je beveiligde Asbest CRM-sessie wordt gecontroleerd.
+        </p>
+
+        <div
+          id="webextensie-auth-spinner"
+          class="webextensie-auth-spinner"
+          aria-label="Bezig met controleren"
+        ></div>
+
+        <div class="webextensie-auth-acties">
+          <button
+            id="webextensie-auth-inloggen"
+            class="primaire-knop"
+            type="button"
+            hidden
+          >
+            Inloggen bij Asbest CRM
+          </button>
+
+          <button
+            id="webextensie-auth-opnieuw"
+            class="secundaire-knop"
+            type="button"
+            hidden
+          >
+            Opnieuw controleren
+          </button>
+        </div>
+
+        <p class="webextensie-auth-uitleg">
+          Alleen actieve beheerdersaccounts hebben toegang.
+          Je wachtwoord wordt nooit door de extensie opgeslagen.
+        </p>
+      </div>
+    </section>
+
     <div class="app-shell">
       <aside class="zijbalk">
         <div class="merk">
@@ -593,6 +656,7 @@
     </div>
 
     <script src="config.js"></script>
+    <script src="auth-gate.js"></script>
     <script src="pagina.js"></script>
     <script src="terreincontrole.js"></script>
     <script src="xlsx.full.min.js"></script>

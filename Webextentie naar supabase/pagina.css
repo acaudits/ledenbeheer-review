@@ -1359,3 +1359,149 @@ td.resultaten-foutcel {
   font-size: 15px;
   line-height: 1;
 }
+
+/* START WEBEXTENSIE AUTH GATE */
+
+body:not(.webextensie-toegang) .app-shell {
+  display: none !important;
+}
+
+.webextensie-auth-gate {
+  position: fixed;
+  z-index: 10000;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 22px;
+  overflow: auto;
+  background:
+    radial-gradient(
+      circle at top right,
+      rgb(16 185 129 / 16%),
+      transparent 42%
+    ),
+    linear-gradient(
+      145deg,
+      #f8fafc,
+      #ecfdf5
+    );
+}
+
+.webextensie-auth-gate[hidden] {
+  display: none !important;
+}
+
+.webextensie-auth-kaart {
+  width: min(100%, 430px);
+  padding: 30px;
+  border: 1px solid #dbe4ee;
+  border-radius: 18px;
+  background: #ffffff;
+  box-shadow:
+    0 18px 50px rgb(15 23 42 / 12%);
+  text-align: center;
+}
+
+.webextensie-auth-logo {
+  display: grid;
+  width: 62px;
+  height: 62px;
+  margin: 0 auto 14px;
+  place-items: center;
+  border-radius: 16px;
+  background: #ecfdf5;
+}
+
+.webextensie-auth-logo img {
+  display: block;
+  width: 44px;
+  height: 44px;
+  object-fit: contain;
+}
+
+.webextensie-auth-label {
+  margin: 0 0 6px;
+  color: #047857;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.webextensie-auth-kaart h1 {
+  margin: 0;
+  color: #0f172a;
+  font-size: 22px;
+  line-height: 1.2;
+}
+
+#webextensie-auth-bericht {
+  max-width: 340px;
+  margin: 12px auto 0;
+  color: #475569;
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.webextensie-auth-spinner {
+  width: 28px;
+  height: 28px;
+  margin: 20px auto 4px;
+  border: 3px solid #d1fae5;
+  border-top-color: #059669;
+  border-radius: 50%;
+  animation:
+    webextensie-auth-draaien 0.75s linear infinite;
+}
+
+.webextensie-auth-spinner[hidden] {
+  display: none;
+}
+
+.webextensie-auth-acties {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 20px;
+}
+
+.webextensie-auth-acties button[hidden] {
+  display: none;
+}
+
+.webextensie-auth-uitleg {
+  margin: 20px 0 0;
+  padding-top: 16px;
+  border-top: 1px solid #e2e8f0;
+  color: #64748b;
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+@keyframes webextensie-auth-draaien {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (max-width: 520px) {
+  .webextensie-auth-gate {
+    padding: 14px;
+  }
+
+  .webextensie-auth-kaart {
+    padding: 23px 18px;
+    border-radius: 14px;
+  }
+
+  .webextensie-auth-acties {
+    flex-direction: column;
+  }
+
+  .webextensie-auth-acties button {
+    width: 100%;
+  }
+}
+
+/* EINDE WEBEXTENSIE AUTH GATE */
