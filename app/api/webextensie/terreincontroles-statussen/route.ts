@@ -329,8 +329,16 @@ export async function POST(
     );
   }
 
+  /*
+   * Bewaar de server-side gevalideerde array in een vaste
+   * variabele. Zo blijft de TypeScript-typevernauwing ook
+   * geldig binnen de latere auditlogtransactie.
+   */
+  const ontvangenResultaten =
+    invoer.resultaten;
+
   if (
-    invoer.resultaten.length >
+    ontvangenResultaten.length >
     MAXIMAAL_AANTAL_RESULTATEN
   ) {
     return antwoord(
@@ -354,7 +362,7 @@ export async function POST(
 
   for (
     const resultaat of
-    invoer.resultaten
+    ontvangenResultaten
   ) {
     if (
       !isObject(resultaat) ||
@@ -595,7 +603,7 @@ export async function POST(
               "Terreincontrolestatussen via de webextensie gecontroleerd.",
             metadata: {
               aangeboden:
-                invoer.resultaten.length,
+                ontvangenResultaten.length,
               verwerkt:
                 geldigeResultaten.size,
               bijgewerkt,
@@ -630,7 +638,7 @@ export async function POST(
       succes:
         mislukt === 0,
       aangeboden:
-        invoer.resultaten.length,
+        ontvangenResultaten.length,
       verwerkt:
         geldigeResultaten.size,
       bijgewerkt,
