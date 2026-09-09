@@ -3,7 +3,9 @@
 import { revalidatePath } from "next/cache";
 
 import { schrijfAuditlog } from "@/lib/auditlog";
-import { vereisMachtiging } from "@/lib/auth";
+import {
+  vereisOpvolgingSanctieBeheer,
+} from "@/lib/opvolging-sanctie-toegang";
 import {
   isOpvolgingBron,
   ontleedDatumInvoer,
@@ -58,14 +60,8 @@ function geldigeBronId(
 async function vereisMachtigingVoorBron(
   bronType: OpvolgingBron,
 ) {
-  if (bronType === "DESKCONTROLE") {
-    return vereisMachtiging(
-      "DESKCONTROLES_BEHEREN",
-    );
-  }
-
-  return vereisMachtiging(
-    "TERREINCONTROLES_BEHEREN",
+  return vereisOpvolgingSanctieBeheer(
+    bronType,
   );
 }
 
@@ -241,6 +237,13 @@ async function haalBronMomentopnameOp(
       opmerkingen:
         bron.opmerkingen,
     };
+  }
+
+  if (
+    bronType === "HANDMATIG" ||
+    bronType === "EXCEL_IMPORT"
+  ) {
+    return null;
   }
 
   const bron =

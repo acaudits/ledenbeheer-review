@@ -8,6 +8,9 @@ import {
 import {
   bewerkOpvolgingSanctieDetail,
 } from "@/app/opvolging-sancties/actions";
+import {
+  maakHandmatigeOpvolgingSanctie,
+} from "@/app/opvolging-sancties/nieuw/actions";
 
 type Auditeur = {
   id: number;
@@ -36,7 +39,8 @@ type Waarden = {
 };
 
 type Props = {
-  id: number;
+  id?: number;
+  modus?: "bewerken" | "nieuw";
   auditeurs: Auditeur[];
   waarden: Waarden;
 };
@@ -49,14 +53,17 @@ const tekstvak =
 
 export function OpvolgingSanctieDetailFormulier({
   id,
+  modus = "bewerken",
   auditeurs,
   waarden,
 }: Props) {
   const actie =
-    bewerkOpvolgingSanctieDetail.bind(
-      null,
-      id,
-    );
+    modus === "nieuw"
+      ? maakHandmatigeOpvolgingSanctie
+      : bewerkOpvolgingSanctieDetail.bind(
+          null,
+          id!,
+        );
 
   const [
     status,
@@ -520,7 +527,9 @@ export function OpvolgingSanctieDetailFormulier({
         >
           {isBezig
             ? "Opslaan..."
-            : "Wijzigingen opslaan"}
+            : modus === "nieuw"
+              ? "Registratie toevoegen"
+              : "Wijzigingen opslaan"}
         </button>
       </div>
     </form>

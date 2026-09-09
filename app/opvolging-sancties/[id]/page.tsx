@@ -189,7 +189,9 @@ export default async function OpvolgingSanctieDetailPage({
             <dt className="font-bold text-slate-500">
               Bron-ID
             </dt>
-            <dd>{registratie.bronId}</dd>
+            <dd>
+              {registratie.bronId ?? "—"}
+            </dd>
           </div>
 
           <div>

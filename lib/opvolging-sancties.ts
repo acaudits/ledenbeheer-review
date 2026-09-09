@@ -3,6 +3,8 @@ export const OPVOLGING_BRONNEN = [
   "TERREINCONTROLE",
   "INGEPLANDE_TERREINCONTROLE",
   "NA_FINALISATIE",
+  "HANDMATIG",
+  "EXCEL_IMPORT",
 ] as const;
 
 export type OpvolgingBron =
@@ -76,6 +78,12 @@ export function opvolgingBronLabel(
 
     case "NA_FINALISATIE":
       return "Na finalisatie";
+
+    case "HANDMATIG":
+      return "Handmatige invoer";
+
+    case "EXCEL_IMPORT":
+      return "Excel-import";
   }
 }
 
