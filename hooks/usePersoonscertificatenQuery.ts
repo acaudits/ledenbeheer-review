@@ -38,6 +38,7 @@ export const PERSOONSCERTIFICATEN_QUERY_SLEUTEL = [
 
 const FILTERPARAMETERS: Record<string, string> = {
   naamPersoon: "filterNaamPersoon",
+  aantalAttesten: "filterAantalAttesten",
   telefoonnummer: "filterTelefoonnummer",
   mailadres: "filterMailadres",
   ovamId: "filterOvamId",

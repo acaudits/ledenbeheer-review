@@ -184,6 +184,14 @@ function maakTekstfilter(expressie: Prisma.Sql, waarde: string) {
 
 function sorteerExpressie(sortering: PersoonscertificaatSortering) {
   switch (sortering) {
+    case "aantalAttesten":
+      return Prisma.sql`
+        COALESCE(
+          aps."aantal_attesten",
+          0
+        )::integer
+      `;
+
     case "naamPersoon":
       return Prisma.sql`
         l."naam_persoon"
@@ -433,6 +441,37 @@ export async function laadPersoonscertificaatSelectie(invoer: SelectieInvoer) {
           ) = ${uitgereiktMaand}
         `;
 
+  const aantalAttestenFilterSql = (() => {
+    const filter = contract.aantalAttestenFilter;
+
+    if (filter === null) {
+      return Prisma.empty;
+    }
+
+    switch (filter.operator) {
+      case "gelijk":
+        return Prisma.sql`
+          AND "aantalAttesten" = ${filter.waarde}
+        `;
+
+      case "kleiner":
+        return Prisma.sql`
+          AND "aantalAttesten" < ${filter.waarde}
+        `;
+
+      case "groter":
+        return Prisma.sql`
+          AND "aantalAttesten" > ${filter.waarde}
+        `;
+
+      case "tussen":
+        return Prisma.sql`
+          AND "aantalAttesten"
+            BETWEEN ${filter.minimum} AND ${filter.maximum}
+        `;
+    }
+  })();
+
   const targetFilter =
     targetStatus === null
       ? Prisma.empty
@@ -481,7 +520,17 @@ export async function laadPersoonscertificaatSelectie(invoer: SelectieInvoer) {
           tc.aantal,
           0
         )::integer
-          AS "aantalTerreincontroles"
+          AS "aantalTerreincontroles",
+        COALESCE(
+          nf.aantal,
+          0
+        )::integer
+          AS "aantalNaFinalisaties",
+        COALESCE(
+          os."inOpvolging",
+          FALSE
+        )::boolean
+          AS "inOpvolging"
       FROM "leden" l
       LEFT JOIN
         "attest_persoon_statistieken" aps
@@ -520,6 +569,49 @@ export async function laadPersoonscertificaatSelectie(invoer: SelectieInvoer) {
           t."ovam_id"
       ) tc
         ON tc."ovam_id" =
+          l."ovam_id"
+      LEFT JOIN (
+        SELECT
+          n."persoons_id",
+          COUNT(*)::integer
+            AS aantal
+        FROM
+          "na_finalisatie" n
+        WHERE
+          n."verwijderd_op"
+            IS NULL
+          AND NULLIF(
+            BTRIM(
+              n."persoons_id"
+            ),
+            ''
+          ) IS NOT NULL
+        GROUP BY
+          n."persoons_id"
+      ) nf
+        ON nf."persoons_id" =
+          l."ovam_id"
+      LEFT JOIN (
+        SELECT
+          s."ovam_id",
+          TRUE AS "inOpvolging"
+        FROM
+          "opvolging_sancties" s
+        WHERE
+          s."verwijderd_op"
+            IS NULL
+          AND s."opvolging_afgerond"
+            = FALSE
+          AND NULLIF(
+            BTRIM(
+              s."ovam_id"
+            ),
+            ''
+          ) IS NOT NULL
+        GROUP BY
+          s."ovam_id"
+      ) os
+        ON os."ovam_id" =
           l."ovam_id"
       WHERE l."verwijderd_op"
         IS NULL
@@ -594,13 +686,33 @@ export async function laadPersoonscertificaatSelectie(invoer: SelectieInvoer) {
       SELECT
         *,
         CASE
+          /* Geen attesten blijft altijd grijs. */
           WHEN "aantalAttesten" = 0
             THEN 'GRIJS'
-          WHEN
-            "aantalDeskcontroles" = 0
-            OR
-            "aantalTerreincontroles" = 0
+
+          /* Een actieve sanctie-opvolging krijgt voorrang. */
+          WHEN "inOpvolging" = TRUE
+            THEN 'FEL_ROOD'
+
+          /*
+           * Geen gewone terreincontrole en geen registratie
+           * bij Na finalisatie.
+           */
+          WHEN (
+            "aantalTerreincontroles" +
+            "aantalNaFinalisaties"
+          ) = 0
             THEN 'ROOD'
+
+          /* Er is controleactiviteit, maar geen deskcontrole. */
+          WHEN "aantalDeskcontroles" = 0
+            THEN 'ORANJE'
+
+          /*
+           * Beide targets zijn behaald. Paars wanneer het
+           * terreintarget alleen dankzij Na finalisatie is
+           * behaald; anders groen.
+           */
           WHEN
             "aantalDeskcontroles" >=
               CEIL(
@@ -608,7 +720,10 @@ export async function laadPersoonscertificaatSelectie(invoer: SelectieInvoer) {
                 0.05
               )
             AND
-            "aantalTerreincontroles" >=
+            (
+              "aantalTerreincontroles" +
+              "aantalNaFinalisaties"
+            ) >=
               LEAST(
                 4,
                 CEIL(
@@ -616,10 +731,28 @@ export async function laadPersoonscertificaatSelectie(invoer: SelectieInvoer) {
                   100.0
                 )
               )
-            THEN 'GROEN'
+            THEN
+              CASE
+                WHEN
+                  "aantalTerreincontroles" <
+                    LEAST(
+                      4,
+                      CEIL(
+                        "aantalAttesten" /
+                        100.0
+                      )
+                    )
+                  AND
+                  "aantalNaFinalisaties" > 0
+                THEN 'PAARS'
+                ELSE 'GROEN'
+              END
+
           ELSE 'GEEL'
         END AS "targetStatus"
       FROM controletellingen
+      WHERE TRUE
+      ${aantalAttestenFilterSql}
     ),
     gerangschikt AS (
       SELECT

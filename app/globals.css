@@ -132,3 +132,108 @@ table {
     animation: none;
   }
 }
+
+/* START PERSOONSCERTIFICAAT RECORDKAARTEN */
+.persoon-recordkaarten {
+  overflow: visible;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.persoon-recordkaarten > .overflow-x-auto {
+  overflow: visible;
+}
+
+.persoon-recordkaarten table {
+  display: block;
+  width: 100%;
+  min-width: 0;
+}
+
+.persoon-recordkaarten thead {
+  display: none;
+}
+
+.persoon-recordkaarten tbody {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.75rem;
+  width: 100%;
+}
+
+.persoon-recordkaarten tbody tr {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  overflow: hidden;
+  border: 1px solid #e2e8f0;
+  border-radius: 1rem;
+  background: #ffffff;
+  box-shadow: 0 1px 3px rgb(15 23 42 / 8%);
+}
+
+.persoon-recordkaarten tbody td {
+  display: block;
+  min-width: 0;
+  padding: 0.7rem 0.85rem;
+  overflow-wrap: anywhere;
+  border-bottom: 1px solid #f1f5f9;
+  color: #0f172a;
+}
+
+.persoon-recordkaarten tbody td:last-child {
+  border-bottom: 0;
+}
+
+.persoon-recordkaarten > div:last-child {
+  margin-top: 0.75rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.75rem;
+  background: #f8fafc;
+}
+
+@media (min-width: 768px) {
+  .persoon-recordkaarten tbody tr {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1280px) {
+  .persoon-recordkaarten tbody tr {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+/* EINDE PERSOONSCERTIFICAAT RECORDKAARTEN */
+
+
+/* START OPEN OPVOLGING VLAG */
+.open-opvolging-marker {
+  opacity: 0 !important;
+  fill-opacity: 0 !important;
+}
+
+.leaflet-tooltip.open-opvolging-vlag {
+  border: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  color: #78350f !important;
+  font-size: 26px !important;
+  font-weight: 900 !important;
+  line-height: 1 !important;
+  padding: 0 !important;
+  pointer-events: none !important;
+  text-shadow: 0 1px 2px white, 0 2px 4px rgb(15 23 42 / 35%);
+}
+
+.leaflet-tooltip.open-opvolging-vlag::before {
+  display: none !important;
+}
+/* EINDE OPEN OPVOLGING VLAG */
+
+/* BRUINE VLAG ZONDER ONDERLIGGENDE BOL */
+.leaflet-interactive.open-opvolging-marker,
+svg .open-opvolging-marker {
+  opacity: 0 !important;
+  fill-opacity: 0 !important;
+  stroke-opacity: 0 !important;
+}

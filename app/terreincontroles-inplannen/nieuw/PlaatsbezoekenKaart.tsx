@@ -21,6 +21,10 @@ type Props = {
     kleuren:
       TerreincontroleExcelRij["planningStatus"][],
   ) => void;
+  alleenOpenOpvolging: boolean;
+  onWijzigAlleenOpenOpvolging: (
+    waarde: boolean,
+  ) => void;
   actieveRijSleutel: string | null;
   focusVolgnummer: number;
   geselecteerdeRijSleutels:
@@ -53,6 +57,7 @@ const KAART_PLANNING_KLEUREN:
     [
       "ROOD",
       "GEEL",
+      "PAARS",
       "GROEN",
       "GRIJS",
     ];
@@ -105,6 +110,12 @@ function pinKleur(
       return {
         lijn: "#b45309",
         vulling: "#f59e0b",
+      };
+
+    case "PAARS":
+      return {
+        lijn: "#6b21a8",
+        vulling: "#a855f7",
       };
 
     case "GROEN":
@@ -274,6 +285,8 @@ export default function PlaatsbezoekenKaart({
   rijen,
   planningKleuren,
   onWijzigPlanningKleuren,
+  alleenOpenOpvolging,
+  onWijzigAlleenOpenOpvolging,
   actieveRijSleutel,
   focusVolgnummer,
   geselecteerdeRijSleutels,
@@ -484,6 +497,26 @@ export default function PlaatsbezoekenKaart({
             );
           })
           .addTo(kaart);
+
+        /* OPEN_OPVOLGING_BRUINE_VLAG_V1 */
+        if (rij.heeftOpenOpvolging) {
+          marker
+            .getElement()
+            ?.classList.add(
+              "open-opvolging-marker",
+            );
+
+          marker
+            .bindTooltip("⚑", {
+              permanent: true,
+              direction: "center",
+              className:
+                "open-opvolging-vlag",
+              offset: [5, -7],
+              opacity: 1,
+            })
+            .openTooltip();
+        }
 
         markerInstanties.current.set(
           rij.sleutel,
@@ -813,16 +846,11 @@ export default function PlaatsbezoekenKaart({
           <h3 className="text-base font-bold text-slate-950">
             Kaart plaatsbezoeken
           </h3>
-
-          <p className="mt-1 text-sm text-slate-600">
-            De kaart gebruikt hetzelfde zoek- en
-            kleurenfilter als de tabel.
-          </p>
         </div>
 
         <div
-          className="flex flex-wrap justify-end gap-2 text-xs font-bold"
-          aria-label="Filter plaatsbezoeken op kleur"
+          className="flex flex-nowrap justify-end gap-2 text-xs font-bold items-center overflow-x-auto whitespace-nowrap max-w-full [&>button]:shrink-0 px-2 py-2 scroll-px-2"
+          aria-label="Filter plaatsbezoeken op kleur en open opvolging"
         >
           <button
             type="button"
@@ -840,7 +868,7 @@ export default function PlaatsbezoekenKaart({
             }
             className={`rounded-full border border-indigo-200 bg-indigo-50 px-3 py-1 text-indigo-800 transition hover:bg-indigo-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 ${
               alleKleurenGeselecteerd
-                ? "ring-2 ring-indigo-500 ring-offset-1"
+                ? "ring-2 ring-indigo-500 ring-inset"
                 : "opacity-55"
             }`}
           >
@@ -858,15 +886,23 @@ export default function PlaatsbezoekenKaart({
             },
             {
               kleur: "GEEL" as const,
-              label: "2 weken",
+              label: "Controle < 2 weken",
               stijl:
                 "border-amber-200 bg-amber-50 text-amber-900 hover:bg-amber-100 focus:ring-amber-500",
               actieveStijl:
                 "ring-amber-500",
             },
             {
+              kleur: "PAARS" as const,
+              label: "Target via na finalisatie",
+              stijl:
+                "border-purple-200 bg-purple-50 text-purple-800 hover:bg-purple-100 focus:ring-purple-500",
+              actieveStijl:
+                "ring-purple-500",
+            },
+            {
               kleur: "GROEN" as const,
-              label: "Ok",
+              label: "Target bereikt",
               stijl:
                 "border-emerald-200 bg-emerald-50 text-emerald-800 hover:bg-emerald-100 focus:ring-emerald-500",
               actieveStijl:
@@ -917,7 +953,7 @@ export default function PlaatsbezoekenKaart({
                   }
                   className={`rounded-full border px-3 py-1 transition focus:outline-none focus:ring-2 ${stijl} ${
                     geselecteerd
-                      ? `ring-2 ${actieveStijl} ring-offset-1`
+                      ? `ring-2 ${actieveStijl} ring-inset`
                       : "opacity-45"
                   }`}
                 >
@@ -926,6 +962,48 @@ export default function PlaatsbezoekenKaart({
               );
             },
           )}
+
+          <button
+            type="button"
+            aria-pressed={
+              (
+                alleenOpenOpvolging ||
+                KAART_PLANNING_KLEUREN.every(
+                  (kleur) =>
+                    planningKleuren.includes(
+                      kleur,
+                    ),
+                )
+              )
+            }
+            title="Toon alleen personen met een open opvolging of sanctie"
+            onClick={() =>
+              onWijzigAlleenOpenOpvolging(
+                !alleenOpenOpvolging,
+              )
+            }
+            className={`rounded-full border border-amber-900 bg-amber-50 px-3 py-1 text-amber-950 transition hover:bg-amber-100 focus:outline-none focus:ring-2 focus:ring-amber-900 ${
+              (
+                alleenOpenOpvolging ||
+                KAART_PLANNING_KLEUREN.every(
+                  (kleur) =>
+                    planningKleuren.includes(
+                      kleur,
+                    ),
+                )
+              )
+                ? "ring-2 ring-amber-900 ring-inset opacity-100"
+                : "opacity-45"
+            }`}
+          >
+            <span
+              aria-hidden="true"
+              className="mr-1 text-base leading-none"
+            >
+              ⚑
+            </span>
+            Open opvolging/sanctie
+          </button>
         </div>
       </div>
 
@@ -1027,6 +1105,31 @@ export default function PlaatsbezoekenKaart({
                   {
                     detailRij.terreincontroleTarget
                   }
+                </dd>
+
+                <dt className="font-bold text-slate-500">
+                  Na finalisatie
+                </dt>
+                <dd className="font-semibold text-slate-900">
+                  {
+                    detailRij.aantalNaFinalisaties ??
+                    0
+                  }
+                </dd>
+
+                <dt className="font-bold text-slate-500">
+                  Opvolging
+                </dt>
+                <dd
+                  className={
+                    detailRij.heeftOpenOpvolging
+                      ? "font-bold text-amber-900"
+                      : "font-semibold text-slate-900"
+                  }
+                >
+                  {detailRij.heeftOpenOpvolging
+                    ? "⚑ Open"
+                    : "Geen open opvolging"}
                 </dd>
 
                 <dt className="font-bold text-slate-500">

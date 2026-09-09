@@ -4,6 +4,8 @@ import { TopTienNonConformiteiten } from "@/components/TopTienNonConformiteiten"
 import { PersoonsTerreincontroles } from "@/components/PersoonsTerreincontroles";
 import { PersoonsIngeplandeTerreincontroles } from "@/components/PersoonsIngeplandeTerreincontroles";
 import { PersoonsNaFinalisatie } from "@/components/PersoonsNaFinalisatie";
+import { PersoonsDossierSectieKaart } from "@/components/PersoonsDossierSectieKaart";
+import { PersoonsOpvolgingSancties } from "@/components/PersoonsOpvolgingSancties";
 import {
   notFound,
 } from "next/navigation";
@@ -262,6 +264,54 @@ export default async function PersoonscertificaatDetailPage({
   const aantalAttesten =
     atteststatistiek?.aantalAttesten ??
     0;
+
+  /*
+   * Deze gegevens worden uitsluitend
+   * server-side geladen, nadat de
+   * machtiging is gecontroleerd.
+   */
+  const [
+    aantalNaFinalisaties,
+    openSanctieOpvolging,
+    aantalOpvolgingSancties,
+  ] = await Promise.all([
+    prisma.naFinalisatie.count({
+      where: {
+        verwijderdOp: null,
+        persoonsId: {
+          equals: persoon.ovamId,
+          mode: "insensitive",
+        },
+      },
+    }),
+
+    prisma.opvolgingSanctie.findFirst({
+      where: {
+        verwijderdOp: null,
+        opvolgingAfgerond: false,
+        ovamId: {
+          equals: persoon.ovamId,
+          mode: "insensitive",
+        },
+      },
+      select: {
+        id: true,
+      },
+    }),
+
+    prisma.opvolgingSanctie.count({
+      where: {
+        verwijderdOp: null,
+        ovamId: {
+          equals: persoon.ovamId,
+          mode: "insensitive",
+        },
+      },
+    }),
+  ]);
+
+  const inOpvolging =
+    openSanctieOpvolging !== null;
 
   const ingeplandeTerreincontroles =
     await prisma.terreincontrole.findMany({
@@ -584,7 +634,7 @@ export default async function PersoonscertificaatDetailPage({
             {persoon.naamPersoon}
           </h2>
 
-          <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+          <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
             <div className="rounded-2xl bg-white/10 p-4">
               <p className="text-2xl font-bold">
                 {aantalAttesten}
@@ -630,6 +680,38 @@ export default async function PersoonscertificaatDetailPage({
 
               <p className="text-sm text-emerald-100">
                 Gefinaliseerde terreincontroles
+              </p>
+            </div>
+
+            <div className="rounded-2xl bg-white/10 p-4">
+              <p className="text-2xl font-bold">
+                {aantalNaFinalisaties}
+              </p>
+
+              <p className="text-sm text-emerald-100">
+                Na finalisatie
+              </p>
+            </div>
+
+            <div
+              className={
+                inOpvolging
+                  ? "rounded-2xl border border-[#f5d0a9] bg-[#78350f]/80 p-4"
+                  : "rounded-2xl bg-white/10 p-4"
+              }
+            >
+              <p className="text-2xl font-bold">
+                {inOpvolging ? "Ja" : "Nee"}
+              </p>
+
+              <p
+                className={
+                  inOpvolging
+                    ? "text-sm text-orange-100"
+                    : "text-sm text-emerald-100"
+                }
+              >
+                In opvolging
               </p>
             </div>
 
@@ -730,30 +812,39 @@ export default async function PersoonscertificaatDetailPage({
         aantalTerreincontroles={
           ingeplandeTerreincontroles.length
         }
+        aantalNaFinalisaties={
+          aantalNaFinalisaties
+        }
+        inOpvolging={
+          inOpvolging
+        }
       />
 
+      <PersoonsDossierSectieKaart
+        titel="Top 10 meest gegeven non-conformiteiten"
+        beschrijving="De meest voorkomende non-conformiteiten uit desk- en terreincontroles."
+        aantal={topTienNonConformiteiten.length}
+        aantalLabelEnkelvoud="non-conformiteit"
+        aantalLabelMeervoud="non-conformiteiten"
+        accent="purple"
+      >
       <TopTienNonConformiteiten
         rijen={
           topTienNonConformiteiten
         }
       />
+      </PersoonsDossierSectieKaart>
 
+      <PersoonsDossierSectieKaart
+        titel="Deskcontroles en non-conformiteiten"
+        beschrijving="Actieve deskcontroles met de vastgestelde non-conformiteiten."
+        aantal={persoon.deskcontroles.length}
+        aantalLabelEnkelvoud="deskcontrole"
+        aantalLabelMeervoud="deskcontroles"
+        accent="emerald"
+      >
       <section className="space-y-4">
-        <div>
-          <h2 className="text-xl font-bold text-slate-950">
-
-            Deskcontroles en non-conformiteiten
-          </h2>
-
-          <p className="mt-1 text-sm text-slate-600">
-
-            Alle actieve deskcontroles,
-            met de non-conformiteiten per
-            controle.
-          </p>
-        </div>
-
-        {persoon.deskcontroles.length ===
+{persoon.deskcontroles.length ===
         0 ? (
           <div className="rounded-3xl border border-slate-200 bg-white px-6 py-12 text-center shadow-sm">
             <p className="font-bold text-slate-900">
@@ -769,11 +860,11 @@ export default async function PersoonscertificaatDetailPage({
         ) : (
           persoon.deskcontroles.map(
             (deskcontrole) => (
-              <article
+              <details
                 key={deskcontrole.id}
                 className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm"
               >
-                <header className="flex flex-col gap-4 border-b border-slate-200 bg-slate-50 px-5 py-5 lg:flex-row lg:items-start lg:justify-between">
+                <summary className="flex flex-col gap-4 border-b border-slate-200 bg-slate-50 px-5 py-5 lg:flex-row lg:items-start lg:justify-between cursor-pointer list-none">
                   <div>
                     <div className="flex flex-wrap items-center gap-2">
                       <h3 className="text-lg font-bold text-slate-950">
@@ -825,7 +916,7 @@ export default async function PersoonscertificaatDetailPage({
                   >
                     Deskcontrole bekijken
                   </Link>
-                </header>
+                </summary>
 
                 <dl className="grid gap-4 border-b border-slate-200 px-5 py-5 sm:grid-cols-2 lg:grid-cols-4">
                   <GegevensVeld
@@ -987,25 +1078,66 @@ export default async function PersoonscertificaatDetailPage({
                     </table>
                   </div>
                 )}
-              </article>
+              </details>
             ),
           )
         )}
       </section>
+      </PersoonsDossierSectieKaart>
 
-      <PersoonsTerreincontroles
-        lidId={persoon.id}
-      />
+      <PersoonsDossierSectieKaart
+        titel="Terreincontroles en non-conformiteiten"
+        beschrijving="Gefinaliseerde terreincontroles met de vastgestelde non-conformiteiten."
+        aantal={terreincontroleDossiers.length}
+        aantalLabelEnkelvoud="terreincontrole"
+        aantalLabelMeervoud="terreincontroles"
+        accent="sky"
+      >
+        <PersoonsTerreincontroles
+          lidId={persoon.id}
+        />
+      </PersoonsDossierSectieKaart>
 
-      <PersoonsIngeplandeTerreincontroles
-        terreincontroles={
-          ingeplandeTerreincontroles
-        }
-      />
+      <PersoonsDossierSectieKaart
+        titel="Ingeplande terreincontroles"
+        beschrijving="Actieve en toekomstige plaatsbezoeken voor dit persoonscertificaat."
+        aantal={ingeplandeTerreincontroles.length}
+        aantalLabelEnkelvoud="plaatsbezoek"
+        aantalLabelMeervoud="plaatsbezoeken"
+        accent="amber"
+      >
+        <PersoonsIngeplandeTerreincontroles
+          terreincontroles={
+            ingeplandeTerreincontroles
+          }
+        />
+      </PersoonsDossierSectieKaart>
 
-      <PersoonsNaFinalisatie
-        lidId={persoon.id}
-      />
+      <PersoonsDossierSectieKaart
+        titel="Opvolging en sancties"
+        beschrijving="Open en afgeronde opvolgingen en sancties voor dit OVAM-ID."
+        aantal={aantalOpvolgingSancties}
+        aantalLabelEnkelvoud="registratie"
+        aantalLabelMeervoud="registraties"
+        accent="brown"
+      >
+        <PersoonsOpvolgingSancties
+          lidId={persoon.id}
+        />
+      </PersoonsDossierSectieKaart>
+
+      <PersoonsDossierSectieKaart
+        titel="Na finalisatie"
+        beschrijving="Geregistreerde controles die na de finalisatie zijn uitgevoerd."
+        aantal={aantalNaFinalisaties}
+        aantalLabelEnkelvoud="registratie"
+        aantalLabelMeervoud="registraties"
+        accent="purple"
+      >
+        <PersoonsNaFinalisatie
+          lidId={persoon.id}
+        />
+      </PersoonsDossierSectieKaart>
     </div>
   );
 }

@@ -2,8 +2,11 @@ import "server-only";
 
 export const TARGETSTATUSSEN = [
   "GRIJS",
+  "FEL_ROOD",
   "ROOD",
+  "ORANJE",
   "GEEL",
+  "PAARS",
   "GROEN",
 ] as const;
 

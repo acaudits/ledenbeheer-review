@@ -28,31 +28,66 @@ function berekenTargetStatus({
   aantalAttesten,
   aantalDeskcontroles,
   aantalTerreincontroles,
+  aantalNaFinalisaties,
+  inOpvolging,
 }: {
   aantalAttesten: number;
   aantalDeskcontroles: number;
   aantalTerreincontroles: number;
+  aantalNaFinalisaties: number;
+  inOpvolging: boolean;
 }): TargetStatus {
   if (aantalAttesten === 0) {
     return "GRIJS";
   }
 
-  if (aantalDeskcontroles === 0 || aantalTerreincontroles === 0) {
+  if (inOpvolging) {
+    return "FEL_ROOD";
+  }
+
+  const gecombineerdTerreinaantal =
+    aantalTerreincontroles +
+    aantalNaFinalisaties;
+
+  if (gecombineerdTerreinaantal === 0) {
     return "ROOD";
   }
 
-  const targetDeskcontroles = Math.ceil(aantalAttesten * 0.05);
-
-  const targetTerreincontroles = Math.min(4, Math.ceil(aantalAttesten / 100));
-
-  if (
-    aantalDeskcontroles >= targetDeskcontroles &&
-    aantalTerreincontroles >= targetTerreincontroles
-  ) {
-    return "GROEN";
+  if (aantalDeskcontroles === 0) {
+    return "ORANJE";
   }
 
-  return "GEEL";
+  const targetDeskcontroles =
+    Math.ceil(
+      aantalAttesten * 0.05,
+    );
+
+  const targetTerreincontroles =
+    Math.min(
+      4,
+      Math.ceil(
+        aantalAttesten / 100,
+      ),
+    );
+
+  const beideTargetsBehaald =
+    aantalDeskcontroles >=
+      targetDeskcontroles &&
+    gecombineerdTerreinaantal >=
+      targetTerreincontroles;
+
+  if (!beideTargetsBehaald) {
+    return "GEEL";
+  }
+
+  const terreinTargetBehaaldDankzijNaFinalisatie =
+    aantalTerreincontroles <
+      targetTerreincontroles &&
+    aantalNaFinalisaties > 0;
+
+  return terreinTargetBehaaldDankzijNaFinalisatie
+    ? "PAARS"
+    : "GROEN";
 }
 
 function formatteerDatum(datum: Date | null) {
@@ -228,6 +263,8 @@ export async function GET(verzoek: Request) {
       atteststatistieken,
       deskcontroletellingen,
       terreincontroletellingen,
+      naFinalisatietellingen,
+      openSanctieOpvolgingen,
     ] = await Promise.all([
       ovamIds.length === 0
         ? Promise.resolve([])
@@ -286,6 +323,57 @@ export async function GET(verzoek: Request) {
                 t."ovam_id"
             `,
           ),
+
+      ovamIds.length === 0
+        ? Promise.resolve([])
+        : prisma.$queryRaw<
+            {
+              ovamId: string;
+              aantal: number;
+            }[]
+          >(
+            Prisma.sql`
+              SELECT
+                n."persoons_id"
+                  AS "ovamId",
+                COUNT(*)::integer
+                  AS "aantal"
+              FROM
+                "na_finalisatie" n
+              WHERE
+                n."verwijderd_op"
+                  IS NULL
+                AND n."persoons_id" IN (
+                  ${Prisma.join(ovamIds)}
+                )
+              GROUP BY
+                n."persoons_id"
+            `,
+          ),
+
+      ovamIds.length === 0
+        ? Promise.resolve([])
+        : prisma.$queryRaw<
+            {
+              ovamId: string;
+            }[]
+          >(
+            Prisma.sql`
+              SELECT DISTINCT
+                s."ovam_id"
+                  AS "ovamId"
+              FROM
+                "opvolging_sancties" s
+              WHERE
+                s."verwijderd_op"
+                  IS NULL
+                AND s."opvolging_afgerond"
+                  = FALSE
+                AND s."ovam_id" IN (
+                  ${Prisma.join(ovamIds)}
+                )
+            `,
+          ),
     ]);
 
     const attestenPerPersoon = new Map(
@@ -311,6 +399,22 @@ export async function GET(verzoek: Request) {
       ),
     );
 
+    const naFinalisatiesPerPersoon = new Map(
+      naFinalisatietellingen.map(
+        (telling) => [
+          telling.ovamId,
+          telling.aantal,
+        ],
+      ),
+    );
+
+    const personenInOpvolging = new Set(
+      openSanctieOpvolgingen.map(
+        (registratie) =>
+          registratie.ovamId,
+      ),
+    );
+
     const rijen = leden.map((lid) => {
       const aantalAttesten = attestenPerPersoon.get(lid.ovamId) ?? 0;
 
@@ -320,6 +424,16 @@ export async function GET(verzoek: Request) {
         terreincontrolesPerPersoon.get(
           lid.ovamId,
         ) ?? 0;
+
+      const aantalNaFinalisaties =
+        naFinalisatiesPerPersoon.get(
+          lid.ovamId,
+        ) ?? 0;
+
+      const inOpvolging =
+        personenInOpvolging.has(
+          lid.ovamId,
+        );
 
       const targetDeskcontroles =
         aantalAttesten === 0 ? 0 : Math.ceil(aantalAttesten * 0.05);
@@ -331,6 +445,8 @@ export async function GET(verzoek: Request) {
         aantalAttesten,
         aantalDeskcontroles,
         aantalTerreincontroles,
+        aantalNaFinalisaties,
+        inOpvolging,
       });
 
       const geselecteerdeStatus = targetStatusPerLid.get(lid.id);
@@ -339,20 +455,27 @@ export async function GET(verzoek: Request) {
         throw new Error("De berekende targetstatus is niet consistent.");
       }
 
-      const controleTargetStatusToelichting =
-        aantalAttesten === 0
-          ? "Geen attesten — er zijn geen controletargets."
-          : [
-              `${aantalAttesten} attesten`,
-              `deskcontroles ${aantalDeskcontroles}/${targetDeskcontroles}`,
-              `terreincontroles ${aantalTerreincontroles}/${targetTerreincontroles}`,
-            ].join(" — ");
+
+
+      const controleTargetStatusToelichting = [
+        `${aantalAttesten} attesten`,
+        `deskcontrole ${aantalDeskcontroles}/${targetDeskcontroles}`,
+        `terreincontrole ${aantalTerreincontroles}/${targetTerreincontroles}`,
+        `na finalisatie ${aantalNaFinalisaties}`,
+        `in opvolging ${inOpvolging ? "Ja" : "Nee"}`,
+      ].join(" — ");
 
       return {
         id: lid.id,
         naamPersoon: lid.naamPersoon,
         controleTargetStatus,
+        aantalAttesten,
         controleTargetStatusToelichting,
+        aantalNaFinalisaties,
+        inOpvolging:
+          inOpvolging
+            ? "Ja"
+            : "Nee",
         telefoonnummer:
           normaliseerTelefoonnummer(lid.telefoonnummer) ?? lid.telefoonnummer,
         mailadres: lid.mailadres,

@@ -19,6 +19,11 @@ const kolommen: CertificaatKolom[] = [
     type: "statusbol",
   },
   {
+    sleutel: "aantalAttesten",
+    label: "Aantal attesten",
+    type: "getal",
+  },
+  {
     sleutel: "telefoonnummer",
     label: "Telefoonnummer",
   },

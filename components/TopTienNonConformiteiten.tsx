@@ -85,19 +85,6 @@ export function TopTienNonConformiteiten({
   if (rijen.length === 0) {
     return (
       <section className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
-        <header className="border-b border-slate-200 px-6 py-5 sm:px-8">
-          <h2 className="text-xl font-bold text-slate-950">
-            Top 10 meest gegeven
-            non-conformiteiten
-          </h2>
-
-          <p className="mt-1 text-sm text-slate-600">
-            Gebaseerd op het NC-ID van
-            deskcontroles en gefinaliseerde
-            terreincontroles.
-          </p>
-        </header>
-
         <div className="px-6 py-12 text-center">
           <p className="font-bold text-slate-900">
             Geen non-conformiteiten

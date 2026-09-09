@@ -22,6 +22,7 @@ export type PlanningStatus =
   | "GRIJS"
   | "ROOD"
   | "GEEL"
+  | "PAARS"
   | "GROEN";
 
 export type TerreincontroleExcelRij =
@@ -29,6 +30,8 @@ export type TerreincontroleExcelRij =
     aantalAttesten: number;
     terreincontroleTarget: number;
     aantalTerreincontroles: number;
+    aantalNaFinalisaties?: number;
+    heeftOpenOpvolging?: boolean;
     aantalTerreincontrolesNodig: number;
     laatsteTerreincontrole: string | null;
     planningStatus: PlanningStatus;
@@ -612,7 +615,7 @@ function planningStatusTekst({
   return "Terreincontroletarget behaald.";
 }
 
-export async function leesTerreincontrolesUitExcel(
+async function leesTerreincontrolesUitExcelBasis(
   vorigeStatus: TerreincontroleExcelState,
   formData: FormData,
 ): Promise<TerreincontroleExcelState> {
@@ -1069,4 +1072,187 @@ export async function bevestigTerreincontrolesUitExcel(
   }
 
   return resultaat;
+}
+
+
+/* KLEURLOGICA_NA_FINALISATIE_V1 */
+export async function leesTerreincontrolesUitExcel(
+  vorigeStatus: TerreincontroleExcelState,
+  formData: FormData,
+) {
+  const resultaat =
+    await leesTerreincontrolesUitExcelBasis(
+      vorigeStatus,
+      formData,
+    );
+
+  const rijen = resultaat.rijen ?? [];
+
+  if (rijen.length === 0) {
+    return resultaat;
+  }
+
+  const ovamIds = [
+    ...new Set(
+      rijen
+        .map((rij) =>
+          rij.ovamId
+            ?.trim()
+            .toLocaleUpperCase("nl-BE"),
+        )
+        .filter(
+          (waarde): waarde is string =>
+            Boolean(waarde),
+        ),
+    ),
+  ];
+
+  if (ovamIds.length === 0) {
+    return resultaat;
+  }
+
+  const [
+    naFinalisaties,
+    openOpvolgingen,
+  ] = await Promise.all([
+    prisma.naFinalisatie.findMany({
+      where: {
+        verwijderdOp: null,
+        geregistreerd: true,
+        persoonsId: {
+          in: ovamIds,
+          mode: "insensitive",
+        },
+      },
+      select: {
+        persoonsId: true,
+      },
+    }),
+
+    prisma.opvolgingSanctie.findMany({
+      where: {
+        verwijderdOp: null,
+        opvolgingAfgerond: false,
+        ovamId: {
+          in: ovamIds,
+          mode: "insensitive",
+        },
+      },
+      select: {
+        ovamId: true,
+      },
+    }),
+  ]);
+
+  const naFinalisatieTellingen =
+    new Map<string, number>();
+
+  for (const registratie of naFinalisaties) {
+    const sleutel =
+      registratie.persoonsId
+        ?.trim()
+        .toLocaleUpperCase("nl-BE");
+
+    if (!sleutel) continue;
+
+    naFinalisatieTellingen.set(
+      sleutel,
+      (
+        naFinalisatieTellingen.get(
+          sleutel,
+        ) ?? 0
+      ) + 1,
+    );
+  }
+
+  const openOpvolgingIds =
+    new Set(
+      openOpvolgingen
+        .map((registratie) =>
+          registratie.ovamId
+            ?.trim()
+            .toLocaleUpperCase("nl-BE"),
+        )
+        .filter(
+          (waarde): waarde is string =>
+            Boolean(waarde),
+        ),
+    );
+
+  return {
+    ...resultaat,
+    rijen: rijen.map((rij) => {
+      const sleutel =
+        rij.ovamId
+          ?.trim()
+          .toLocaleUpperCase("nl-BE") ?? "";
+
+      const aantalNaFinalisaties =
+        naFinalisatieTellingen.get(
+          sleutel,
+        ) ?? 0;
+
+      const heeftOpenOpvolging =
+        openOpvolgingIds.has(
+          sleutel,
+        );
+
+      const totaal =
+        rij.aantalTerreincontroles +
+        aantalNaFinalisaties;
+
+      let planningStatus:
+        PlanningStatus;
+
+      if (
+        rij.planningStatus === "GRIJS" ||
+        rij.planningStatus === "GEEL"
+      ) {
+        planningStatus =
+          rij.planningStatus;
+      } else if (
+        rij.aantalTerreincontroles >=
+        rij.terreincontroleTarget
+      ) {
+        planningStatus = "GROEN";
+      } else if (
+        aantalNaFinalisaties > 0 &&
+        totaal >=
+          rij.terreincontroleTarget
+      ) {
+        planningStatus = "PAARS";
+      } else {
+        planningStatus = "ROOD";
+      }
+
+      const aantalNodig =
+        Math.max(
+          0,
+          rij.terreincontroleTarget -
+            totaal,
+        );
+
+      const planningStatusTekst =
+        planningStatus === "PAARS"
+          ? `Target bereikt met ${rij.aantalTerreincontroles} terreincontrole(s) en ${aantalNaFinalisaties} controle(s) na finalisatie.`
+          : planningStatus === "GROEN"
+            ? `Target bereikt met ${rij.aantalTerreincontroles} terreincontrole(s).`
+            : planningStatus === "ROOD"
+              ? `Nog ${aantalNodig} controle(s) nodig. ${rij.aantalTerreincontroles} terreincontrole(s) en ${aantalNaFinalisaties} na finalisatie.`
+              : rij.planningStatusTekst;
+
+      return {
+        ...rij,
+        aantalNaFinalisaties,
+        heeftOpenOpvolging,
+        aantalTerreincontrolesNodig:
+          aantalNodig,
+        planningStatus,
+        planningStatusTekst:
+          heeftOpenOpvolging
+            ? `${planningStatusTekst} Open opvolging of sanctie aanwezig.`
+            : planningStatusTekst,
+      };
+    }),
+  };
 }

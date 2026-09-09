@@ -126,20 +126,7 @@ export async function PersoonsNaFinalisatie({
 
   return (
     <section className="space-y-4">
-      <div>
-        <h2 className="text-xl font-bold text-slate-950">
-          Na finalisatie
-        </h2>
-
-        <p className="mt-1 text-sm text-slate-600">
-          Geregistreerde controles na
-          finalisatie die via PersoonsID
-          aan dit persoonscertificaat
-          gekoppeld zijn.
-        </p>
-      </div>
-
-      <div className="grid gap-3 sm:grid-cols-3">
+<div className="grid gap-3 sm:grid-cols-3">
         <article className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-emerald-950 shadow-sm">
           <p className="text-xs font-bold uppercase tracking-wide opacity-70">
             Na finalisatie
@@ -198,7 +185,7 @@ export async function PersoonsNaFinalisatie({
           </p>
         </div>
       ) : (
-        <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
+        <div className="persoon-recordkaarten overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
           <div className="overflow-x-auto">
             <table className="min-w-[1500px] w-full text-left text-sm">
               <thead className="bg-slate-50 text-xs font-bold uppercase tracking-wide text-slate-500">

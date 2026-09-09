@@ -96,6 +96,360 @@ type KolomMenuProps = {
   onSorteringVerplaatsen: (verschil: -1 | 1) => void;
 };
 
+const AANTAL_ATTESTEN_PREFIX = "__aantal_attesten__";
+
+type AantalAttestenOperator =
+  | "gelijk"
+  | "kleiner"
+  | "groter"
+  | "tussen";
+
+function leesAantalAttestenConcept(filter: string) {
+  if (!filter.startsWith(AANTAL_ATTESTEN_PREFIX)) {
+    return {
+      operator: "gelijk" as AantalAttestenOperator,
+      eerste: "",
+      tweede: "",
+    };
+  }
+
+  try {
+    const inhoud = JSON.parse(
+      decodeURIComponent(filter.slice(AANTAL_ATTESTEN_PREFIX.length)),
+    ) as Record<string, unknown>;
+
+    const operator: AantalAttestenOperator =
+      inhoud.operator === "kleiner" ||
+      inhoud.operator === "groter" ||
+      inhoud.operator === "tussen"
+        ? inhoud.operator
+        : "gelijk";
+
+    return {
+      operator,
+      eerste: String(
+        operator === "tussen" ? (inhoud.minimum ?? "") : (inhoud.waarde ?? ""),
+      ),
+      tweede: String(operator === "tussen" ? (inhoud.maximum ?? "") : ""),
+    };
+  } catch {
+    return {
+      operator: "gelijk" as AantalAttestenOperator,
+      eerste: "",
+      tweede: "",
+    };
+  }
+}
+
+function codeerAantalAttestenFilter(
+  operator: AantalAttestenOperator,
+  eerste: string,
+  tweede: string,
+) {
+  const eersteGetal = Number(eerste);
+
+  if (!Number.isInteger(eersteGetal) || eersteGetal < 0) {
+    return "";
+  }
+
+  const inhoud =
+    operator === "tussen"
+      ? {
+          operator,
+          minimum: eersteGetal,
+          maximum: Number(tweede),
+        }
+      : {
+          operator,
+          waarde: eersteGetal,
+        };
+
+  return (
+    AANTAL_ATTESTEN_PREFIX +
+    encodeURIComponent(JSON.stringify(inhoud))
+  );
+}
+
+function AantalAttestenMenu({
+  kolom,
+  filter,
+  sortering,
+  prioriteit,
+  aantalSorteringen,
+  onFilterWijzigen,
+  onSorteren,
+  onSorteringVerwijderen,
+  onSorteringVerplaatsen,
+}: KolomMenuProps) {
+  const menuRef = useRef<HTMLDetailsElement>(null);
+  const bestaand = leesAantalAttestenConcept(filter);
+
+  const [operator, setOperator] = useState<AantalAttestenOperator>(
+    bestaand.operator,
+  );
+  const [eerste, setEerste] = useState(bestaand.eerste);
+  const [tweede, setTweede] = useState(bestaand.tweede);
+
+  useEffect(() => {
+    const volgend = leesAantalAttestenConcept(filter);
+    setOperator(volgend.operator);
+    setEerste(volgend.eerste);
+    setTweede(volgend.tweede);
+  }, [filter]);
+
+  const eersteGetal = Number(eerste);
+  const tweedeGetal = Number(tweede);
+
+  const geldig =
+    eerste !== "" &&
+    Number.isInteger(eersteGetal) &&
+    eersteGetal >= 0 &&
+    (operator !== "tussen" ||
+      (tweede !== "" &&
+        Number.isInteger(tweedeGetal) &&
+        tweedeGetal >= eersteGetal));
+
+  function sluitMenu() {
+    if (menuRef.current) {
+      menuRef.current.open = false;
+    }
+  }
+
+  const actief = Boolean(filter || sortering);
+
+  return (
+    <details
+      ref={menuRef}
+      className="group relative z-0 min-w-0 open:z-[100]"
+      data-terreincontrole-kolommenu="true"
+      onToggle={(event) => {
+        if (!event.currentTarget.open) {
+          return;
+        }
+
+        document
+          .querySelectorAll<HTMLDetailsElement>(
+            'details[data-terreincontrole-kolommenu="true"][open]',
+          )
+          .forEach((menu) => {
+            if (menu !== event.currentTarget) {
+              menu.open = false;
+            }
+          });
+      }}
+    >
+      <summary
+        className={`flex min-h-8 w-full cursor-pointer list-none items-center justify-between gap-1.5 rounded-lg border px-2.5 py-1.5 text-left text-[11px] font-bold leading-tight transition ${
+          actief
+            ? "border-emerald-400 bg-emerald-50 text-emerald-900"
+            : "border-slate-300 bg-white text-slate-700 hover:border-emerald-300 hover:bg-emerald-50"
+        }`}
+      >
+        <span>{kolom.label}</span>
+
+        {sortering ? (
+          <span className="inline-flex items-center gap-0.5 rounded-full bg-emerald-700 px-1.5 py-0.5 text-[9px] font-black leading-none text-white">
+            {sortering.richting === "oplopend" ? "↑" : "↓"}
+            {prioriteit}
+          </span>
+        ) : null}
+
+        {filter ? (
+          <span
+            className="size-1.5 rounded-full bg-amber-500"
+            aria-label="Filter actief"
+          />
+        ) : null}
+
+        <span
+          aria-hidden="true"
+          className="text-[10px] text-slate-400 transition group-open:rotate-180"
+        >
+          ▼
+        </span>
+      </summary>
+
+      <div className="absolute left-0 right-0 top-full z-[120] mt-1 flex max-h-[min(28rem,calc(100vh-1rem))] min-w-60 flex-col overflow-hidden rounded-xl border border-slate-200 bg-white p-2.5 shadow-2xl ring-1 ring-slate-900/5">
+        <p className="text-[11px] font-black uppercase tracking-wide text-slate-500">
+          {kolom.label}
+        </p>
+
+        <div className="mt-3 grid grid-cols-2 gap-1.5">
+          <button
+            type="button"
+            onClick={() => {
+              onSorteren("oplopend");
+              sluitMenu();
+            }}
+            className={`rounded-lg border px-2 py-1.5 text-left text-[11px] font-bold transition ${
+              sortering?.richting === "oplopend"
+                ? "border-emerald-500 bg-emerald-100 text-emerald-900"
+                : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
+            }`}
+          >
+            ↑ Oplopend
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              onSorteren("aflopend");
+              sluitMenu();
+            }}
+            className={`rounded-lg border px-2 py-1.5 text-[11px] font-bold ${
+              sortering?.richting === "aflopend"
+                ? "border-emerald-500 bg-emerald-100 text-emerald-900"
+                : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
+            }`}
+          >
+            ↓ Aflopend
+          </button>
+        </div>
+
+        {sortering ? (
+          <div className="mt-2 rounded-lg border border-slate-200 bg-slate-50 p-2">
+            <p className="text-[11px] font-bold text-slate-600">
+              Sorteerprioriteit {prioriteit}
+            </p>
+
+            <div className="mt-2 grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                disabled={prioriteit === 1}
+                onClick={() => onSorteringVerplaatsen(-1)}
+                className="rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-[11px] font-bold disabled:opacity-40"
+              >
+                Eerder
+              </button>
+
+              <button
+                type="button"
+                disabled={prioriteit === aantalSorteringen}
+                onClick={() => onSorteringVerplaatsen(1)}
+                className="rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-[11px] font-bold disabled:opacity-40"
+              >
+                Later
+              </button>
+            </div>
+
+            <button
+              type="button"
+              onClick={onSorteringVerwijderen}
+              className="mt-2 w-full rounded-lg border border-red-200 bg-red-50 px-2 py-1.5 text-[11px] font-bold text-red-700"
+            >
+              Sortering wissen
+            </button>
+          </div>
+        ) : null}
+
+        <div className="mt-3 border-t border-slate-200 pt-3">
+          <label className="block text-[11px] font-bold text-slate-700">
+            Vergelijking
+            <select
+              value={operator}
+              onChange={(event) =>
+                setOperator(event.target.value as AantalAttestenOperator)
+              }
+              className="mt-1 h-9 w-full rounded-lg border border-slate-300 bg-white px-2 text-xs"
+            >
+              <option value="gelijk">Gelijk aan</option>
+              <option value="kleiner">Kleiner dan</option>
+              <option value="groter">Groter dan</option>
+              <option value="tussen">Tussen</option>
+            </select>
+          </label>
+
+          <div
+            className={`mt-2 grid gap-2 ${
+              operator === "tussen" ? "grid-cols-2" : "grid-cols-1"
+            }`}
+          >
+            <label className="block text-[11px] font-bold text-slate-700">
+              {operator === "tussen" ? "Van" : "Aantal"}
+              <input
+                type="number"
+                min="0"
+                step="1"
+                inputMode="numeric"
+                value={eerste}
+                onChange={(event) => setEerste(event.target.value)}
+                className="mt-1 h-9 w-full rounded-lg border border-slate-300 px-2 text-xs"
+              />
+            </label>
+
+            {operator === "tussen" ? (
+              <label className="block text-[11px] font-bold text-slate-700">
+                Tot en met
+                <input
+                  type="number"
+                  min="0"
+                  step="1"
+                  inputMode="numeric"
+                  value={tweede}
+                  onChange={(event) => setTweede(event.target.value)}
+                  className="mt-1 h-9 w-full rounded-lg border border-slate-300 px-2 text-xs"
+                />
+              </label>
+            ) : null}
+          </div>
+
+          {operator === "tussen" &&
+          eerste !== "" &&
+          tweede !== "" &&
+          tweedeGetal < eersteGetal ? (
+            <p className="mt-2 text-[11px] font-semibold text-red-700">
+              Het maximum moet gelijk aan of groter zijn dan het minimum.
+            </p>
+          ) : null}
+
+          <div className="mt-3 grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              disabled={!geldig}
+              onClick={() => {
+                onFilterWijzigen(
+                  codeerAantalAttestenFilter(operator, eerste, tweede),
+                );
+                sluitMenu();
+              }}
+              className="rounded-lg bg-emerald-700 px-2 py-1.5 text-[11px] font-bold text-white hover:bg-emerald-800"
+            >
+              Toepassen
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                const vorig = leesAantalAttestenConcept(filter);
+                setOperator(vorig.operator);
+                setEerste(vorig.eerste);
+                setTweede(vorig.tweede);
+                sluitMenu();
+              }}
+              className="rounded-lg border border-slate-300 bg-white px-2 py-2 text-[11px] font-bold text-slate-700"
+            >
+              Annuleren
+            </button>
+          </div>
+
+          {filter ? (
+            <button
+              type="button"
+              onClick={() => {
+                onFilterWijzigen("");
+                sluitMenu();
+              }}
+              className="mt-2 w-full rounded-lg border border-amber-300 bg-amber-50 px-2 py-2 text-[11px] font-bold text-amber-900"
+            >
+              Filter wissen
+            </button>
+          ) : null}
+        </div>
+      </div>
+    </details>
+  );
+}
+
 function KolomMenu({
   kolom,
   filter,
@@ -556,8 +910,13 @@ export function PersoonscertificaatKaartKolombalk({
             (sortering) => sortering.sleutel === kolom.sleutel,
           );
 
+          const MenuComponent =
+            kolom.sleutel === "aantalAttesten"
+              ? AantalAttestenMenu
+              : KolomMenu;
+
           return (
-            <KolomMenu
+            <MenuComponent
               key={kolom.sleutel}
               kolom={kolom}
               filter={filters[kolom.sleutel] ?? ""}

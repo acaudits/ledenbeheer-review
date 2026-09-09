@@ -13,6 +13,7 @@ const MAXIMALE_FILTERLENGTE = 12000;
 
 export const PERSOONSCERTIFICAAT_SORTERINGEN = [
   "naamPersoon",
+  "aantalAttesten",
   "telefoonnummer",
   "mailadres",
   "ovamId",
@@ -40,8 +41,28 @@ export type PersoonscertificaatTekstfilters = {
   certificatiePlatform: string;
 };
 
+export type AantalAttestenFilter =
+  | {
+      operator: "gelijk";
+      waarde: number;
+    }
+  | {
+      operator: "kleiner";
+      waarde: number;
+    }
+  | {
+      operator: "groter";
+      waarde: number;
+    }
+  | {
+      operator: "tussen";
+      minimum: number;
+      maximum: number;
+    };
+
 export type PersoonscertificaatLijstcontract = {
   targetStatus: TargetStatus | null;
+  aantalAttestenFilter: AantalAttestenFilter | null;
   tekstfilters: PersoonscertificaatTekstfilters;
   uitgereiktJaar: number | null;
   uitgereiktMaand: number | null;
@@ -126,6 +147,85 @@ function leesTargetStatus(waarde: string | null) {
   }
 
   return genormaliseerd;
+}
+
+function leesAantalAttestenFilter(
+  waarde: string | null,
+): AantalAttestenFilter | null {
+  const PREFIX = "__aantal_attesten__";
+
+  if (!waarde) {
+    return null;
+  }
+
+  if (!waarde.startsWith(PREFIX)) {
+    throw new OngeldigePagineringFout(
+      "Het filter voor aantal attesten is ongeldig.",
+    );
+  }
+
+  try {
+    const inhoud = JSON.parse(
+      decodeURIComponent(waarde.slice(PREFIX.length)),
+    ) as unknown;
+
+    if (
+      typeof inhoud !== "object" ||
+      inhoud === null ||
+      Array.isArray(inhoud)
+    ) {
+      throw new Error("Ongeldige filterinhoud.");
+    }
+
+    const kandidaat = inhoud as Record<string, unknown>;
+
+    const leesGetal = (veld: string) => {
+      const getal = kandidaat[veld];
+
+      if (
+        typeof getal !== "number" ||
+        !Number.isInteger(getal) ||
+        getal < 0 ||
+        getal > 1000000
+      ) {
+        throw new Error("Ongeldig aantal attesten.");
+      }
+
+      return getal;
+    };
+
+    if (
+      kandidaat.operator === "gelijk" ||
+      kandidaat.operator === "kleiner" ||
+      kandidaat.operator === "groter"
+    ) {
+      return {
+        operator: kandidaat.operator,
+        waarde: leesGetal("waarde"),
+      };
+    }
+
+    if (kandidaat.operator === "tussen") {
+      const minimum = leesGetal("minimum");
+      const maximum = leesGetal("maximum");
+
+      if (minimum > maximum) {
+        throw new Error("Minimum is groter dan maximum.");
+      }
+
+      return {
+        operator: "tussen",
+        minimum,
+        maximum,
+      };
+    }
+
+    throw new Error("Onbekende operator.");
+  } catch {
+    throw new OngeldigePagineringFout(
+      "Het filter voor aantal attesten is ongeldig.",
+    );
+  }
 }
 
 function isSortering(waarde: string): waarde is PersoonscertificaatSortering {
@@ -224,6 +324,9 @@ export function leesPersoonscertificaatLijstcontract(
     sorteringen: leesSorteringen(url, standaardRichting),
     contract: {
       targetStatus: leesTargetStatus(url.searchParams.get("targetStatus")),
+      aantalAttestenFilter: leesAantalAttestenFilter(
+        url.searchParams.get("filterAantalAttesten"),
+      ),
       tekstfilters,
       uitgereiktJaar: leesJaar(url.searchParams.get("uitgereiktJaar")),
       uitgereiktMaand: leesMaand(url.searchParams.get("uitgereiktMaand")),

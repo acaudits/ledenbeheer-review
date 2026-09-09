@@ -114,20 +114,7 @@ export function PersoonsIngeplandeTerreincontroles({
 }) {
   return (
     <section className="space-y-4">
-      <div>
-        <h2 className="text-xl font-bold text-slate-950">
-          Ingeplande terreincontroles
-        </h2>
-
-        <p className="mt-1 text-sm text-slate-600">
-          Alle actieve plaatsbezoeken uit
-          Inplannen terreincontrole die via
-          het OVAM-ID aan dit
-          persoonscertificaat gekoppeld zijn.
-        </p>
-      </div>
-
-      {terreincontroles.length === 0 ? (
+{terreincontroles.length === 0 ? (
         <div className="rounded-3xl border border-slate-200 bg-white px-6 py-12 text-center shadow-sm">
           <p className="font-bold text-slate-900">
             Geen ingeplande terreincontroles
@@ -140,7 +127,7 @@ export function PersoonsIngeplandeTerreincontroles({
           </p>
         </div>
       ) : (
-        <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
+        <div className="persoon-recordkaarten overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
           <div className="overflow-x-auto">
             <table className="min-w-[1500px] w-full text-left text-sm">
               <thead className="bg-slate-50 text-xs font-bold uppercase tracking-wide text-slate-500">

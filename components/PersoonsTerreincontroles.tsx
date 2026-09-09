@@ -73,20 +73,7 @@ export async function PersoonsTerreincontroles({
 
   return (
     <section className="space-y-4">
-      <div>
-        <h2 className="text-xl font-bold text-slate-950">
-
-          Terreincontroles en non-conformiteiten
-        </h2>
-
-        <p className="mt-1 text-sm text-slate-600">
-
-          Alle actieve terreincontroles uit de nieuwe lijst,
-          met de non-conformiteiten per controle.
-        </p>
-      </div>
-
-      {terreincontroles.length === 0 ? (
+{terreincontroles.length === 0 ? (
         <div className="rounded-3xl border border-slate-200 bg-white px-6 py-12 text-center shadow-sm">
           <p className="font-bold text-slate-900">
             Geen terreincontroles
@@ -100,11 +87,11 @@ export async function PersoonsTerreincontroles({
       ) : (
         terreincontroles.map(
           (terreincontrole) => (
-            <article
+            <details
               key={terreincontrole.id}
               className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm"
             >
-              <header className="flex flex-col gap-4 border-b border-slate-200 bg-slate-50 px-5 py-5 lg:flex-row lg:items-start lg:justify-between">
+              <summary className="flex flex-col gap-4 border-b border-slate-200 bg-slate-50 px-5 py-5 lg:flex-row lg:items-start lg:justify-between cursor-pointer list-none">
                 <div>
                   <h3 className="text-lg font-bold text-slate-950">
                     {terreincontrole.attestnummer ||
@@ -133,7 +120,7 @@ export async function PersoonsTerreincontroles({
                 >
                   Terreincontrole bekijken
                 </Link>
-              </header>
+              </summary>
 
               <dl className="grid gap-4 border-b border-slate-200 px-5 py-5 sm:grid-cols-2 lg:grid-cols-4">
                 <div>
@@ -333,7 +320,7 @@ export async function PersoonsTerreincontroles({
                   </div>
                 )}
               </div>
-            </article>
+            </details>
           ),
         )
       )}

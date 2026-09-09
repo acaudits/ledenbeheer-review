@@ -21,7 +21,7 @@ import {
 export type CertificaatKolom = {
   sleutel: string;
   label: string;
-  type?: "tekst" | "url" | "badge" | "datum" | "statusbol";
+  type?: "tekst" | "url" | "badge" | "datum" | "statusbol" | "getal";
 };
 
 export type CertificaatRij = {
@@ -78,41 +78,123 @@ function isDatumKolom(kolom: CertificaatKolom) {
 
 const targetStatusOpties = [
   {
-    waarde: "GRIJS",
-    label: "Grijs — geen attesten",
+    waarde: "",
+    label: "Alles",
+    uitleg:
+      "Toon alle targetstatussen.",
+    actief:
+      "border-slate-950 bg-slate-950 text-white ring-slate-300",
+    inactief:
+      "border-slate-950 bg-white text-slate-950 hover:bg-slate-100",
+  },
+  {
+    waarde: "FEL_ROOD",
+    label: "In opvolging",
+    uitleg:
+      "Open sanctie-opvolging.",
+    actief:
+      "border-[#78350f] bg-[#92400e] text-white ring-[#d6a56d]",
+    inactief:
+      "border-[#92400e] bg-[#fff7ed] text-[#78350f] hover:bg-[#f5e6d3]",
   },
   {
     waarde: "ROOD",
-    label: "Rood — geen controles",
+    label: "Geen terrein",
+    uitleg:
+      "Geen terreincontrole én geen na-finalisatie.",
+    actief:
+      "border-red-600 bg-red-100 text-red-900 ring-red-200",
+    inactief:
+      "border-red-400 bg-white text-red-700 hover:bg-red-50",
+  },
+  {
+    waarde: "ORANJE",
+    label: "Geen desk",
+    uitleg:
+      "Geen deskcontrole.",
+    actief:
+      "border-orange-500 bg-orange-100 text-orange-900 ring-orange-200",
+    inactief:
+      "border-orange-400 bg-white text-orange-700 hover:bg-orange-50",
   },
   {
     waarde: "GEEL",
-    label: "Geel — target gedeeltelijk behaald",
+    label: "Target deels",
+    uitleg:
+      "Controles aanwezig, maar target nog niet behaald.",
+    actief:
+      "border-yellow-500 bg-yellow-100 text-yellow-900 ring-yellow-200",
+    inactief:
+      "border-yellow-400 bg-white text-yellow-800 hover:bg-yellow-50",
+  },
+  {
+    waarde: "PAARS",
+    label: "Via na finalisatie",
+    uitleg:
+      "Target behaald dankzij minstens één na-finalisatie.",
+    actief:
+      "border-violet-600 bg-violet-100 text-violet-900 ring-violet-200",
+    inactief:
+      "border-violet-400 bg-white text-violet-700 hover:bg-violet-50",
   },
   {
     waarde: "GROEN",
-    label: "Groen — targets behaald",
+    label: "Targets behaald",
+    uitleg:
+      "Target behaald met echte terreincontroles.",
+    actief:
+      "border-emerald-600 bg-emerald-100 text-emerald-900 ring-emerald-200",
+    inactief:
+      "border-emerald-400 bg-white text-emerald-700 hover:bg-emerald-50",
+  },
+  {
+    waarde: "GRIJS",
+    label: "Geen attesten",
+    uitleg:
+      "Geen attesten.",
+    actief:
+      "border-slate-600 bg-slate-200 text-slate-900 ring-slate-200",
+    inactief:
+      "border-slate-400 bg-white text-slate-700 hover:bg-slate-100",
   },
 ];
 
 function statusbolPresentatie(waarde: string) {
   switch (waarde.toUpperCase()) {
-    case "GROEN":
+    case "FEL_ROOD":
       return {
-        label: "Targets behaald",
-        stijl: "bg-emerald-500 ring-emerald-200",
+        label: "Open sanctie-opvolging",
+        stijl: "bg-[#78350f] ring-[#d6a56d]",
+      };
+
+    case "ROOD":
+      return {
+        label: "Geen terreincontrole of na-finalisatie",
+        stijl: "bg-red-500 ring-red-200",
+      };
+
+    case "ORANJE":
+      return {
+        label: "Geen deskcontrole",
+        stijl: "bg-orange-500 ring-orange-200",
       };
 
     case "GEEL":
       return {
         label: "Targets gedeeltelijk behaald",
-        stijl: "bg-amber-400 ring-amber-200",
+        stijl: "bg-yellow-400 ring-yellow-200",
       };
 
-    case "ROOD":
+    case "PAARS":
       return {
-        label: "Geen deskcontrole of terreincontrole uitgevoerd",
-        stijl: "bg-red-500 ring-red-200",
+        label: "Terreintarget behaald via na finalisatie",
+        stijl: "bg-violet-600 ring-violet-200",
+      };
+
+    case "GROEN":
+      return {
+        label: "Targets behaald met terreincontroles",
+        stijl: "bg-emerald-500 ring-emerald-200",
       };
 
     default:
@@ -125,14 +207,23 @@ function statusbolPresentatie(waarde: string) {
 
 function statusRijStijl(waarde: string | number | null) {
   switch (String(waarde ?? "").toUpperCase()) {
-    case "GROEN":
-      return "bg-emerald-50/70 hover:bg-emerald-100/60";
-
-    case "GEEL":
-      return "bg-amber-50/80 hover:bg-amber-100/60";
+    case "FEL_ROOD":
+      return "bg-[#f5e6d3] hover:bg-[#ead1b5]";
 
     case "ROOD":
-      return "bg-red-50/75 hover:bg-red-100/60";
+      return "bg-red-50/90 hover:bg-red-100/80";
+
+    case "ORANJE":
+      return "bg-orange-50/90 hover:bg-orange-100/80";
+
+    case "GEEL":
+      return "bg-yellow-50/90 hover:bg-yellow-100/80";
+
+    case "PAARS":
+      return "bg-violet-50/90 hover:bg-violet-100/80";
+
+    case "GROEN":
+      return "bg-emerald-50/80 hover:bg-emerald-100/70";
 
     case "GRIJS":
       return "bg-slate-50/90 hover:bg-slate-100/80";
@@ -735,32 +826,46 @@ export function CertificatenTabel({
             </p>
           </div>
 
-          <div className="flex w-full flex-col gap-2 sm:flex-row lg:max-w-3xl">
+          <div className="flex w-full flex-col gap-2 xl:max-w-6xl xl:flex-row xl:items-center">
             {targetStatusKolom && (
-              <div className="relative sm:w-64">
-                <label htmlFor="target-status-filter" className="sr-only">
-                  Filter op targetstatus
-                </label>
+              <div
+                className="flex flex-wrap items-center gap-1.5"
+                role="group"
+                aria-label="Filter op targetstatus"
+              >
+                {targetStatusOpties.map((optie) => {
+                  const geselecteerd =
+                    actiefTargetStatus ===
+                    optie.waarde;
 
-                <select
-                  id="target-status-filter"
-                  value={actiefTargetStatus}
-                  onChange={(event) =>
-                    wijzigKolomFilter(
-                      targetStatusKolom.sleutel,
-                      event.target.value,
-                    )
-                  }
-                  className="h-11 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm font-semibold text-slate-700 outline-none focus:border-emerald-600 focus:ring-4 focus:ring-emerald-600/10"
-                >
-                  <option value="">Alle targetstatussen</option>
-
-                  {targetStatusOpties.map((optie) => (
-                    <option key={optie.waarde} value={optie.waarde}>
+                  return (
+                    <button
+                      key={
+                        optie.waarde ||
+                        "alle-kleuren"
+                      }
+                      type="button"
+                      aria-pressed={
+                        geselecteerd
+                      }
+                      aria-label={`${optie.label}: ${optie.uitleg}`}
+                      title={optie.uitleg}
+                      onClick={() =>
+                        wijzigKolomFilter(
+                          targetStatusKolom.sleutel,
+                          optie.waarde,
+                        )
+                      }
+                      className={`inline-flex h-9 items-center justify-center rounded-full border px-3 text-xs font-bold shadow-sm transition focus:outline-none focus:ring-2 focus:ring-offset-1 ${
+                        geselecteerd
+                          ? `${optie.actief} ring-2`
+                          : optie.inactief
+                      }`}
+                    >
                       {optie.label}
-                    </option>
-                  ))}
-                </select>
+                    </button>
+                  );
+                })}
               </div>
             )}
 
@@ -1254,7 +1359,6 @@ export function CertificatenTabel({
                     tabIndex={0}
                     aria-expanded={geopend}
                     aria-label={`Persoonscertificaat van ${naam}`}
-                    title={targetToelichting}
                     onClick={(event) => {
                       if (
                         event.target instanceof Element &&

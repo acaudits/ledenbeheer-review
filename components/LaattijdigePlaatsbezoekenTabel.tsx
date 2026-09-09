@@ -12,6 +12,9 @@ import {
   type LaattijdigKaartbezoek,
 } from "@/components/LaattijdigePlaatsbezoekenKaart";
 import {
+  LaattijdigePlaatsbezoekenServerKaart,
+} from "@/components/LaattijdigePlaatsbezoekenServerKaart";
+import {
   LaattijdigePlaatsbezoekenKaartKolombalk,
 } from "@/components/LaattijdigePlaatsbezoekenKaartKolombalk";
 import {
@@ -727,9 +730,7 @@ export function LaattijdigePlaatsbezoekenTabel({
 
   return (
     <div className="space-y-4">
-      <LaattijdigePlaatsbezoekenKaart
-        rijen={kaartRijen}
-      />
+      <LaattijdigePlaatsbezoekenServerKaart />
 
       <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">

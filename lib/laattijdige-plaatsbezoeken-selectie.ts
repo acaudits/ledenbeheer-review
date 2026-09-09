@@ -1225,7 +1225,17 @@ export async function laadLaattijdigePlaatsbezoekenOverzicht() {
 
 export type LaattijdigPlaatsbezoekKaartRij = {
   id: number;
-  status: "ROOD" | "GROEN";
+  status:
+    | "GRIJS"
+    | "ROOD"
+    | "GEEL"
+    | "PAARS"
+    | "GROEN";
+  heeftOpenOpvolging: boolean;
+  aantalAttesten: number;
+  terreincontroleTarget: number;
+  aantalTerreincontroles: number;
+  aantalNaFinalisaties: number;
   knippert: boolean;
   naamAdi: string;
   bedrijfsnaam: string;
@@ -1236,7 +1246,7 @@ export type LaattijdigPlaatsbezoekKaartRij = {
   longitude: number;
 };
 
-export async function laadLaattijdigePlaatsbezoekenKaart() {
+async function laadLaattijdigePlaatsbezoekenKaartOud() {
   return prisma.$queryRaw<
     LaattijdigPlaatsbezoekKaartRij[]
   >(Prisma.sql`
@@ -1414,5 +1424,210 @@ export async function laadLaattijdigePlaatsbezoekenKaart() {
     ORDER BY
       k."startMoment" ASC,
       k.id ASC
+  `);
+}
+
+
+/* LAATTIJDIGE_KLEURSTATUS_V1 */
+export async function laadLaattijdigePlaatsbezoekenKaart() {
+  return prisma.$queryRaw<
+    LaattijdigPlaatsbezoekKaartRij[]
+  >(Prisma.sql`
+    WITH
+      "attesten" AS (
+        SELECT
+          LOWER(BTRIM(a."persoons_id"))
+            AS "ovamSleutel",
+          MAX(a."aantal_attesten")::integer
+            AS "aantalAttesten"
+        FROM
+          "attest_persoon_statistieken" a
+        GROUP BY
+          LOWER(BTRIM(a."persoons_id"))
+      ),
+      "terrein" AS (
+        SELECT
+          LOWER(BTRIM(t."ovam_id"))
+            AS "ovamSleutel",
+          COUNT(*)::integer
+            AS "aantalTerreincontroles",
+          MAX(t."datum_plaatsbezoek")
+            AS "laatsteTerreincontrole"
+        FROM
+          "terreincontroles" t
+        WHERE
+          t."verwijderd_op" IS NULL
+          AND t."afwezig_op" IS NULL
+          AND t."ovam_id" IS NOT NULL
+          AND BTRIM(t."ovam_id") <> ''
+        GROUP BY
+          LOWER(BTRIM(t."ovam_id"))
+      ),
+      "naFinalisatie" AS (
+        SELECT
+          LOWER(BTRIM(n."persoons_id"))
+            AS "ovamSleutel",
+          COUNT(*)::integer
+            AS "aantalNaFinalisaties"
+        FROM
+          "na_finalisatie" n
+        WHERE
+          n."verwijderd_op" IS NULL
+          AND n."geregistreerd" = TRUE
+          AND n."persoons_id" IS NOT NULL
+          AND BTRIM(n."persoons_id") <> ''
+        GROUP BY
+          LOWER(BTRIM(n."persoons_id"))
+      ),
+      "openOpvolging" AS (
+        SELECT DISTINCT
+          LOWER(BTRIM(o."ovam_id"))
+            AS "ovamSleutel"
+        FROM
+          "opvolging_sancties" o
+        WHERE
+          o."verwijderd_op" IS NULL
+          AND o."opvolging_afgerond" = FALSE
+          AND o."ovam_id" IS NOT NULL
+          AND BTRIM(o."ovam_id") <> ''
+      ),
+      "bron" AS (
+        SELECT
+          p.id,
+          (
+            p."datum_plaatsbezoek" +
+            p."tijdstip"
+          ) AT TIME ZONE
+            'Europe/Brussels'
+            AS "startMoment",
+          m."naam_adi" AS "naamAdi",
+          m."bedrijfsnaam",
+          p."inspectielocatie",
+          TO_CHAR(
+            p."datum_plaatsbezoek",
+            'DD/MM/YYYY'
+          ) AS "datum",
+          TO_CHAR(
+            p."tijdstip",
+            'HH24:MI'
+          ) AS "tijdstip",
+          p."latitude"::double precision
+            AS "latitude",
+          p."longitude"::double precision
+            AS "longitude",
+          COALESCE(
+            a."aantalAttesten",
+            0
+          )::integer AS "aantalAttesten",
+          CASE
+            WHEN COALESCE(
+              a."aantalAttesten",
+              0
+            ) > 0
+            THEN LEAST(
+              4,
+              CEIL(
+                a."aantalAttesten" /
+                100.0
+              )::integer
+            )
+            ELSE 0
+          END AS "terreincontroleTarget",
+          COALESCE(
+            t."aantalTerreincontroles",
+            0
+          )::integer
+            AS "aantalTerreincontroles",
+          COALESCE(
+            n."aantalNaFinalisaties",
+            0
+          )::integer
+            AS "aantalNaFinalisaties",
+          t."laatsteTerreincontrole",
+          (
+            o."ovamSleutel" IS NOT NULL
+          ) AS "heeftOpenOpvolging"
+        FROM
+          "laattijdige_plaatsbezoeken" p
+        INNER JOIN
+          "laattijdige_plaatsbezoek_meldingen" m
+          ON m.id = p."melding_id"
+        INNER JOIN
+          "leden" l
+          ON l.id = m."lid_id"
+        LEFT JOIN
+          "attesten" a
+          ON a."ovamSleutel" =
+            LOWER(BTRIM(l."ovam_id"))
+        LEFT JOIN
+          "terrein" t
+          ON t."ovamSleutel" =
+            LOWER(BTRIM(l."ovam_id"))
+        LEFT JOIN
+          "naFinalisatie" n
+          ON n."ovamSleutel" =
+            LOWER(BTRIM(l."ovam_id"))
+        LEFT JOIN
+          "openOpvolging" o
+          ON o."ovamSleutel" =
+            LOWER(BTRIM(l."ovam_id"))
+        WHERE
+          p."latitude" IS NOT NULL
+          AND p."longitude" IS NOT NULL
+      )
+    SELECT
+      b.id,
+      CASE
+        WHEN
+          b."aantalAttesten" <= 0
+          OR b."terreincontroleTarget" <= 0
+        THEN 'GRIJS'
+        WHEN
+          b."laatsteTerreincontrole" IS NOT NULL
+          AND b."laatsteTerreincontrole" >=
+            (
+              CURRENT_TIMESTAMP
+                AT TIME ZONE 'UTC'
+            )::date - 14
+        THEN 'GEEL'
+        WHEN
+          b."aantalTerreincontroles" >=
+          b."terreincontroleTarget"
+        THEN 'GROEN'
+        WHEN
+          b."aantalNaFinalisaties" > 0
+          AND
+          (
+            b."aantalTerreincontroles" +
+            b."aantalNaFinalisaties"
+          ) >= b."terreincontroleTarget"
+        THEN 'PAARS'
+        ELSE 'ROOD'
+      END AS "status",
+      b."heeftOpenOpvolging",
+      b."aantalAttesten",
+      b."terreincontroleTarget",
+      b."aantalTerreincontroles",
+      b."aantalNaFinalisaties",
+      (
+        b."startMoment" <=
+        CURRENT_TIMESTAMP
+      ) AS "knippert",
+      b."naamAdi",
+      b."bedrijfsnaam",
+      b."inspectielocatie",
+      b."datum",
+      b."tijdstip",
+      b."latitude",
+      b."longitude"
+    FROM
+      "bron" b
+    WHERE
+      b."startMoment" >
+        CURRENT_TIMESTAMP -
+        INTERVAL '1 hour'
+    ORDER BY
+      b."startMoment" ASC,
+      b.id ASC
   `);
 }

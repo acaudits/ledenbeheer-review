@@ -39,6 +39,7 @@ const PLANNING_KLEUREN:
     [
       "ROOD",
       "GEEL",
+      "PAARS",
       "GROEN",
       "GRIJS",
     ];
@@ -135,6 +136,9 @@ function planningRijStijl(
 
     case "GEEL":
       return "bg-amber-50/90 hover:bg-amber-100/70";
+
+    case "PAARS":
+      return "bg-purple-50/90 hover:bg-purple-100/80";
 
     case "GROEN":
       return "bg-emerald-50/80 hover:bg-emerald-100/70";
@@ -519,6 +523,11 @@ export default function TerreincontroleExcelImport() {
   >(() => [
     ...PLANNING_KLEUREN,
   ]);
+
+  const [
+    alleenOpenOpvolging,
+    setAlleenOpenOpvolging,
+  ] = useState(true);
 
   const [
     excelFilters,
@@ -942,7 +951,20 @@ export default function TerreincontroleExcelImport() {
               rij.planningStatus,
             );
 
-          if (!voldoetAanKleur) {
+          const voldoetAanBruin =
+            alleenOpenOpvolging &&
+            Boolean(
+              rij.heeftOpenOpvolging,
+            );
+
+          const voldoetAanGewoneKleur =
+            !rij.heeftOpenOpvolging &&
+            voldoetAanKleur;
+
+          if (
+            !voldoetAanBruin &&
+            !voldoetAanGewoneKleur
+          ) {
             return false;
           }
 
@@ -1062,6 +1084,7 @@ export default function TerreincontroleExcelImport() {
     }, [
       rijen,
       planningKleuren,
+      alleenOpenOpvolging,
       planningZoekterm,
       excelFilters,
       excelSortering,
@@ -1689,14 +1712,131 @@ export default function TerreincontroleExcelImport() {
             planningKleuren={
               planningKleuren
             }
-            onWijzigPlanningKleuren={(
+                        onWijzigPlanningKleuren={(
               kleuren,
             ) => {
+              const alleGewoneKleurenActief =
+                PLANNING_KLEUREN.every(
+                  (kleur) =>
+                    planningKleuren.includes(
+                      kleur,
+                    ),
+                );
+
+              let volgendeKleuren =
+                kleuren;
+              let bruinActief =
+                alleenOpenOpvolging;
+
+              if (
+                alleGewoneKleurenActief &&
+                alleenOpenOpvolging &&
+                kleuren.length ===
+                  PLANNING_KLEUREN.length -
+                    1
+              ) {
+                /*
+                 * Eerste klik vanuit Alle kleuren:
+                 * uitsluitend de aangeklikte kleur.
+                 */
+                const aangeklikteKleur =
+                  PLANNING_KLEUREN.find(
+                    (kleur) =>
+                      !kleuren.includes(
+                        kleur,
+                      ),
+                  );
+
+                volgendeKleuren =
+                  aangeklikteKleur
+                    ? [aangeklikteKleur]
+                    : kleuren;
+
+                bruinActief = false;
+              } else if (
+                kleuren.length === 0 &&
+                !alleenOpenOpvolging
+              ) {
+                /*
+                 * Er blijft geen enkele filter over:
+                 * herstel Alle kleuren inclusief bruin.
+                 */
+                volgendeKleuren = [
+                  ...PLANNING_KLEUREN,
+                ];
+                bruinActief = true;
+              } else if (
+                kleuren.length ===
+                PLANNING_KLEUREN.length
+              ) {
+                bruinActief = true;
+              }
+
               setPlanningKleuren(
-                kleuren,
+                volgendeKleuren,
+              );
+              setAlleenOpenOpvolging(
+                bruinActief,
               );
             }}
+            alleenOpenOpvolging={
+              alleenOpenOpvolging
+            }
+                        onWijzigAlleenOpenOpvolging={(
+              waarde,
+            ) => {
+              const alleGewoneKleurenActief =
+                PLANNING_KLEUREN.every(
+                  (kleur) =>
+                    planningKleuren.includes(
+                      kleur,
+                    ),
+                );
 
+              if (
+                alleGewoneKleurenActief &&
+                alleenOpenOpvolging
+              ) {
+                /*
+                 * Klik op bruin vanuit Alle kleuren:
+                 * toon uitsluitend bruin.
+                 */
+                setPlanningKleuren([]);
+                setAlleenOpenOpvolging(
+                  true,
+                );
+              } else if (
+                planningKleuren.length === 0 &&
+                alleenOpenOpvolging
+              ) {
+                /*
+                 * Klik opnieuw op alleen bruin:
+                 * herstel Alle kleuren.
+                 */
+                setPlanningKleuren([
+                  ...PLANNING_KLEUREN,
+                ]);
+                setAlleenOpenOpvolging(
+                  true,
+                );
+              } else {
+                setAlleenOpenOpvolging(
+                  waarde,
+                );
+
+                if (
+                  !waarde &&
+                  planningKleuren.length === 0
+                ) {
+                  setPlanningKleuren([
+                    ...PLANNING_KLEUREN,
+                  ]);
+                  setAlleenOpenOpvolging(
+                    true,
+                  );
+                }
+              }
+            }}
             actieveRijSleutel={
               actieveKaartRijSleutel
             }
