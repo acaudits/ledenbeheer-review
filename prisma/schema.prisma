@@ -610,6 +610,8 @@ enum OpvolgingSanctieBron {
   TERREINCONTROLE
   INGEPLANDE_TERREINCONTROLE
   NA_FINALISATIE
+  HANDMATIG
+  EXCEL_IMPORT
 }
 
 enum OpvolgingNcCategorie {
@@ -624,7 +626,10 @@ model OpvolgingSanctie {
   id Int @id @default(autoincrement())
 
   bronType OpvolgingSanctieBron @map("bron_type")
-  bronId   Int                  @map("bron_id")
+  bronId   Int?                 @map("bron_id")
+
+  bronBestandsnaam String? @map("bron_bestandsnaam") @db.VarChar(255)
+  bronExcelRij     Int?    @map("bron_excel_rij")
 
   auditeur            String?
   auditeurGebruikerId Int?                 @map("auditeur_gebruiker_id")
@@ -667,6 +672,7 @@ model OpvolgingSanctie {
   mails OpvolgingSanctieMail[]
 
   @@unique([bronType, bronId])
+  @@unique([bronBestandsnaam, bronExcelRij])
   @@index([auditeurGebruikerId])
   @@index([afgerondDoorGebruikerId])
   @@index([aangemaaktDoorId])

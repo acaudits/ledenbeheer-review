@@ -3,7 +3,9 @@
 import { revalidatePath } from "next/cache";
 
 import { schrijfAuditlog } from "@/lib/auditlog";
-import { vereisMachtiging } from "@/lib/auth";
+import {
+  vereisOpvolgingSanctieBeheer,
+} from "@/lib/opvolging-sanctie-toegang";
 import {
   isOpvolgingBron,
   ontleedDatumInvoer,
@@ -58,14 +60,8 @@ function geldigeBronId(
 async function vereisMachtigingVoorBron(
   bronType: OpvolgingBron,
 ) {
-  if (bronType === "DESKCONTROLE") {
-    return vereisMachtiging(
-      "DESKCONTROLES_BEHEREN",
-    );
-  }
-
-  return vereisMachtiging(
-    "TERREINCONTROLES_BEHEREN",
+  return vereisOpvolgingSanctieBeheer(
+    bronType,
   );
 }
 
@@ -241,6 +237,13 @@ async function haalBronMomentopnameOp(
       opmerkingen:
         bron.opmerkingen,
     };
+  }
+
+  if (
+    bronType === "HANDMATIG" ||
+    bronType === "EXCEL_IMPORT"
+  ) {
+    return null;
   }
 
   const bron =
@@ -1306,9 +1309,6 @@ export async function bewerkOpvolgingSanctieDetail(
       : NaN;
   }
 
-  const auditeur =
-    invoer("auditeur", 500);
-
   const naamAdi =
     invoer("naamAdi", 500);
 
@@ -1326,6 +1326,13 @@ export async function bewerkOpvolgingSanctieDetail(
 
   const opmerkingen =
     invoer("opmerkingen", 10_000);
+
+  if (!ovamId) {
+    return {
+      fout:
+        "Vul een OVAM-ID in.",
+    };
+  }
 
   if (
     linkAttest &&
@@ -1363,6 +1370,13 @@ export async function bewerkOpvolgingSanctieDetail(
     };
   }
 
+  if (!auditeurGebruikerId) {
+    return {
+      fout:
+        "Kies een auditeur.",
+    };
+  }
+
   const gebruikersIds = [
     auditeurGebruikerId,
     afgerondDoorGebruikerId,
@@ -1373,36 +1387,67 @@ export async function bewerkOpvolgingSanctieDetail(
       waarde !== null,
   );
 
-  if (gebruikersIds.length > 0) {
-    const geldigeGebruikers =
-      await prisma.toegestaneGebruiker.count({
-        where: {
-          id: {
-            in: Array.from(
-              new Set(
-                gebruikersIds,
-              ),
-            ),
-          },
-          actief: true,
-          rollen: {
-          has: "AUDITEUR",
-        },
-        },
-      });
-
-    if (
-      geldigeGebruikers !==
+  const uniekeGebruikersIds =
+    Array.from(
       new Set(
         gebruikersIds,
-      ).size
-    ) {
-      return {
-        fout:
-          "Een geselecteerde auditeur is niet meer actief.",
-      };
-    }
+      ),
+    );
+
+  const geldigeGebruikers =
+    await prisma.toegestaneGebruiker.findMany({
+      where: {
+        id: {
+          in: uniekeGebruikersIds,
+        },
+        actief: true,
+        rollen: {
+          has: "AUDITEUR",
+        },
+      },
+      select: {
+        id: true,
+        email: true,
+        naam: true,
+        voornaam: true,
+        achternaam: true,
+      },
+    });
+
+  if (
+    geldigeGebruikers.length !==
+    uniekeGebruikersIds.length
+  ) {
+    return {
+      fout:
+        "Een geselecteerde auditeur is niet meer actief.",
+    };
   }
+
+  const geselecteerdeAuditeur =
+    geldigeGebruikers.find(
+      (auditeur) =>
+        auditeur.id ===
+        auditeurGebruikerId,
+    );
+
+  if (!geselecteerdeAuditeur) {
+    return {
+      fout:
+        "Kies een geldige auditeur.",
+    };
+  }
+
+  const auditeurNaam =
+    [
+      geselecteerdeAuditeur.voornaam,
+      geselecteerdeAuditeur.achternaam,
+    ]
+      .filter(Boolean)
+      .join(" ")
+      .trim() ||
+    geselecteerdeAuditeur.naam?.trim() ||
+    geselecteerdeAuditeur.email;
 
   const opvolgingAfgerond =
     formData.get(
@@ -1433,7 +1478,7 @@ export async function bewerkOpvolgingSanctieDetail(
 
   const nieuweWaarde = {
     auditeur:
-      auditeur || null,
+      auditeurNaam,
     auditeurGebruikerId,
     naamAdi:
       naamAdi || null,

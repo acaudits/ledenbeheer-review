@@ -1,32 +1,86 @@
 import "server-only";
 
 import {
-  vereisMachtiging,
+  redirect,
+} from "next/navigation";
+
+import {
+  heeftMachtiging,
+  type Machtiging,
+} from "@/lib/autorisatie";
+import {
+  vereisIngelogdeGebruiker,
 } from "@/lib/auth";
 import type {
   OpvolgingBron,
 } from "@/lib/opvolging-sancties";
 
+async function vereisEenVan(
+  ...machtigingen: Machtiging[]
+) {
+  const gebruiker =
+    await vereisIngelogdeGebruiker();
+
+  const toegelaten =
+    machtigingen.some(
+      (machtiging) =>
+        heeftMachtiging(
+          gebruiker.rollen,
+          machtiging,
+        ),
+    );
+
+  if (!toegelaten) {
+    redirect("/");
+  }
+
+  return gebruiker;
+}
+
 export function vereisOpvolgingSanctieBeheer(
   bronType: OpvolgingBron,
 ) {
-  return bronType === "DESKCONTROLE"
-    ? vereisMachtiging(
-        "DESKCONTROLES_BEHEREN",
-      )
-    : vereisMachtiging(
-        "TERREINCONTROLES_BEHEREN",
-      );
+  if (bronType === "DESKCONTROLE") {
+    return vereisEenVan(
+      "DESKCONTROLES_BEHEREN",
+    );
+  }
+
+  if (
+    bronType === "HANDMATIG" ||
+    bronType === "EXCEL_IMPORT"
+  ) {
+    return vereisEenVan(
+      "DESKCONTROLES_BEHEREN",
+      "TERREINCONTROLES_BEHEREN",
+    );
+  }
+
+  return vereisEenVan(
+    "TERREINCONTROLES_BEHEREN",
+  );
 }
 
 export function vereisOpvolgingSanctieInzage(
   bronType: OpvolgingBron,
 ) {
-  return bronType === "DESKCONTROLE"
-    ? vereisMachtiging(
-        "DESKCONTROLES_BEKIJKEN",
-      )
-    : vereisMachtiging(
-        "TERREINCONTROLES_BEKIJKEN",
-      );
+  if (bronType === "DESKCONTROLE") {
+    return vereisEenVan(
+      "DESKCONTROLES_BEKIJKEN",
+    );
+  }
+
+  if (
+    bronType === "HANDMATIG" ||
+    bronType === "EXCEL_IMPORT"
+  ) {
+    return vereisEenVan(
+      "DESKCONTROLES_BEKIJKEN",
+      "TERREINCONTROLES_BEKIJKEN",
+    );
+  }
+
+  return vereisEenVan(
+    "TERREINCONTROLES_BEKIJKEN",
+  );
 }

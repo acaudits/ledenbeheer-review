@@ -188,11 +188,20 @@ export default async function OpvolgingSanctiesPage() {
         acties={
           magDeskcontrolesBeheren ||
           magTerreincontrolesBeheren ? (
-            <BeheerActieLink
-              href="/opvolging-sancties/verwijderd"
-              variant="neutraal"
-              kinderen="Verwijderde registraties"
-            />
+            <>
+              <BeheerActieLink
+                href="/opvolging-sancties/nieuw"
+                variant="primair"
+                plusIcoon
+                kinderen="Handmatige invoer"
+              />
+
+              <BeheerActieLink
+                href="/opvolging-sancties/verwijderd"
+                variant="neutraal"
+                kinderen="Verwijderde registraties"
+              />
+            </>
           ) : undefined
         }
       />
@@ -289,7 +298,13 @@ export default async function OpvolgingSanctiesPage() {
               registratie.bronType ===
               "DESKCONTROLE"
                 ? magDeskcontrolesBeheren
-                : magTerreincontrolesBeheren,
+                : registratie.bronType ===
+                      "HANDMATIG" ||
+                    registratie.bronType ===
+                      "EXCEL_IMPORT"
+                  ? magDeskcontrolesBeheren ||
+                    magTerreincontrolesBeheren
+                  : magTerreincontrolesBeheren,
           }),
         )}
       />

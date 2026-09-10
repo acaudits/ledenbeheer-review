@@ -8,6 +8,14 @@ import {
 import {
   bewerkOpvolgingSanctieDetail,
 } from "@/app/opvolging-sancties/actions";
+import {
+  maakHandmatigeOpvolgingSanctie,
+} from "@/app/opvolging-sancties/nieuw/actions";
+import {
+  OpvolgingSanctieCertificaatVelden,
+  type OpvolgingLidOptie,
+  type OpvolgingProcescertificaatOptie,
+} from "@/components/OpvolgingSanctieCertificaatVelden";
 
 type Auditeur = {
   id: number;
@@ -36,8 +44,11 @@ type Waarden = {
 };
 
 type Props = {
-  id: number;
+  id?: number;
+  modus?: "bewerken" | "nieuw";
   auditeurs: Auditeur[];
+  leden?: OpvolgingLidOptie[];
+  procescertificaten?: OpvolgingProcescertificaatOptie[];
   waarden: Waarden;
 };
 
@@ -49,14 +60,19 @@ const tekstvak =
 
 export function OpvolgingSanctieDetailFormulier({
   id,
+  modus = "bewerken",
   auditeurs,
+  leden = [],
+  procescertificaten = [],
   waarden,
 }: Props) {
   const actie =
-    bewerkOpvolgingSanctieDetail.bind(
-      null,
-      id,
-    );
+    modus === "nieuw"
+      ? maakHandmatigeOpvolgingSanctie
+      : bewerkOpvolgingSanctieDetail.bind(
+          null,
+          id!,
+        );
 
   const [
     status,
@@ -135,29 +151,21 @@ export function OpvolgingSanctieDetailFormulier({
 
         <div className="mt-4 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           <label className="text-sm font-semibold text-slate-700">
-            Auditeur
-            <input
-              name="auditeur"
-              maxLength={500}
-              defaultValue={
-                waarden.auditeur
-              }
-              className={invoer}
-            />
-          </label>
-
-          <label className="text-sm font-semibold text-slate-700">
-            Gekoppelde auditeur
+            Auditeur *
             <select
               name="auditeurGebruikerId"
+              required
               defaultValue={
                 waarden.auditeurGebruikerId ??
                 ""
               }
               className={invoer}
             >
-              <option value="">
-                Geen koppeling
+              <option
+                value=""
+                disabled
+              >
+                Kies een auditeur
               </option>
 
               {auditeurs.map(
@@ -173,17 +181,25 @@ export function OpvolgingSanctieDetailFormulier({
             </select>
           </label>
 
-          <label className="text-sm font-semibold text-slate-700">
-            Naam ADI
-            <input
-              name="naamAdi"
-              maxLength={500}
-              defaultValue={
-                waarden.naamAdi
-              }
-              className={invoer}
-            />
-          </label>
+          <OpvolgingSanctieCertificaatVelden
+            leden={leden}
+            procescertificaten={
+              procescertificaten
+            }
+            beginNaamAdi={
+              waarden.naamAdi
+            }
+            beginOvamId={
+              waarden.ovamId
+            }
+            beginBedrijfsnaam={
+              waarden.bedrijfsnaam
+            }
+            invoerClassName={invoer}
+            selectieVerplicht={
+              modus === "nieuw"
+            }
+          />
 
           <label className="text-sm font-semibold text-slate-700">
             Attestnummer
@@ -192,30 +208,6 @@ export function OpvolgingSanctieDetailFormulier({
               maxLength={255}
               defaultValue={
                 waarden.attestnummer
-              }
-              className={invoer}
-            />
-          </label>
-
-          <label className="text-sm font-semibold text-slate-700">
-            Bedrijfsnaam
-            <input
-              name="bedrijfsnaam"
-              maxLength={500}
-              defaultValue={
-                waarden.bedrijfsnaam
-              }
-              className={invoer}
-            />
-          </label>
-
-          <label className="text-sm font-semibold text-slate-700">
-            OVAM-ID
-            <input
-              name="ovamId"
-              maxLength={255}
-              defaultValue={
-                waarden.ovamId
               }
               className={invoer}
             />
@@ -520,7 +512,9 @@ export function OpvolgingSanctieDetailFormulier({
         >
           {isBezig
             ? "Opslaan..."
-            : "Wijzigingen opslaan"}
+            : modus === "nieuw"
+              ? "Registratie toevoegen"
+              : "Wijzigingen opslaan"}
         </button>
       </div>
     </form>
