@@ -77,18 +77,12 @@ export async function maakHandmatigeOpvolgingSanctie(
     };
   }
 
-  const naamAdi =
-    tekst(formData, "naamAdi", 500);
-
   const bedrijfsnaam =
     tekst(
       formData,
       "bedrijfsnaam",
       500,
     );
-
-  const ovamId =
-    tekst(formData, "ovamId", 255);
 
   const linkAttest =
     tekst(
@@ -111,10 +105,52 @@ export async function maakHandmatigeOpvolgingSanctie(
       10_000,
     );
 
-  if (!ovamId) {
+  const lidId =
+    optioneelId(
+      formData,
+      "lidId",
+    );
+
+  if (
+    Number.isNaN(lidId) ||
+    !lidId
+  ) {
     return {
       fout:
-        "Vul een OVAM-ID in.",
+        "Kies een Naam ADI uit Persoonscertificaten.",
+    };
+  }
+
+  const geselecteerdLid =
+    await prisma.lid.findFirst({
+      where: {
+        id: lidId,
+        verwijderdOp: null,
+      },
+      select: {
+        id: true,
+        naamPersoon: true,
+        ovamId: true,
+      },
+    });
+
+  if (!geselecteerdLid) {
+    return {
+      fout:
+        "De geselecteerde persoon bestaat niet meer in Persoonscertificaten.",
+    };
+  }
+
+  const naamAdi =
+    geselecteerdLid.naamPersoon;
+
+  const ovamId =
+    geselecteerdLid.ovamId;
+
+  if (!ovamId.trim()) {
+    return {
+      fout:
+        "De geselecteerde persoon heeft geen geldige OVAM-ID.",
     };
   }
 

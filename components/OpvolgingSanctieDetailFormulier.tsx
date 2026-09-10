@@ -11,6 +11,11 @@ import {
 import {
   maakHandmatigeOpvolgingSanctie,
 } from "@/app/opvolging-sancties/nieuw/actions";
+import {
+  OpvolgingSanctieCertificaatVelden,
+  type OpvolgingLidOptie,
+  type OpvolgingProcescertificaatOptie,
+} from "@/components/OpvolgingSanctieCertificaatVelden";
 
 type Auditeur = {
   id: number;
@@ -42,6 +47,8 @@ type Props = {
   id?: number;
   modus?: "bewerken" | "nieuw";
   auditeurs: Auditeur[];
+  leden?: OpvolgingLidOptie[];
+  procescertificaten?: OpvolgingProcescertificaatOptie[];
   waarden: Waarden;
 };
 
@@ -55,6 +62,8 @@ export function OpvolgingSanctieDetailFormulier({
   id,
   modus = "bewerken",
   auditeurs,
+  leden = [],
+  procescertificaten = [],
   waarden,
 }: Props) {
   const actie =
@@ -172,17 +181,25 @@ export function OpvolgingSanctieDetailFormulier({
             </select>
           </label>
 
-          <label className="text-sm font-semibold text-slate-700">
-            Naam ADI
-            <input
-              name="naamAdi"
-              maxLength={500}
-              defaultValue={
-                waarden.naamAdi
-              }
-              className={invoer}
-            />
-          </label>
+          <OpvolgingSanctieCertificaatVelden
+            leden={leden}
+            procescertificaten={
+              procescertificaten
+            }
+            beginNaamAdi={
+              waarden.naamAdi
+            }
+            beginOvamId={
+              waarden.ovamId
+            }
+            beginBedrijfsnaam={
+              waarden.bedrijfsnaam
+            }
+            invoerClassName={invoer}
+            selectieVerplicht={
+              modus === "nieuw"
+            }
+          />
 
           <label className="text-sm font-semibold text-slate-700">
             Attestnummer
@@ -191,31 +208,6 @@ export function OpvolgingSanctieDetailFormulier({
               maxLength={255}
               defaultValue={
                 waarden.attestnummer
-              }
-              className={invoer}
-            />
-          </label>
-
-          <label className="text-sm font-semibold text-slate-700">
-            Bedrijfsnaam
-            <input
-              name="bedrijfsnaam"
-              maxLength={500}
-              defaultValue={
-                waarden.bedrijfsnaam
-              }
-              className={invoer}
-            />
-          </label>
-
-          <label className="text-sm font-semibold text-slate-700">
-            OVAM-ID *
-            <input
-              name="ovamId"
-              required
-              maxLength={255}
-              defaultValue={
-                waarden.ovamId
               }
               className={invoer}
             />

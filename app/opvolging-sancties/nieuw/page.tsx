@@ -39,8 +39,12 @@ export default async function NieuweOpvolgingSanctiePage() {
     "HANDMATIG",
   );
 
-  const auditeurs =
-    await prisma.toegestaneGebruiker.findMany({
+  const [
+    auditeurs,
+    leden,
+    procescertificaten,
+  ] = await Promise.all([
+    prisma.toegestaneGebruiker.findMany({
       where: {
         actief: true,
         rollen: {
@@ -65,7 +69,45 @@ export default async function NieuweOpvolgingSanctiePage() {
           email: "asc",
         },
       ],
-    });
+    }),
+
+    prisma.lid.findMany({
+      where: {
+        verwijderdOp: null,
+      },
+      select: {
+        id: true,
+        naamPersoon: true,
+        ovamId: true,
+      },
+      orderBy: [
+        {
+          naamPersoon: "asc",
+        },
+        {
+          ovamId: "asc",
+        },
+      ],
+    }),
+
+    prisma.procescertificaat.findMany({
+      where: {
+        verwijderdOp: null,
+      },
+      select: {
+        id: true,
+        naamBedrijf: true,
+      },
+      orderBy: [
+        {
+          naamBedrijf: "asc",
+        },
+        {
+          id: "asc",
+        },
+      ],
+    }),
+  ]);
 
   return (
     <div className="mx-auto max-w-7xl space-y-5">
@@ -74,7 +116,7 @@ export default async function NieuweOpvolgingSanctiePage() {
           href="/opvolging-sancties"
           className="text-sm font-bold text-emerald-700 hover:text-emerald-900"
         >
-          ← Terug naar overzicht
+          Terug naar overzicht
         </Link>
 
         <p className="mt-4 text-xs font-bold uppercase tracking-[0.16em] text-emerald-700">
@@ -102,6 +144,10 @@ export default async function NieuweOpvolgingSanctiePage() {
                 ),
             }),
           )}
+          leden={leden}
+          procescertificaten={
+            procescertificaten
+          }
           waarden={{
             auditeur: "",
             auditeurGebruikerId:
