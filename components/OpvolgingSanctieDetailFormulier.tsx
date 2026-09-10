@@ -142,29 +142,21 @@ export function OpvolgingSanctieDetailFormulier({
 
         <div className="mt-4 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           <label className="text-sm font-semibold text-slate-700">
-            Auditeur
-            <input
-              name="auditeur"
-              maxLength={500}
-              defaultValue={
-                waarden.auditeur
-              }
-              className={invoer}
-            />
-          </label>
-
-          <label className="text-sm font-semibold text-slate-700">
-            Gekoppelde auditeur
+            Auditeur *
             <select
               name="auditeurGebruikerId"
+              required
               defaultValue={
                 waarden.auditeurGebruikerId ??
                 ""
               }
               className={invoer}
             >
-              <option value="">
-                Geen koppeling
+              <option
+                value=""
+                disabled
+              >
+                Kies een auditeur
               </option>
 
               {auditeurs.map(
@@ -220,6 +212,7 @@ export function OpvolgingSanctieDetailFormulier({
             OVAM-ID
             <input
               name="ovamId"
+              required
               maxLength={255}
               defaultValue={
                 waarden.ovamId

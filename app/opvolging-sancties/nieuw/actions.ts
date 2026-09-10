@@ -77,9 +77,6 @@ export async function maakHandmatigeOpvolgingSanctie(
     };
   }
 
-  const auditeur =
-    tekst(formData, "auditeur", 500);
-
   const naamAdi =
     tekst(formData, "naamAdi", 500);
 
@@ -113,6 +110,13 @@ export async function maakHandmatigeOpvolgingSanctie(
       "opmerkingen",
       10_000,
     );
+
+  if (!ovamId) {
+    return {
+      fout:
+        "Vul een OVAM-ID in.",
+    };
+  }
 
   if (
     linkAttest &&
@@ -168,6 +172,13 @@ export async function maakHandmatigeOpvolgingSanctie(
     };
   }
 
+  if (!auditeurGebruikerId) {
+    return {
+      fout:
+        "Kies een auditeur.",
+    };
+  }
+
   if (
     opvolgingAfgerond &&
     (
@@ -197,30 +208,60 @@ export async function maakHandmatigeOpvolgingSanctie(
       ),
     );
 
-  if (gebruikersIds.length) {
-    const aantal =
-      await prisma.toegestaneGebruiker.count({
-        where: {
-          id: {
-            in: gebruikersIds,
-          },
-          actief: true,
-          rollen: {
-            has: "AUDITEUR",
-          },
+  const geldigeGebruikers =
+    await prisma.toegestaneGebruiker.findMany({
+      where: {
+        id: {
+          in: gebruikersIds,
         },
-      });
+        actief: true,
+        rollen: {
+          has: "AUDITEUR",
+        },
+      },
+      select: {
+        id: true,
+        email: true,
+        naam: true,
+        voornaam: true,
+        achternaam: true,
+      },
+    });
 
-    if (
-      aantal !==
-      gebruikersIds.length
-    ) {
-      return {
-        fout:
-          "Een geselecteerde auditeur is niet meer actief.",
-      };
-    }
+  if (
+    geldigeGebruikers.length !==
+    gebruikersIds.length
+  ) {
+    return {
+      fout:
+        "Een geselecteerde auditeur is niet meer actief.",
+    };
   }
+
+  const geselecteerdeAuditeur =
+    geldigeGebruikers.find(
+      (auditeur) =>
+        auditeur.id ===
+        auditeurGebruikerId,
+    );
+
+  if (!geselecteerdeAuditeur) {
+    return {
+      fout:
+        "Kies een geldige auditeur.",
+    };
+  }
+
+  const auditeurNaam =
+    [
+      geselecteerdeAuditeur.voornaam,
+      geselecteerdeAuditeur.achternaam,
+    ]
+      .filter(Boolean)
+      .join(" ")
+      .trim() ||
+    geselecteerdeAuditeur.naam?.trim() ||
+    geselecteerdeAuditeur.email;
 
   const aangemaakt =
     await prisma.$transaction(
@@ -235,7 +276,7 @@ export async function maakHandmatigeOpvolgingSanctie(
                 null,
               bronExcelRij: null,
               auditeur:
-                auditeur || null,
+                auditeurNaam,
               auditeurGebruikerId,
               naamAdi:
                 naamAdi || null,
