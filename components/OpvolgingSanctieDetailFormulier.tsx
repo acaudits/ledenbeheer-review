@@ -209,7 +209,7 @@ export function OpvolgingSanctieDetailFormulier({
           </label>
 
           <label className="text-sm font-semibold text-slate-700">
-            OVAM-ID
+            OVAM-ID *
             <input
               name="ovamId"
               required
