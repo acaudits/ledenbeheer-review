@@ -58,31 +58,6 @@ function maakDatumSleutel(jaar: number, maand: number, dag: number) {
   ].join("-");
 }
 
-function KalenderLegende() {
-  return (
-    <div
-      className="mt-2 flex flex-wrap items-center justify-center gap-x-4 gap-y-1 border-t border-slate-100 pt-2 text-[10px] font-semibold"
-      aria-label="Kalenderlegende"
-    >
-      <span className="inline-flex items-center gap-1.5 text-emerald-800">
-        <span
-          className="size-2.5 rounded-full bg-emerald-600"
-          aria-hidden="true"
-        />
-        Terreincontroles
-      </span>
-
-      <span className="inline-flex items-center gap-1.5 text-amber-800">
-        <span
-          className="size-2.5 rounded-full bg-amber-500"
-          aria-hidden="true"
-        />
-        Na-finalisaties
-      </span>
-    </div>
-  );
-}
-
 export function ControleMaandkalender({
   soort,
   tellingen,
@@ -153,6 +128,17 @@ export function ControleMaandkalender({
     ...dagGegevens.flatMap((dag) =>
       isTerrein ? [dag.aantal, dag.aantalNaFinalisaties] : [dag.aantal],
     ),
+  );
+
+  const asStap = Math.max(1, Math.ceil(maximumAantal / 4));
+  const asMaximum = Math.max(
+    asStap,
+    Math.ceil(maximumAantal / asStap) * asStap,
+  );
+
+  const asWaarden = Array.from(
+    { length: Math.floor(asMaximum / asStap) + 1 },
+    (_, index) => index * asStap,
   );
 
   const wijzigMaand = (verschil: number) => {
@@ -337,101 +323,140 @@ export function ControleMaandkalender({
             eersteDag,
           )}`}
         >
-          <div
-            className="grid h-40 items-end gap-px border-b border-slate-300 px-1"
-            style={{
-              gridTemplateColumns: `repeat(${aantalDagen}, minmax(0, 1fr))`,
-            }}
-          >
-            {dagGegevens.map((gegevens) => {
-              const datum = new Date(
-                Date.UTC(
-                  zichtbareMaand.jaar,
-                  zichtbareMaand.maand,
-                  gegevens.dag,
-                ),
-              );
-
-              const titelTekst = isTerrein
-                ? `${volledigeDatumFormatter.format(
-                    datum,
-                  )}: ${gegevens.aantal} terreincontroles en ${
-                    gegevens.aantalNaFinalisaties
-                  } na-finalisaties`
-                : `${volledigeDatumFormatter.format(
-                    datum,
-                  )}: ${gegevens.aantal} deskcontroles`;
-
-              return (
-                <div
-                  key={gegevens.datumSleutel}
-                  title={titelTekst}
-                  className={
-                    gegevens.isVandaag
-                      ? "flex h-full items-end justify-center gap-px rounded-t bg-emerald-50 ring-1 ring-inset ring-emerald-300"
-                      : "flex h-full items-end justify-center gap-px"
-                  }
-                >
-                  {gegevens.aantal > 0 ? (
-                    <span
-                      className={
-                        isTerrein
-                          ? "w-[42%] max-w-2 rounded-t-sm bg-emerald-600"
-                          : "w-[70%] max-w-3 rounded-t-sm bg-emerald-600"
-                      }
-                      style={{
-                        height: `${Math.max(
-                          4,
-                          (gegevens.aantal / maximumAantal) * 100,
-                        )}%`,
-                      }}
-                      aria-hidden="true"
-                    />
-                  ) : null}
-
-                  {isTerrein && gegevens.aantalNaFinalisaties > 0 ? (
-                    <span
-                      className="w-[42%] max-w-2 rounded-t-sm bg-amber-500"
-                      style={{
-                        height: `${Math.max(
-                          4,
-                          (gegevens.aantalNaFinalisaties / maximumAantal) * 100,
-                        )}%`,
-                      }}
-                      aria-hidden="true"
-                    />
-                  ) : null}
-                </div>
-              );
-            })}
-          </div>
-
-          <div
-            className="mt-1 grid gap-px px-1"
-            style={{
-              gridTemplateColumns: `repeat(${aantalDagen}, minmax(0, 1fr))`,
-            }}
-            aria-hidden="true"
-          >
-            {dagGegevens.map((gegevens) => (
-              <span
-                key={gegevens.datumSleutel}
-                className={
-                  gegevens.dag === 1 ||
-                  gegevens.dag === aantalDagen ||
-                  gegevens.dag % 5 === 0
-                    ? "text-center text-[8px] font-bold text-slate-500"
-                    : "text-center text-[8px] text-transparent"
-                }
-              >
-                {gegevens.dag}
+          <div className="grid grid-cols-[2rem_minmax(0,1fr)] gap-1">
+            <div
+              className="relative h-40 border-r border-slate-300"
+              aria-hidden="true"
+            >
+              <span className="absolute -left-0.5 top-1/2 -translate-x-full -translate-y-1/2 -rotate-90 text-[8px] font-bold uppercase tracking-wide text-slate-400">
+                Aantal
               </span>
-            ))}
+
+              {asWaarden.map((waarde) => (
+                <span
+                  key={waarde}
+                  className="absolute right-1 translate-y-1/2 text-[8px] font-bold tabular-nums text-slate-500"
+                  style={{
+                    bottom: `${(waarde / asMaximum) * 100}%`,
+                  }}
+                >
+                  {waarde}
+                </span>
+              ))}
+            </div>
+
+            <div className="min-w-0">
+              <div className="relative h-40 border-b border-slate-300">
+                <div className="pointer-events-none absolute inset-0">
+                  {asWaarden.map((waarde) => (
+                    <span
+                      key={waarde}
+                      className="absolute inset-x-0 border-t border-dashed border-slate-200"
+                      style={{
+                        bottom: `${(waarde / asMaximum) * 100}%`,
+                      }}
+                      aria-hidden="true"
+                    />
+                  ))}
+                </div>
+
+                <div
+                  className="relative z-10 grid h-full items-end gap-px px-1"
+                  style={{
+                    gridTemplateColumns: `repeat(${aantalDagen}, minmax(0, 1fr))`,
+                  }}
+                >
+                  {dagGegevens.map((gegevens) => {
+                    const datum = new Date(
+                      Date.UTC(
+                        zichtbareMaand.jaar,
+                        zichtbareMaand.maand,
+                        gegevens.dag,
+                      ),
+                    );
+
+                    const titelTekst = isTerrein
+                      ? `${volledigeDatumFormatter.format(
+                          datum,
+                        )}: ${gegevens.aantal} terreincontroles en ${
+                          gegevens.aantalNaFinalisaties
+                        } na-finalisaties`
+                      : `${volledigeDatumFormatter.format(
+                          datum,
+                        )}: ${gegevens.aantal} deskcontroles`;
+
+                    return (
+                      <div
+                        key={gegevens.datumSleutel}
+                        title={titelTekst}
+                        className={
+                          gegevens.isVandaag
+                            ? "flex h-full items-end justify-center gap-px rounded-t bg-emerald-50/70 ring-1 ring-inset ring-emerald-300"
+                            : "flex h-full items-end justify-center gap-px"
+                        }
+                      >
+                        {gegevens.aantal > 0 ? (
+                          <span
+                            className={
+                              isTerrein
+                                ? "w-[42%] max-w-2 rounded-t-sm bg-emerald-600"
+                                : "w-[70%] max-w-3 rounded-t-sm bg-emerald-600"
+                            }
+                            style={{
+                              height: `${Math.max(
+                                4,
+                                (gegevens.aantal / asMaximum) * 100,
+                              )}%`,
+                            }}
+                            aria-hidden="true"
+                          />
+                        ) : null}
+
+                        {isTerrein && gegevens.aantalNaFinalisaties > 0 ? (
+                          <span
+                            className="w-[42%] max-w-2 rounded-t-sm bg-amber-500"
+                            style={{
+                              height: `${Math.max(
+                                4,
+                                (gegevens.aantalNaFinalisaties / asMaximum) *
+                                  100,
+                              )}%`,
+                            }}
+                            aria-hidden="true"
+                          />
+                        ) : null}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div
+                className="mt-1 grid gap-px px-1"
+                style={{
+                  gridTemplateColumns: `repeat(${aantalDagen}, minmax(0, 1fr))`,
+                }}
+                aria-hidden="true"
+              >
+                {dagGegevens.map((gegevens) => (
+                  <span
+                    key={gegevens.datumSleutel}
+                    className={
+                      gegevens.dag === 1 ||
+                      gegevens.dag === aantalDagen ||
+                      gegevens.dag % 5 === 0
+                        ? "text-center text-[8px] font-bold text-slate-500"
+                        : "text-center text-[8px] text-transparent"
+                    }
+                  >
+                    {gegevens.dag}
+                  </span>
+                ))}
+              </div>
+            </div>
           </div>
         </div>
       )}
-
-      {isTerrein ? <KalenderLegende /> : null}
     </section>
   );
 }
