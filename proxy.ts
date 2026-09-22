@@ -18,6 +18,7 @@ function isPubliekeRoute(pathname: string) {
     pathname === "/wachtwoord-instellen" ||
     pathname === "/aanmelden-laattijdige-plaatsbezoeken" ||
     pathname === "/api/publiek/geopunt" ||
+    pathname === "/api/publiek/laattijdige-formulierlog" ||
     pathname.startsWith("/auth/")
   );
 }
@@ -38,8 +39,12 @@ function maakLoginUrl(request: NextRequest, fout?: string) {
 export async function proxy(request: NextRequest) {
   if (
     request.method === "POST" &&
-    request.nextUrl.pathname ===
-      "/aanmelden-laattijdige-plaatsbezoeken"
+    (
+      request.nextUrl.pathname ===
+        "/aanmelden-laattijdige-plaatsbezoeken" ||
+      request.nextUrl.pathname ===
+        "/api/publiek/laattijdige-formulierlog"
+    )
   ) {
     const contentLength = Number(
       request.headers.get(

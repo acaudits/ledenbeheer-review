@@ -509,6 +509,69 @@ model NaFinalisatie {
   @@map("na_finalisatie")
 }
 
+enum LaattijdigeFormulierStatus {
+  GESTART
+  BEZIG
+  MISLUKT
+  GESLAAGD
+  ONVOLLEDIG
+}
+
+enum LaattijdigeFormulierStap {
+  PERSOONSGEGEVENS
+  ADRES
+  PLANNING
+  BEVESTIGING
+  VERZENDEN
+  VOLTOOID
+}
+
+enum LaattijdigeFormulierApparaat {
+  MOBIEL
+  TABLET
+  DESKTOP
+  ONBEKEND
+}
+
+model LaattijdigeFormulierSessie {
+  id Int @id @default(autoincrement())
+
+  sessieToken    String  @unique @map("sessie_token") @db.Uuid
+  inzendingToken String? @map("inzending_token") @db.Uuid
+
+  status   LaattijdigeFormulierStatus   @default(GESTART)
+  stap     LaattijdigeFormulierStap     @default(PERSOONSGEGEVENS)
+  apparaat LaattijdigeFormulierApparaat @default(ONBEKEND)
+
+  gestartOp           DateTime @default(now()) @map("gestart_op")
+  laatsteActiviteitOp DateTime @default(now()) @map("laatste_activiteit_op")
+  actieveDuurSeconden Int      @default(0) @map("actieve_duur_seconden")
+  validatiePogingen   Int      @default(0) @map("validatie_pogingen")
+
+  foutcode    String? @db.VarChar(100)
+  foutmelding String? @db.VarChar(1000)
+
+  momentopname Json?
+
+  ovamLinkGeklikt  Boolean   @default(false) @map("ovam_link_geklikt")
+  ovamLinkKlikken  Int       @default(0) @map("ovam_link_klikken")
+  ovamLinkLaatstOp DateTime? @map("ovam_link_laatst_op")
+
+  meldingId Int?                            @unique @map("melding_id")
+  melding   LaattijdigePlaatsbezoekMelding? @relation(fields: [meldingId], references: [id], onDelete: SetNull)
+
+  aangemaaktOp DateTime @default(now()) @map("aangemaakt_op")
+  bijgewerktOp DateTime @updatedAt @map("bijgewerkt_op")
+
+  @@index([status, gestartOp(sort: Desc)])
+  @@index([stap])
+  @@index([apparaat])
+  @@index([laatsteActiviteitOp])
+  @@index([inzendingToken])
+  @@index([ovamLinkGeklikt])
+  @@map("laattijdige_formulier_sessies")
+}
+
 model LaattijdigePlaatsbezoekMelding {
   id             Int    @id @default(autoincrement())
   referentie     String @unique @db.VarChar(35)
@@ -520,8 +583,9 @@ model LaattijdigePlaatsbezoekMelding {
 
   aangemeldOp DateTime @default(now()) @map("aangemeld_op")
 
-  lid      Lid                      @relation(fields: [lidId], references: [id], onDelete: Restrict)
-  bezoeken LaattijdigPlaatsbezoek[]
+  lid             Lid                         @relation(fields: [lidId], references: [id], onDelete: Restrict)
+  bezoeken        LaattijdigPlaatsbezoek[]
+  formulierSessie LaattijdigeFormulierSessie?
 
   @@index([lidId])
   @@index([aangemeldOp])

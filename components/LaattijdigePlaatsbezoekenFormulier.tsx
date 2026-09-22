@@ -18,6 +18,9 @@ import {
 import {
   LAATTIJDIGE_PLAATSBEZOEKEN_QUERY_SLEUTEL,
 } from "@/hooks/useLaattijdigePlaatsbezoekenQuery";
+import {
+  useLaattijdigeFormulierlog,
+} from "@/hooks/useLaattijdigeFormulierlog";
 
 type Optie = {
   waarde: string;
@@ -151,6 +154,79 @@ export function LaattijdigePlaatsbezoekenFormulier() {
     useState<Bezoek[]>(() => [
       nieuwBezoek(),
     ]);
+
+  const [
+    privacyKennisname,
+    setPrivacyKennisname,
+  ] = useState(false);
+
+  const onvolledigAdres =
+    bezoeken.some(
+      (bezoek) =>
+        !bezoek.gemeente.trim() ||
+        !bezoek.straat.trim() ||
+        !bezoek.huisnummer.trim(),
+    );
+
+  const onvolledigePlanning =
+    bezoeken.some(
+      (bezoek) =>
+        !bezoek.datum ||
+        !bezoek.tijdstip ||
+        bezoek.reden.trim().length < 3,
+    );
+
+  const formulierStap =
+    !naamAdi.trim() ||
+    !persoonsId.trim()
+      ? "PERSOONSGEGEVENS"
+      : onvolledigAdres
+        ? "ADRES"
+        : onvolledigePlanning
+          ? "PLANNING"
+          : !privacyKennisname
+            ? "BEVESTIGING"
+            : "VERZENDEN";
+
+  const {
+    sessieToken:
+      formulierSessieToken,
+    registreerActiviteit,
+    registreerOvamLinkKlik,
+  } = useLaattijdigeFormulierlog({
+    stap: formulierStap,
+    resultaat: state,
+    momentopname: {
+      naamAdi,
+      persoonsId,
+      privacyKennisname,
+      aantalPlaatsbezoeken:
+        bezoeken.length,
+      bezoeken:
+        bezoeken.map(
+          (bezoek) => ({
+            gemeente:
+              bezoek.gemeente,
+            straat:
+              bezoek.straat,
+            huisnummer:
+              bezoek.huisnummer,
+            busnummer:
+              bezoek.busnummer,
+            extraAdresdetails:
+              bezoek.extraAdresdetails,
+            gemeenschappelijkeDelen:
+              bezoek.gemeenschappelijkeDelen,
+            datum:
+              bezoek.datum,
+            tijdstip:
+              bezoek.tijdstip,
+            reden:
+              bezoek.reden,
+          }),
+        ),
+    },
+  });
 
   const [opties, setOpties] =
     useState<
@@ -415,6 +491,8 @@ export function LaattijdigePlaatsbezoekenFormulier() {
     <form
       action={formAction}
       autoComplete="off"
+      onInput={registreerActiviteit}
+      onChange={registreerActiviteit}
       className="space-y-7 rounded-3xl border border-slate-200 bg-white p-5 shadow-xl sm:p-8"
     >
       <input
@@ -486,6 +564,9 @@ export function LaattijdigePlaatsbezoekenFormulier() {
             <a
               href="https://asbestinventaris.ovam.be/account"
               target="_blank"
+              onClick={
+                registreerOvamLinkKlik
+              }
               rel="noopener noreferrer"
               referrerPolicy="no-referrer"
               className="font-semibold text-emerald-800 underline underline-offset-2 hover:text-emerald-950"
@@ -1015,6 +1096,15 @@ export function LaattijdigePlaatsbezoekenFormulier() {
           name="privacyKennisname"
           value="gelezen"
           required
+          checked={
+            privacyKennisname
+          }
+          onChange={(event) => {
+            setPrivacyKennisname(
+              event.target.checked,
+            );
+            registreerActiviteit();
+          }}
           className="mt-0.5 size-5 shrink-0"
         />
 
@@ -1028,7 +1118,7 @@ export function LaattijdigePlaatsbezoekenFormulier() {
           >
             privacyverklaring
           </a>{" "}
-          heb gelezen. *
+          heb gelezen. Technische gebruiksgegevens en tussentijdse formuliergegevens kunnen worden verwerkt voor beveiliging, ondersteuning en verbetering van dit formulier. *
         </span>
       </label>
 
@@ -1036,6 +1126,14 @@ export function LaattijdigePlaatsbezoekenFormulier() {
         type="hidden"
         name="inzendingToken"
         value={inzendingToken}
+      />
+
+      <input
+        type="hidden"
+        name="formulierSessieToken"
+        value={
+          formulierSessieToken
+        }
       />
 
       <input
