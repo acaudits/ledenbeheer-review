@@ -153,21 +153,6 @@ function duur(seconden: number) {
     .join(" ");
 }
 
-function statusStijl(status: string) {
-  switch (status) {
-    case "GESLAAGD":
-      return "bg-emerald-100 text-emerald-900";
-    case "MISLUKT":
-      return "bg-red-100 text-red-900";
-    case "ONVOLLEDIG":
-      return "bg-amber-100 text-amber-950";
-    case "BEZIG":
-      return "bg-blue-100 text-blue-900";
-    default:
-      return "bg-slate-100 text-slate-800";
-  }
-}
-
 function isInteractief(doel: EventTarget | null) {
   return (
     doel instanceof Element &&
