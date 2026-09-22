@@ -72,7 +72,8 @@ export default function TerreincontroleExcelImport() {
             Maximale bestandsgrootte: 15 MB.
           </li>
           <li>
-            Het PersoonsID en ondernemingsnummer moeten al in de webapp bestaan.
+            Het PersoonsID moet al in de webapp bestaan.
+            Cel C7 is optioneel en blokkeert de import niet.
           </li>
           <li>
             De status begint na import op Geen.

@@ -7,7 +7,6 @@ import { redirect } from "next/navigation";
 import { schrijfAuditlog } from "@/lib/auditlog";
 import { vereisMachtiging } from "@/lib/auth";
 import {
-  isGeldigOndernemingsnummer,
   normaliseerOndernemingsnummer,
 } from "@/lib/ondernemingsnummer";
 import { prisma } from "@/lib/prisma";
@@ -459,9 +458,8 @@ export async function importeerTerreincontroleUitExcel(
 
   /*
    * Tijdens de bulkimport wordt C7
-   * volledig genegeerd. De gewone
-   * import behoudt de bestaande
-   * procescertificaatcontrole.
+   * volledig genegeerd. Bij de gewone
+   * import is C7 optioneel.
    */
   const bulkimport =
     formData.get("bulkimport") ===
@@ -640,17 +638,6 @@ export async function importeerTerreincontroleUitExcel(
     );
   }
 
-  if (
-    !bulkimport &&
-    !isGeldigOndernemingsnummer(
-      ondernemingsnummer,
-    )
-  ) {
-    return fout(
-      "Het ondernemingsnummer is niet geldig.",
-      "Controleer cel C7.",
-    );
-  }
 
   if (!linkAttest || !attestId) {
     return fout(
@@ -839,37 +826,19 @@ export async function importeerTerreincontroleUitExcel(
         genormaliseerdNummer,
     );
 
-  if (
-    !bulkimport &&
-    overeenkomendeProcessen.length >
-    1
-  ) {
-    return fout(
-      `Meerdere procescertificaten gevonden voor ${ondernemingsnummer}.`,
-      "Los eerst de dubbele procescertificaten op.",
-    );
-  }
-
   /*
-   * Bij bulkimport wordt C7 niet
-   * gebruikt voor validatie of
-   * koppeling.
+   * De bulkimport blijft C7 negeren. Bij
+   * gewone import wordt alleen gekoppeld
+   * wanneer precies één procescertificaat
+   * overeenkomt.
    */
   const procescertificaat =
     bulkimport
       ? null
-      : overeenkomendeProcessen[0] ??
-        null;
-
-  if (
-    !bulkimport &&
-    !procescertificaat
-  ) {
-    return fout(
-      `Geen actief procescertificaat gevonden voor ${ondernemingsnummer}.`,
-      "Controleer cel C7.",
-    );
-  }
+      : overeenkomendeProcessen.length ===
+          1
+        ? overeenkomendeProcessen[0]
+        : null;
 
   if (bestaand) {
     if (

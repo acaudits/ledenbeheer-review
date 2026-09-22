@@ -337,8 +337,8 @@ export default function ExcelDeskcontroleImport() {
               </li>
 
               <li>
-                • C7 voor het
-                KBO-nummer
+                • C7 is optioneel en
+                blokkeert de import niet
               </li>
 
               <li>
@@ -515,4 +515,3 @@ export default function ExcelDeskcontroleImport() {
     </section>
   );
 }
-

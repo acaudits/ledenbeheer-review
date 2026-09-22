@@ -5,7 +5,6 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { vereisMachtiging } from "@/lib/auth";
 import {
-  isGeldigOndernemingsnummer,
   normaliseerOndernemingsnummer,
 } from "@/lib/ondernemingsnummer";
 import { prisma } from "@/lib/prisma";
@@ -464,9 +463,9 @@ export async function importeerDeskcontroleUitExcel(
 
   /*
    * Alleen de bulkimport mag verwijderde
-   * persoonscertificaten gebruiken en C7
-   * negeren. De gewone import behoudt
-   * de bestaande controles.
+   * persoonscertificaten gebruiken.
+   * C7 is bij de gewone import optioneel
+   * en wordt bij bulkimport genegeerd.
    */
   const bulkimport =
     formData.get("bulkimport") === "1";
@@ -725,15 +724,6 @@ export async function importeerDeskcontroleUitExcel(
       "Cel B7 bevat geen OVAM-ID.";
   }
 
-  if (
-    !bulkimport &&
-    !isGeldigOndernemingsnummer(
-      ondernemingsnummer,
-    )
-  ) {
-    errors.excelBestand =
-      "Cel C7 bevat geen geldig Belgisch ondernemingsnummer of EU-btw-nummer.";
-  }
 
   if (!linkAttest) {
     errors.excelBestand =
@@ -983,44 +973,19 @@ export async function importeerDeskcontroleUitExcel(
         genormaliseerdOndernemingsnummer,
     );
 
-  if (
-    !bulkimport &&
-    overeenkomendeProcessen.length >
-    1
-  ) {
-    return {
-      message:
-        `Er werden meerdere actieve of verwijderde procescertificaten gevonden voor ondernemingsnummer ${ondernemingsnummer}.`,
-      errors: {
-        excelBestand:
-          "Los eerst de dubbele procescertificaten op.",
-      },
-    };
-  }
-
   /*
-   * C7 wordt bij bulkimport bewust
-   * niet gecontroleerd of gekoppeld.
+   * De bulkimport blijft C7 negeren. Bij
+   * gewone import wordt alleen gekoppeld
+   * wanneer precies één procescertificaat
+   * overeenkomt.
    */
   const procescertificaat =
     bulkimport
       ? null
-      : overeenkomendeProcessen[0] ??
-        null;
-
-  if (
-    !bulkimport &&
-    !procescertificaat
-  ) {
-    return {
-      message:
-        `Er werd geen actief of verwijderd procescertificaat gevonden voor ondernemingsnummer ${ondernemingsnummer}.`,
-      errors: {
-        excelBestand:
-          "Controleer de waarde in cel C7.",
-      },
-    };
-  }
+      : overeenkomendeProcessen.length ===
+          1
+        ? overeenkomendeProcessen[0]
+        : null;
 
   const magOverschrijven =
     !bulkimport &&
