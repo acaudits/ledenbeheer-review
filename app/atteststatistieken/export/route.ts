@@ -62,6 +62,7 @@ function geefCelRand(): Partial<ExcelJS.Borders> {
 function formatteerWerkblad(
   werkblad: ExcelJS.Worksheet,
   numeriekeKolommen: number[],
+  heeftTotalenRij = false,
 ) {
   werkblad.views = [
     {
@@ -145,10 +146,54 @@ function formatteerWerkblad(
       column: 1,
     },
     to: {
-      row: Math.max(werkblad.rowCount, 1),
+      row: Math.max(werkblad.rowCount - (heeftTotalenRij ? 1 : 0), 1),
       column: werkblad.columnCount,
     },
   };
+}
+
+function formatteerTotalenRij(rij: ExcelJS.Row, numeriekeKolommen: number[]) {
+  rij.height = 25;
+  rij.font = {
+    bold: true,
+    color: {
+      argb: "FFFFFFFF",
+    },
+  };
+  rij.alignment = {
+    vertical: "middle",
+    wrapText: true,
+  };
+
+  rij.eachCell(
+    {
+      includeEmpty: true,
+    },
+    (cel) => {
+      cel.border = geefCelRand();
+      cel.fill = {
+        type: "pattern",
+        pattern: "solid",
+        fgColor: {
+          argb: "FF065F46",
+        },
+      };
+    },
+  );
+
+  for (const kolom of numeriekeKolommen) {
+    const cel = rij.getCell(kolom);
+
+    cel.numFmt = "0";
+    cel.alignment = {
+      vertical: "middle",
+      horizontal: "right",
+    };
+  }
+}
+
+function som(rijen: ExportRij[], bepaalWaarde: (rij: ExportRij) => number) {
+  return rijen.reduce((totaal, rij) => totaal + bepaalWaarde(rij), 0);
 }
 
 function berekenDeskcontroleTarget(aantalAttesten: number) {
@@ -643,8 +688,28 @@ export async function GET() {
     });
   }
 
-  formatteerWerkblad(hoofdWerkblad, [3, 4, 5, 6, 7, 8]);
+  const aantalInOpvolging = rijen.filter((rij) => rij.inOpvolging).length;
+
+  const hoofdTotalenRij = hoofdWerkblad.addRow({
+    naamPersoonscertificatie: "Totaal",
+    ovamId: "",
+    aantalAttesten: som(rijen, (rij) => rij.aantalAttesten),
+    aantalIngeplandeTerreincontroles: som(
+      rijen,
+      (rij) => rij.aantalIngeplandeTerreincontroles,
+    ),
+    aantalTerreincontroles: som(rijen, (rij) => rij.aantalTerreincontroles),
+    aantalNaFinalisaties: som(rijen, (rij) => rij.aantalNaFinalisaties),
+    aantalDeskcontroles: som(rijen, (rij) => rij.aantalDeskcontroles),
+    aantalNonConformiteiten: som(rijen, (rij) => rij.aantalNonConformiteiten),
+    inOpvolging: `${aantalInOpvolging} Ja / ${
+      rijen.length - aantalInOpvolging
+    } Nee`,
+  });
+
+  formatteerWerkblad(hoofdWerkblad, [3, 4, 5, 6, 7, 8], true);
   pasTargetkleurenToe(hoofdWerkblad, rijen);
+  formatteerTotalenRij(hoofdTotalenRij, [3, 4, 5, 6, 7, 8]);
 
   const deskcontroleRijen: DeskcontroleTargetRij[] = rijen
     .map((rij) => {
@@ -713,11 +778,29 @@ export async function GET() {
     });
   }
 
-  formatteerWerkblad(deskcontroleWerkblad, [3, 4, 5]);
+  const deskTotalenRij = deskcontroleWerkblad.addRow({
+    naamPersoonscertificatie: "Totaal",
+    ovamId: "",
+    aantalAttesten: deskcontroleRijen.reduce(
+      (totaal, rij) => totaal + rij.aantalAttesten,
+      0,
+    ),
+    aantalDeskcontroles: deskcontroleRijen.reduce(
+      (totaal, rij) => totaal + rij.aantalDeskcontroles,
+      0,
+    ),
+    aantalDeskcontrolesNogNodig: deskcontroleRijen.reduce(
+      (totaal, rij) => totaal + rij.aantalDeskcontrolesNogNodig,
+      0,
+    ),
+  });
+
+  formatteerWerkblad(deskcontroleWerkblad, [3, 4, 5], true);
   pasTargetkleurenToe(
     deskcontroleWerkblad,
     deskcontroleRijen.map((rij) => rij.bron),
   );
+  formatteerTotalenRij(deskTotalenRij, [3, 4, 5]);
 
   const terreincontroleRijen: TerreincontroleTargetRij[] = rijen
     .map((rij) => {
@@ -792,11 +875,33 @@ export async function GET() {
     });
   }
 
-  formatteerWerkblad(terreincontroleWerkblad, [3, 4, 5, 6]);
+  const terreinTotalenRij = terreincontroleWerkblad.addRow({
+    naamPersoonscertificatie: "Totaal",
+    ovamId: "",
+    aantalAttesten: terreincontroleRijen.reduce(
+      (totaal, rij) => totaal + rij.aantalAttesten,
+      0,
+    ),
+    aantalIngeplandeTerreincontroles: terreincontroleRijen.reduce(
+      (totaal, rij) => totaal + rij.aantalIngeplandeTerreincontroles,
+      0,
+    ),
+    aantalNaFinalisaties: terreincontroleRijen.reduce(
+      (totaal, rij) => totaal + rij.aantalNaFinalisaties,
+      0,
+    ),
+    aantalTerreincontrolesNogNodig: terreincontroleRijen.reduce(
+      (totaal, rij) => totaal + rij.aantalTerreincontrolesNogNodig,
+      0,
+    ),
+  });
+
+  formatteerWerkblad(terreincontroleWerkblad, [3, 4, 5, 6], true);
   pasTargetkleurenToe(
     terreincontroleWerkblad,
     terreincontroleRijen.map((rij) => rij.bron),
   );
+  formatteerTotalenRij(terreinTotalenRij, [3, 4, 5, 6]);
 
   voegLegendaToe(werkboek);
 
