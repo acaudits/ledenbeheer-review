@@ -164,7 +164,7 @@ export function ControleMaandkalender({
               className="size-2 rounded-full bg-emerald-600"
               aria-hidden="true"
             />
-            T = terreincontrole
+            Terreincontroles
           </span>
 
           <span className="inline-flex items-center gap-1 text-amber-800">
@@ -172,7 +172,7 @@ export function ControleMaandkalender({
               className="size-2 rounded-full bg-amber-500"
               aria-hidden="true"
             />
-            NF = na-finalisatie
+            Na-finalisaties
           </span>
         </div>
       ) : null}
@@ -250,26 +250,30 @@ export function ControleMaandkalender({
               </div>
 
               {isTerrein ? (
-                <div className="mt-0.5 space-y-0.5 text-[9px] font-black tabular-nums">
-                  <div
-                    className={
-                      aantal > 0 ? "text-emerald-800" : "text-emerald-300"
-                    }
-                    title={`${aantal} terreincontroles`}
-                  >
-                    T {aantal}
-                  </div>
+                <div className="mt-1 flex min-h-5 flex-wrap items-center justify-center gap-1 text-[10px] font-black tabular-nums">
+                  {aantal > 0 ? (
+                    <span
+                      className="inline-flex min-w-5 items-center justify-center rounded-full bg-emerald-600 px-1.5 py-0.5 text-white"
+                      title={`${aantal} terreincontroles`}
+                    >
+                      {aantal}
+                    </span>
+                  ) : null}
 
-                  <div
-                    className={
-                      aantalNaFinalisaties > 0
-                        ? "text-amber-700"
-                        : "text-amber-300"
-                    }
-                    title={`${aantalNaFinalisaties} na-finalisaties`}
-                  >
-                    NF {aantalNaFinalisaties}
-                  </div>
+                  {aantalNaFinalisaties > 0 ? (
+                    <span
+                      className="inline-flex min-w-5 items-center justify-center rounded-full bg-amber-500 px-1.5 py-0.5 text-amber-950"
+                      title={`${aantalNaFinalisaties} na-finalisaties`}
+                    >
+                      {aantalNaFinalisaties}
+                    </span>
+                  ) : null}
+
+                  {aantal === 0 && aantalNaFinalisaties === 0 ? (
+                    <span className="text-slate-300" aria-hidden="true">
+                      –
+                    </span>
+                  ) : null}
                 </div>
               ) : (
                 <div
