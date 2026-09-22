@@ -1,10 +1,6 @@
 "use client";
 
-import {
-  useActionState,
-  useRef,
-  useState,
-} from "react";
+import { useActionState, useRef, useState } from "react";
 import { useFormStatus } from "react-dom";
 import {
   importeerDeskcontroleUitExcel,
@@ -13,82 +9,55 @@ import {
 
 const beginStatus: ExcelImportState = {};
 
-const MAXIMALE_BESTANDSGROOTTE =
-  15 * 1024 * 1024;
+const MAXIMALE_BESTANDSGROOTTE = 15 * 1024 * 1024;
 
 type ImportKnopProps = {
   kanImporteren: boolean;
 };
 
-function ImportKnop({
-  kanImporteren,
-}: ImportKnopProps) {
+function ImportKnop({ kanImporteren }: ImportKnopProps) {
   const { pending } = useFormStatus();
 
   return (
     <button
       type="submit"
-      disabled={
-        pending || !kanImporteren
-      }
+      disabled={pending || !kanImporteren}
       className="inline-flex min-h-11 items-center justify-center rounded-xl bg-emerald-700 px-5 py-2.5 text-sm font-bold text-white transition hover:bg-emerald-800 disabled:cursor-not-allowed disabled:bg-slate-300 disabled:text-slate-500"
     >
-      {pending
-        ? "Excelbestand verwerken..."
-        : "Deskcontrole importeren"}
+      {pending ? "Excelbestand verwerken..." : "Deskcontrole importeren"}
     </button>
   );
 }
 
 export default function ExcelDeskcontroleImport() {
-  const [status, formAction] =
-    useActionState(
-      importeerDeskcontroleUitExcel,
-      beginStatus,
-    );
+  const [status, formAction] = useActionState(
+    importeerDeskcontroleUitExcel,
+    beginStatus,
+  );
 
-  const formulierRef =
-    useRef<HTMLFormElement>(null);
+  const formulierRef = useRef<HTMLFormElement>(null);
 
-  const bestandRef =
-    useRef<HTMLInputElement>(null);
+  const bestandRef = useRef<HTMLInputElement>(null);
 
-  const geselecteerdBestandRef =
-    useRef<File | null>(null);
+  const geselecteerdBestandRef = useRef<File | null>(null);
 
-  const overschrijfRef =
-    useRef<HTMLInputElement>(null);
+  const overschrijfRef = useRef<HTMLInputElement>(null);
 
-  const [
-    conflictGesloten,
-    setConflictGesloten,
-  ] = useState(false);
+  const [conflictGesloten, setConflictGesloten] = useState(false);
 
-  const [
-    finalisatieDatum,
-    setFinalisatieDatum,
-  ] = useState("");
+  const [finalisatieDatum, setFinalisatieDatum] = useState("");
 
-  const [bestandsnaam, setBestandsnaam] =
-    useState("");
+  const [bestandsnaam, setBestandsnaam] = useState("");
 
-  const [heeftBestand, setHeeftBestand] =
-    useState(false);
+  const [heeftBestand, setHeeftBestand] = useState(false);
 
-  const [clientFout, setClientFout] =
-    useState("");
+  const [clientFout, setClientFout] = useState("");
 
-  const kanBestandKiezen =
-    finalisatieDatum.length > 0;
+  const kanBestandKiezen = finalisatieDatum.length > 0;
 
-  const kanImporteren =
-    kanBestandKiezen &&
-    heeftBestand &&
-    !clientFout;
+  const kanImporteren = kanBestandKiezen && heeftBestand && !clientFout;
 
-  function controleerBestand(
-    bestand: File | undefined,
-  ) {
+  function controleerBestand(bestand: File | undefined) {
     setClientFout("");
     setBestandsnaam("");
     setHeeftBestand(false);
@@ -102,24 +71,13 @@ export default function ExcelDeskcontroleImport() {
       return;
     }
 
-    if (
-      !bestand.name
-        .toLocaleLowerCase("nl-BE")
-        .endsWith(".xlsx")
-    ) {
-      setClientFout(
-        "Alleen .xlsx-bestanden worden ondersteund.",
-      );
+    if (!bestand.name.toLocaleLowerCase("nl-BE").endsWith(".xlsx")) {
+      setClientFout("Alleen .xlsx-bestanden worden ondersteund.");
       return;
     }
 
-    if (
-      bestand.size >
-      MAXIMALE_BESTANDSGROOTTE
-    ) {
-      setClientFout(
-        "Het Excelbestand mag maximaal 15 MB groot zijn.",
-      );
+    if (bestand.size > MAXIMALE_BESTANDSGROOTTE) {
+      setClientFout("Het Excelbestand mag maximaal 15 MB groot zijn.");
       return;
     }
 
@@ -137,19 +95,13 @@ export default function ExcelDeskcontroleImport() {
             </p>
 
             <h2 className="mt-1 text-lg font-bold text-slate-950">
-              Deskcontrole uit Excel
-              toevoegen
+              Deskcontrole uit Excel toevoegen
             </h2>
 
             <p className="mt-1 max-w-3xl text-sm leading-6 text-slate-600">
-
-              Importeer automatisch de
-              deskcontrolegegevens en alle
+              Importeer automatisch de deskcontrolegegevens en alle
               non-conformiteiten uit het tabblad{" "}
-              <strong>
-                Deskcontrole samenvatting
-              </strong>
-              .
+              <strong>Deskcontrole samenvatting</strong>.
             </p>
           </div>
 
@@ -165,13 +117,10 @@ export default function ExcelDeskcontroleImport() {
             const doel = event.target;
 
             if (
-              doel instanceof
-                HTMLInputElement &&
-              doel.name ===
-                "excelBestand"
+              doel instanceof HTMLInputElement &&
+              doel.name === "excelBestand"
             ) {
-              geselecteerdBestandRef.current =
-                doel.files?.[0] ?? null;
+              geselecteerdBestandRef.current = doel.files?.[0] ?? null;
             }
           }}
           className="mt-5 space-y-5"
@@ -192,10 +141,8 @@ export default function ExcelDeskcontroleImport() {
               </label>
 
               <p className="mt-1 text-xs leading-5 text-slate-500">
-                Deze datum is verplicht.
-                Deadline Correctie wordt
-                automatisch berekend als
-                deze datum plus 30 dagen.
+                Deze datum is verplicht. Deadline Correctie wordt automatisch
+                berekend als deze datum plus 30 dagen.
               </p>
 
               <input
@@ -204,31 +151,20 @@ export default function ExcelDeskcontroleImport() {
                 type="date"
                 value={finalisatieDatum}
                 onChange={(event) => {
-                  setFinalisatieDatum(
-                    event.target.value,
-                  );
+                  setFinalisatieDatum(event.target.value);
                   setClientFout("");
                 }}
                 required
-                aria-invalid={
-                  Boolean(
-                    status.errors
-                      ?.finalisatieDatum,
-                  )
-                }
+                aria-invalid={Boolean(status.errors?.finalisatieDatum)}
                 className="mt-2 h-11 w-full rounded-xl border border-slate-300 bg-white px-3.5 text-sm text-slate-900 outline-none transition focus:border-emerald-600 focus:ring-4 focus:ring-emerald-100"
               />
 
-              {status.errors
-                ?.finalisatieDatum ? (
+              {status.errors?.finalisatieDatum ? (
                 <p
                   role="alert"
                   className="mt-2 text-sm font-medium text-red-700"
                 >
-                  {
-                    status.errors
-                      .finalisatieDatum
-                  }
+                  {status.errors.finalisatieDatum}
                 </p>
               ) : null}
             </div>
@@ -242,10 +178,8 @@ export default function ExcelDeskcontroleImport() {
               </label>
 
               <p className="mt-1 text-xs leading-5 text-slate-500">
-                Het bestandsveld wordt pas
-                actief nadat je de
-                Finalisatie Datum hebt
-                ingevuld.
+                Het bestandsveld wordt pas actief nadat je de Finalisatie Datum
+                hebt ingevuld.
               </p>
 
               <input
@@ -256,32 +190,22 @@ export default function ExcelDeskcontroleImport() {
                 accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
                 disabled={!kanBestandKiezen}
                 required
-                onChange={(event) =>
-                  controleerBestand(
-                    event.target
-                      .files?.[0],
-                  )
-                }
+                onChange={(event) => controleerBestand(event.target.files?.[0])}
                 aria-invalid={Boolean(
-                  status.errors
-                    ?.excelBestand ||
-                    clientFout,
+                  status.errors?.excelBestand || clientFout,
                 )}
                 className="mt-2 block min-h-11 w-full cursor-pointer rounded-xl border border-slate-300 bg-white text-sm text-slate-600 file:mr-4 file:min-h-11 file:border-0 file:bg-emerald-700 file:px-4 file:text-sm file:font-bold file:text-white hover:file:bg-emerald-800 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:opacity-60"
               />
 
               {!kanBestandKiezen ? (
                 <p className="mt-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-medium text-amber-800">
-                  Vul eerst de Finalisatie
-                  Datum in.
+                  Vul eerst de Finalisatie Datum in.
                 </p>
               ) : null}
 
-              {bestandsnaam &&
-              !clientFout ? (
+              {bestandsnaam && !clientFout ? (
                 <p className="mt-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-medium text-emerald-800">
-                  Geselecteerd:{" "}
-                  {bestandsnaam}
+                  Geselecteerd: {bestandsnaam}
                 </p>
               ) : null}
 
@@ -294,16 +218,12 @@ export default function ExcelDeskcontroleImport() {
                 </p>
               ) : null}
 
-              {status.errors
-                ?.excelBestand ? (
+              {status.errors?.excelBestand ? (
                 <p
                   role="alert"
                   className="mt-2 text-sm font-medium text-red-700"
                 >
-                  {
-                    status.errors
-                      .excelBestand
-                  }
+                  {status.errors.excelBestand}
                 </p>
               ) : null}
             </div>
@@ -315,46 +235,21 @@ export default function ExcelDeskcontroleImport() {
             </h3>
 
             <ul className="mt-2 grid gap-1 text-xs leading-5 text-slate-600 sm:grid-cols-2">
-              <li>
-                • Alleen tabblad
-                “Deskcontrole
-                samenvatting”
-              </li>
+              <li>• Alleen tabblad “Deskcontrole samenvatting”</li>
 
-              <li>
-                • A5 voor
-                attestnummer
-              </li>
+              <li>• A5 voor attestnummer</li>
 
-              <li>
-                • A8 voor de
-                attesthyperlink
-              </li>
+              <li>• A8 voor de attesthyperlink</li>
 
-              <li>
-                • B7 voor de
-                OVAM-ID
-              </li>
+              <li>• B7 voor de OVAM-ID</li>
 
-              <li>
-                • C7 voor het
-                KBO-nummer
-              </li>
+              <li>• C7 is optioneel en blokkeert de import niet</li>
 
-              <li>
-                • E13 voor Datum
-                controle
-              </li>
+              <li>• E13 voor Datum controle</li>
 
-              <li>
-                • G13 voor
-                Auditeur
-              </li>
+              <li>• G13 voor Auditeur</li>
 
-              <li>
-                • Vanaf rij 16
-                kolommen A t/m H
-              </li>
+              <li>• Vanaf rij 16 kolommen A t/m H</li>
             </ul>
           </div>
 
@@ -369,25 +264,16 @@ export default function ExcelDeskcontroleImport() {
 
           <div className="flex flex-col gap-3 border-t border-slate-200 pt-5 sm:flex-row sm:items-center sm:justify-between">
             <p className="text-xs leading-5 text-slate-500">
-
-              De deskcontrole en de
-              non-conformiteiten worden samen
-              opgeslagen. Bij een fout
-              wordt niets gedeeltelijk
-              geïmporteerd.
+              De deskcontrole en de non-conformiteiten worden samen opgeslagen.
+              Bij een fout wordt niets gedeeltelijk geïmporteerd.
             </p>
 
-            <ImportKnop
-              kanImporteren={
-                kanImporteren
-              }
-            />
+            <ImportKnop kanImporteren={kanImporteren} />
           </div>
         </form>
       </div>
 
-      {status.conflict &&
-      !conflictGesloten ? (
+      {status.conflict && !conflictGesloten ? (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-4"
           role="presentation"
@@ -411,36 +297,29 @@ export default function ExcelDeskcontroleImport() {
 
             <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-slate-700">
               <p>
-                Attestnummer:{" "}
-                <strong>
-                  {status.conflict.attestnummer}
-                </strong>
+                Attestnummer: <strong>{status.conflict.attestnummer}</strong>
               </p>
 
               <p className="mt-2">
                 Huidige locatie:{" "}
                 <strong>
-                  {status.conflict.locatie ===
-                  "VERWIJDERD"
+                  {status.conflict.locatie === "VERWIJDERD"
                     ? "Verwijderde deskcontroles"
                     : "Gewone deskcontrolelijst"}
                 </strong>
               </p>
 
-              {status.conflict.locatie ===
-              "VERWIJDERD" ? (
+              {status.conflict.locatie === "VERWIJDERD" ? (
                 <p className="mt-2">
-                  Bij overschrijven wordt de
-                  deskcontrole opnieuw in de gewone
+                  Bij overschrijven wordt de deskcontrole opnieuw in de gewone
                   lijst geplaatst.
                 </p>
               ) : null}
             </div>
 
             <p className="mt-4 text-sm leading-6 text-slate-600">
-              De bestaande deskcontrole en haar
-              vaststellingen worden vervangen door
-              de gegevens uit het Excelbestand.
+              De bestaande deskcontrole en haar vaststellingen worden vervangen
+              door de gegevens uit het Excelbestand.
             </p>
 
             <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
@@ -451,8 +330,7 @@ export default function ExcelDeskcontroleImport() {
                   setConflictGesloten(true);
                   setBestandsnaam("");
                   setHeeftBestand(false);
-                  geselecteerdBestandRef.current =
-                    null;
+                  geselecteerdBestandRef.current = null;
 
                   if (bestandRef.current) {
                     bestandRef.current.value = "";
@@ -470,13 +348,9 @@ export default function ExcelDeskcontroleImport() {
                 type="button"
                 className="min-h-11 rounded-xl bg-red-700 px-5 text-sm font-bold text-white hover:bg-red-800"
                 onClick={() => {
-                  const geselecteerdBestand =
-                    geselecteerdBestandRef.current;
+                  const geselecteerdBestand = geselecteerdBestandRef.current;
 
-                  if (
-                    !geselecteerdBestand ||
-                    !bestandRef.current
-                  ) {
+                  if (!geselecteerdBestand || !bestandRef.current) {
                     setClientFout(
                       "Het geselecteerde Excelbestand is niet meer beschikbaar. Selecteer het bestand opnieuw.",
                     );
@@ -484,26 +358,19 @@ export default function ExcelDeskcontroleImport() {
                     return;
                   }
 
-                  const overdracht =
-                    new DataTransfer();
+                  const overdracht = new DataTransfer();
 
-                  overdracht.items.add(
-                    geselecteerdBestand,
-                  );
+                  overdracht.items.add(geselecteerdBestand);
 
-                  bestandRef.current.files =
-                    overdracht.files;
+                  bestandRef.current.files = overdracht.files;
 
                   if (overschrijfRef.current) {
-                    overschrijfRef.current.value =
-                      String(
-                        status.conflict
-                          ?.deskcontroleId,
-                      );
+                    overschrijfRef.current.value = String(
+                      status.conflict?.deskcontroleId,
+                    );
                   }
 
-                  formulierRef.current
-                    ?.requestSubmit();
+                  formulierRef.current?.requestSubmit();
                 }}
               >
                 Deskcontrole overschrijven
@@ -515,4 +382,3 @@ export default function ExcelDeskcontroleImport() {
     </section>
   );
 }
-

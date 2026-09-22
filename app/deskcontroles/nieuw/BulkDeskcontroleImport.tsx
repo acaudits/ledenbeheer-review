@@ -1,10 +1,6 @@
 "use client";
 
-import {
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import { useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import {
@@ -13,36 +9,21 @@ import {
 } from "@/app/deskcontroles/bulk-import-actions";
 
 const BATCHGROOTTE = 10;
-const MAXIMAAL_AANTAL_BESTANDEN =
-  2000;
-const MAXIMALE_BESTANDSGROOTTE =
-  15 * 1024 * 1024;
+const MAXIMAAL_AANTAL_BESTANDEN = 2000;
+const MAXIMALE_BESTANDSGROOTTE = 15 * 1024 * 1024;
 
-function csvCel(
-  waarde: string | number,
-) {
-  const tekst =
-    String(waarde);
+function csvCel(waarde: string | number) {
+  const tekst = String(waarde);
 
-  return `"${tekst.replace(
-    /"/g,
-    '""',
-  )}"`;
+  return `"${tekst.replace(/"/g, '""')}"`;
 }
 
-function statusLabel(
-  status:
-    BulkImportBestandResultaat["status"],
-) {
-  if (
-    status === "GEIMPORTEERD"
-  ) {
+function statusLabel(status: BulkImportBestandResultaat["status"]) {
+  if (status === "GEIMPORTEERD") {
     return "Geïmporteerd";
   }
 
-  if (
-    status === "OVERGESLAGEN"
-  ) {
+  if (status === "OVERGESLAGEN") {
     return "Overgeslagen";
   }
 
@@ -52,127 +33,62 @@ function statusLabel(
 export default function BulkDeskcontroleImport() {
   const router = useRouter();
 
-  const [
-    datumregister,
-    setDatumregister,
-  ] = useState<File | null>(
-    null,
+  const [datumregister, setDatumregister] = useState<File | null>(null);
+
+  const [bestanden, setBestanden] = useState<File[]>([]);
+
+  const [resultaten, setResultaten] = useState<BulkImportBestandResultaat[]>(
+    [],
   );
 
-  const [
-    bestanden,
-    setBestanden,
-  ] = useState<File[]>([]);
+  const [bezig, setBezig] = useState(false);
 
-  const [
-    resultaten,
-    setResultaten,
-  ] = useState<
-    BulkImportBestandResultaat[]
-  >([]);
+  const [gestopt, setGestopt] = useState(false);
 
-  const [
-    bezig,
-    setBezig,
-  ] = useState(false);
+  const [foutmelding, setFoutmelding] = useState("");
 
-  const [
-    gestopt,
-    setGestopt,
-  ] = useState(false);
+  const [verwerkt, setVerwerkt] = useState(0);
 
-  const [
-    foutmelding,
-    setFoutmelding,
-  ] = useState("");
+  const [huidigeBatch, setHuidigeBatch] = useState(0);
 
-  const [
-    verwerkt,
-    setVerwerkt,
-  ] = useState(0);
+  const [hervatVanaf, setHervatVanaf] = useState(0);
 
-  const [
-    huidigeBatch,
-    setHuidigeBatch,
-  ] = useState(0);
+  const annulerenRef = useRef(false);
 
-  const [
-    hervatVanaf,
-    setHervatVanaf,
-  ] = useState(0);
+  const totalen = useMemo(() => {
+    const geimporteerd = resultaten.filter(
+      (resultaat) => resultaat.status === "GEIMPORTEERD",
+    ).length;
 
-  const annulerenRef =
-    useRef(false);
+    const overgeslagen = resultaten.filter(
+      (resultaat) => resultaat.status === "OVERGESLAGEN",
+    ).length;
 
-  const totalen =
-    useMemo(() => {
-      const geimporteerd =
-        resultaten.filter(
-          (resultaat) =>
-            resultaat.status ===
-            "GEIMPORTEERD",
-        ).length;
+    const mislukt = resultaten.filter(
+      (resultaat) => resultaat.status === "MISLUKT",
+    ).length;
 
-      const overgeslagen =
-        resultaten.filter(
-          (resultaat) =>
-            resultaat.status ===
-            "OVERGESLAGEN",
-        ).length;
+    const vaststellingen = resultaten
+      .filter((resultaat) => resultaat.status === "GEIMPORTEERD")
+      .reduce(
+        (totaal, resultaat) => totaal + resultaat.aantalVaststellingen,
+        0,
+      );
 
-      const mislukt =
-        resultaten.filter(
-          (resultaat) =>
-            resultaat.status ===
-            "MISLUKT",
-        ).length;
+    return {
+      geimporteerd,
+      overgeslagen,
+      mislukt,
+      vaststellingen,
+    };
+  }, [resultaten]);
 
-      const vaststellingen =
-        resultaten
-          .filter(
-            (resultaat) =>
-              resultaat.status ===
-              "GEIMPORTEERD",
-          )
-          .reduce(
-            (
-              totaal,
-              resultaat,
-            ) =>
-              totaal +
-              resultaat
-                .aantalVaststellingen,
-            0,
-          );
-
-      return {
-        geimporteerd,
-        overgeslagen,
-        mislukt,
-        vaststellingen,
-      };
-    }, [resultaten]);
-
-  const totaalBatches =
-    Math.ceil(
-      bestanden.length /
-        BATCHGROOTTE,
-    );
+  const totaalBatches = Math.ceil(bestanden.length / BATCHGROOTTE);
 
   const voortgang =
-    bestanden.length > 0
-      ? Math.round(
-          (verwerkt /
-            bestanden.length) *
-            100,
-        )
-      : 0;
+    bestanden.length > 0 ? Math.round((verwerkt / bestanden.length) * 100) : 0;
 
-  function kiesDatumregister(
-    bestand:
-      | File
-      | undefined,
-  ) {
+  function kiesDatumregister(bestand: File | undefined) {
     setFoutmelding("");
 
     if (!bestand) {
@@ -180,26 +96,16 @@ export default function BulkDeskcontroleImport() {
       return;
     }
 
-    if (
-      !bestand.name
-        .toLowerCase()
-        .endsWith(".xlsx")
-    ) {
+    if (!bestand.name.toLowerCase().endsWith(".xlsx")) {
       setDatumregister(null);
-      setFoutmelding(
-        "Het datumregister moet een .xlsx-bestand zijn.",
-      );
+      setFoutmelding("Het datumregister moet een .xlsx-bestand zijn.");
       return;
     }
 
-    setDatumregister(
-      bestand,
-    );
+    setDatumregister(bestand);
   }
 
-  function kiesDeskcontroleBestanden(
-    selectie: FileList | null,
-  ) {
+  function kiesDeskcontroleBestanden(selectie: FileList | null) {
     setFoutmelding("");
     setResultaten([]);
     setVerwerkt(0);
@@ -211,27 +117,11 @@ export default function BulkDeskcontroleImport() {
       return;
     }
 
-    const gekozen =
-      Array.from(selectie)
-        .filter(
-          (bestand) =>
-            bestand.name
-              .toLowerCase()
-              .endsWith(
-                ".xlsx",
-              ),
-        )
-        .sort((a, b) =>
-          a.name.localeCompare(
-            b.name,
-            "nl-BE",
-          ),
-        );
+    const gekozen = Array.from(selectie)
+      .filter((bestand) => bestand.name.toLowerCase().endsWith(".xlsx"))
+      .sort((a, b) => a.name.localeCompare(b.name, "nl-BE"));
 
-    if (
-      gekozen.length >
-      MAXIMAAL_AANTAL_BESTANDEN
-    ) {
+    if (gekozen.length > MAXIMAAL_AANTAL_BESTANDEN) {
       setBestanden([]);
       setFoutmelding(
         `Selecteer maximaal ${MAXIMAAL_AANTAL_BESTANDEN} bestanden.`,
@@ -239,45 +129,30 @@ export default function BulkDeskcontroleImport() {
       return;
     }
 
-    const teGroot =
-      gekozen.find(
-        (bestand) =>
-          bestand.size >
-          MAXIMALE_BESTANDSGROOTTE,
-      );
+    const teGroot = gekozen.find(
+      (bestand) => bestand.size > MAXIMALE_BESTANDSGROOTTE,
+    );
 
     if (teGroot) {
       setBestanden([]);
-      setFoutmelding(
-        `${teGroot.name} is groter dan 15 MB.`,
-      );
+      setFoutmelding(`${teGroot.name} is groter dan 15 MB.`);
       return;
     }
 
-    if (
-      gekozen.length === 0
-    ) {
+    if (gekozen.length === 0) {
       setBestanden([]);
-      setFoutmelding(
-        "Er werden geen .xlsx-bestanden geselecteerd.",
-      );
+      setFoutmelding("Er werden geen .xlsx-bestanden geselecteerd.");
       return;
     }
 
-    setBestanden(
-      gekozen,
-    );
+    setBestanden(gekozen);
   }
 
   async function verwerkVanaf(
     startIndex: number,
-    bestaandeResultaten:
-      BulkImportBestandResultaat[],
+    bestaandeResultaten: BulkImportBestandResultaat[],
   ) {
-    if (
-      !datumregister ||
-      bestanden.length === 0
-    ) {
+    if (!datumregister || bestanden.length === 0) {
       setFoutmelding(
         "Selecteer eerst het datumregister en de deskcontrolebestanden.",
       );
@@ -287,76 +162,39 @@ export default function BulkDeskcontroleImport() {
     setBezig(true);
     setGestopt(false);
     setFoutmelding("");
-    annulerenRef.current =
-      false;
+    annulerenRef.current = false;
 
-    let verzameldeResultaten = [
-      ...bestaandeResultaten,
-    ];
+    let verzameldeResultaten = [...bestaandeResultaten];
 
     for (
       let index = startIndex;
       index < bestanden.length;
       index += BATCHGROOTTE
     ) {
-      if (
-        annulerenRef.current
-      ) {
-        setHervatVanaf(
-          index,
-        );
+      if (annulerenRef.current) {
+        setHervatVanaf(index);
         setGestopt(true);
         break;
       }
 
-      const batch =
-        bestanden.slice(
-          index,
-          index +
-            BATCHGROOTTE,
-        );
+      const batch = bestanden.slice(index, index + BATCHGROOTTE);
 
-      setHuidigeBatch(
-        Math.floor(
-          index /
-            BATCHGROOTTE,
-        ) + 1,
-      );
+      setHuidigeBatch(Math.floor(index / BATCHGROOTTE) + 1);
 
-      const formData =
-        new FormData();
+      const formData = new FormData();
 
-      formData.set(
-        "datumregister",
-        datumregister,
-      );
+      formData.set("datumregister", datumregister);
 
-      for (
-        const bestand of batch
-      ) {
-        formData.append(
-          "excelBestanden",
-          bestand,
-        );
+      for (const bestand of batch) {
+        formData.append("excelBestanden", bestand);
       }
 
       try {
-        const resultaat =
-          await importeerDeskcontroleBatch(
-            formData,
-          );
+        const resultaat = await importeerDeskcontroleBatch(formData);
 
-        if (
-          !resultaat.succes &&
-          resultaat.resultaten
-            .length === 0
-        ) {
-          setFoutmelding(
-            resultaat.message,
-          );
-          setHervatVanaf(
-            index,
-          );
+        if (!resultaat.succes && resultaat.resultaten.length === 0) {
+          setFoutmelding(resultaat.message);
+          setHervatVanaf(index);
           setGestopt(true);
           break;
         }
@@ -366,40 +204,21 @@ export default function BulkDeskcontroleImport() {
           ...resultaat.resultaten,
         ];
 
-        setResultaten(
-          verzameldeResultaten,
-        );
+        setResultaten(verzameldeResultaten);
 
-        setVerwerkt(
-          Math.min(
-            index +
-              batch.length,
-            bestanden.length,
-          ),
-        );
+        setVerwerkt(Math.min(index + batch.length, bestanden.length));
 
-        setHervatVanaf(
-          index +
-            batch.length,
-        );
+        setHervatVanaf(index + batch.length);
       } catch (error) {
-        console.error(
-          "Bulkbatch mislukt:",
-          error,
-        );
+        console.error("Bulkbatch mislukt:", error);
 
         setFoutmelding(
           `Batch ${
-            Math.floor(
-              index /
-                BATCHGROOTTE,
-            ) + 1
+            Math.floor(index / BATCHGROOTTE) + 1
           } kon niet worden verwerkt. Je kunt vanaf deze batch hervatten.`,
         );
 
-        setHervatVanaf(
-          index,
-        );
+        setHervatVanaf(index);
         setGestopt(true);
         break;
       }
@@ -414,22 +233,15 @@ export default function BulkDeskcontroleImport() {
     setVerwerkt(0);
     setHervatVanaf(0);
 
-    void verwerkVanaf(
-      0,
-      [],
-    );
+    void verwerkVanaf(0, []);
   }
 
   function hervatImport() {
-    void verwerkVanaf(
-      hervatVanaf,
-      resultaten,
-    );
+    void verwerkVanaf(hervatVanaf, resultaten);
   }
 
   function stopImport() {
-    annulerenRef.current =
-      true;
+    annulerenRef.current = true;
   }
 
   function downloadRapport() {
@@ -444,61 +256,38 @@ export default function BulkDeskcontroleImport() {
     ];
 
     const regels = [
-      koppen
-        .map(csvCel)
-        .join(";"),
-      ...resultaten.map(
-        (resultaat) =>
-          [
-            resultaat.bestandsnaam,
-            resultaat.attestnummer,
-            resultaat.finalisatieDatum,
-            statusLabel(
-              resultaat.status,
-            ),
-            resultaat.deskcontroleId ??
-              "",
-            resultaat.aantalVaststellingen,
-            resultaat.message,
-          ]
-            .map(csvCel)
-            .join(";"),
+      koppen.map(csvCel).join(";"),
+      ...resultaten.map((resultaat) =>
+        [
+          resultaat.bestandsnaam,
+          resultaat.attestnummer,
+          resultaat.finalisatieDatum,
+          statusLabel(resultaat.status),
+          resultaat.deskcontroleId ?? "",
+          resultaat.aantalVaststellingen,
+          resultaat.message,
+        ]
+          .map(csvCel)
+          .join(";"),
       ),
     ];
 
-    const blob = new Blob(
-      [
-        "\uFEFF" +
-          regels.join(
-            "\r\n",
-          ),
-      ],
-      {
-        type: "text/csv;charset=utf-8",
-      },
-    );
+    const blob = new Blob(["\uFEFF" + regels.join("\r\n")], {
+      type: "text/csv;charset=utf-8",
+    });
 
-    const url =
-      URL.createObjectURL(
-        blob,
-      );
+    const url = URL.createObjectURL(blob);
 
-    const link =
-      document.createElement(
-        "a",
-      );
+    const link = document.createElement("a");
 
     link.href = url;
-    link.download =
-      `deskcontrole-bulkimport-${new Date()
-        .toISOString()
-        .slice(0, 10)}.csv`;
+    link.download = `deskcontrole-bulkimport-${new Date()
+      .toISOString()
+      .slice(0, 10)}.csv`;
 
     link.click();
 
-    URL.revokeObjectURL(
-      url,
-    );
+    URL.revokeObjectURL(url);
   }
 
   return (
@@ -514,16 +303,16 @@ export default function BulkDeskcontroleImport() {
           </h2>
 
           <p className="mt-2 max-w-4xl text-sm leading-6 text-slate-600">
-            Selecteer het datumregister en daarna alle
-            deskcontrolebestanden. De bestanden worden automatisch
-            in batches van {BATCHGROOTTE} verwerkt. Je hoeft ze maar
-            één keer te selecteren.
+            Selecteer het datumregister en daarna alle deskcontrolebestanden. De
+            bestanden worden automatisch in batches van {BATCHGROOTTE} verwerkt.
+            Je hoeft ze maar één keer te selecteren.
           </p>
 
           <p className="mt-2 max-w-4xl text-xs leading-5 text-slate-500">
             Cel B7 wordt gekoppeld aan een actief of verwijderd
-            persoonscertificaat. Cel C7 wordt bij deze bulkimport
-            niet gecontroleerd.
+            persoonscertificaat. Cel C7 is optioneel en blokkeert de import
+            niet. Bij precies één overeenkomst wordt het procescertificaat
+            gekoppeld.
           </p>
         </div>
 
@@ -547,12 +336,7 @@ export default function BulkDeskcontroleImport() {
               type="file"
               accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
               disabled={bezig}
-              onChange={(event) =>
-                kiesDatumregister(
-                  event.target
-                    .files?.[0],
-                )
-              }
+              onChange={(event) => kiesDatumregister(event.target.files?.[0])}
               className="mt-3 block w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
             />
 
@@ -572,8 +356,8 @@ export default function BulkDeskcontroleImport() {
             </label>
 
             <p className="mt-1 text-xs leading-5 text-slate-500">
-              Selecteer alle .xlsx-bestanden tegelijk. Gebruik in
-              het bestandsvenster eventueel Cmd+A.
+              Selecteer alle .xlsx-bestanden tegelijk. Gebruik in het
+              bestandsvenster eventueel Cmd+A.
             </p>
 
             <input
@@ -583,9 +367,7 @@ export default function BulkDeskcontroleImport() {
               accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
               disabled={bezig}
               onChange={(event) =>
-                kiesDeskcontroleBestanden(
-                  event.target.files,
-                )
+                kiesDeskcontroleBestanden(event.target.files)
               }
               className="mt-3 block w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
             />
@@ -605,9 +387,7 @@ export default function BulkDeskcontroleImport() {
           </div>
         ) : null}
 
-        {(bezig ||
-          verwerkt > 0 ||
-          resultaten.length > 0) ? (
+        {bezig || verwerkt > 0 || resultaten.length > 0 ? (
           <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 p-4">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <p className="text-sm font-bold text-slate-900">
@@ -631,47 +411,35 @@ export default function BulkDeskcontroleImport() {
             <div className="mt-4 grid gap-3 sm:grid-cols-4">
               <ResultaatVak
                 label="Geïmporteerd"
-                waarde={
-                  totalen.geimporteerd
-                }
+                waarde={totalen.geimporteerd}
                 kleur="groen"
               />
 
               <ResultaatVak
                 label="Overgeslagen"
-                waarde={
-                  totalen.overgeslagen
-                }
+                waarde={totalen.overgeslagen}
                 kleur="oranje"
               />
 
               <ResultaatVak
                 label="Mislukt"
-                waarde={
-                  totalen.mislukt
-                }
+                waarde={totalen.mislukt}
                 kleur="rood"
               />
 
               <ResultaatVak
                 label="Non-conformiteiten"
-                waarde={
-                  totalen.vaststellingen
-                }
+                waarde={totalen.vaststellingen}
               />
             </div>
           </div>
         ) : null}
 
         <div className="mt-6 flex flex-wrap gap-3 border-t border-slate-200 pt-5">
-          {!bezig &&
-          !gestopt ? (
+          {!bezig && !gestopt ? (
             <button
               type="button"
-              disabled={
-                !datumregister ||
-                bestanden.length === 0
-              }
+              disabled={!datumregister || bestanden.length === 0}
               onClick={startImport}
               className="inline-flex h-11 items-center justify-center rounded-xl bg-emerald-700 px-5 text-sm font-bold text-white hover:bg-emerald-800 disabled:cursor-not-allowed disabled:bg-slate-300"
             >
@@ -689,10 +457,7 @@ export default function BulkDeskcontroleImport() {
             </button>
           ) : null}
 
-          {!bezig &&
-          gestopt &&
-          hervatVanaf <
-            bestanden.length ? (
+          {!bezig && gestopt && hervatVanaf < bestanden.length ? (
             <button
               type="button"
               onClick={hervatImport}
@@ -702,8 +467,7 @@ export default function BulkDeskcontroleImport() {
             </button>
           ) : null}
 
-          {resultaten.length >
-          0 ? (
+          {resultaten.length > 0 ? (
             <button
               type="button"
               onClick={downloadRapport}
@@ -714,8 +478,7 @@ export default function BulkDeskcontroleImport() {
           ) : null}
         </div>
 
-        {resultaten.length >
-        0 ? (
+        {resultaten.length > 0 ? (
           <details className="mt-5 rounded-2xl border border-slate-200">
             <summary className="cursor-pointer px-4 py-3 text-sm font-bold text-slate-900">
               Resultaten per bestand bekijken
@@ -725,65 +488,41 @@ export default function BulkDeskcontroleImport() {
               <table className="min-w-[1100px] text-left text-xs">
                 <thead className="sticky top-0 bg-slate-50 text-slate-600">
                   <tr>
-                    <th className="px-4 py-3">
-                      Bestand
-                    </th>
-                    <th className="px-4 py-3">
-                      Attestnummer
-                    </th>
-                    <th className="px-4 py-3">
-                      Finalisatie
-                    </th>
-                    <th className="px-4 py-3">
-                      Status
-                    </th>
-                    <th className="px-4 py-3">
-
-                      Non-conformiteiten
-                    </th>
-                    <th className="px-4 py-3">
-                      Melding
-                    </th>
+                    <th className="px-4 py-3">Bestand</th>
+                    <th className="px-4 py-3">Attestnummer</th>
+                    <th className="px-4 py-3">Finalisatie</th>
+                    <th className="px-4 py-3">Status</th>
+                    <th className="px-4 py-3">Non-conformiteiten</th>
+                    <th className="px-4 py-3">Melding</th>
                   </tr>
                 </thead>
 
                 <tbody>
-                  {resultaten.map(
-                    (
-                      resultaat,
-                      index,
-                    ) => (
-                      <tr
-                        key={`${resultaat.bestandsnaam}-${index}`}
-                        className="border-t border-slate-100 align-top"
-                      >
-                        <td className="px-4 py-3 font-semibold">
-                          {resultaat.bestandsnaam}
-                        </td>
-                        <td className="px-4 py-3">
-                          {resultaat.attestnummer ||
-                            "—"}
-                        </td>
-                        <td className="px-4 py-3">
-                          {resultaat.finalisatieDatum ||
-                            "—"}
-                        </td>
-                        <td className="px-4 py-3">
-                          {statusLabel(
-                            resultaat.status,
-                          )}
-                        </td>
-                        <td className="px-4 py-3">
-                          {
-                            resultaat.aantalVaststellingen
-                          }
-                        </td>
-                        <td className="max-w-lg whitespace-pre-wrap px-4 py-3">
-                          {resultaat.message}
-                        </td>
-                      </tr>
-                    ),
-                  )}
+                  {resultaten.map((resultaat, index) => (
+                    <tr
+                      key={`${resultaat.bestandsnaam}-${index}`}
+                      className="border-t border-slate-100 align-top"
+                    >
+                      <td className="px-4 py-3 font-semibold">
+                        {resultaat.bestandsnaam}
+                      </td>
+                      <td className="px-4 py-3">
+                        {resultaat.attestnummer || "—"}
+                      </td>
+                      <td className="px-4 py-3">
+                        {resultaat.finalisatieDatum || "—"}
+                      </td>
+                      <td className="px-4 py-3">
+                        {statusLabel(resultaat.status)}
+                      </td>
+                      <td className="px-4 py-3">
+                        {resultaat.aantalVaststellingen}
+                      </td>
+                      <td className="max-w-lg whitespace-pre-wrap px-4 py-3">
+                        {resultaat.message}
+                      </td>
+                    </tr>
+                  ))}
                 </tbody>
               </table>
             </div>
@@ -801,33 +540,19 @@ function ResultaatVak({
 }: {
   label: string;
   waarde: number;
-  kleur?:
-    | "standaard"
-    | "groen"
-    | "oranje"
-    | "rood";
+  kleur?: "standaard" | "groen" | "oranje" | "rood";
 }) {
   const stijl = {
-    standaard:
-      "border-slate-200 bg-white text-slate-900",
-    groen:
-      "border-emerald-200 bg-emerald-50 text-emerald-900",
-    oranje:
-      "border-amber-200 bg-amber-50 text-amber-900",
-    rood:
-      "border-red-200 bg-red-50 text-red-900",
+    standaard: "border-slate-200 bg-white text-slate-900",
+    groen: "border-emerald-200 bg-emerald-50 text-emerald-900",
+    oranje: "border-amber-200 bg-amber-50 text-amber-900",
+    rood: "border-red-200 bg-red-50 text-red-900",
   }[kleur];
 
   return (
-    <div
-      className={`rounded-xl border px-4 py-3 ${stijl}`}
-    >
-      <p className="text-xs font-semibold opacity-70">
-        {label}
-      </p>
-      <p className="mt-1 text-2xl font-bold">
-        {waarde}
-      </p>
+    <div className={`rounded-xl border px-4 py-3 ${stijl}`}>
+      <p className="text-xs font-semibold opacity-70">{label}</p>
+      <p className="mt-1 text-2xl font-bold">{waarde}</p>
     </div>
   );
 }

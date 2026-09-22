@@ -9,24 +9,17 @@ import {
 import { vereisMachtiging } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
-const WERKBLAD_DATUMREGISTER =
-  "OVAM attesten";
+const WERKBLAD_DATUMREGISTER = "OVAM attesten";
 
-const WERKBLAD_DESKCONTROLE =
-  "Deskcontrole samenvatting";
+const WERKBLAD_DESKCONTROLE = "Deskcontrole samenvatting";
 
-const MAXIMALE_BESTANDSGROOTTE =
-  15 * 1024 * 1024;
+const MAXIMALE_BESTANDSGROOTTE = 15 * 1024 * 1024;
 
-const MAXIMALE_DATUMREGISTERGROOTTE =
-  5 * 1024 * 1024;
+const MAXIMALE_DATUMREGISTERGROOTTE = 5 * 1024 * 1024;
 
 const MAXIMALE_BATCHGROOTTE = 20;
 
-export type BulkImportStatus =
-  | "GEIMPORTEERD"
-  | "OVERGESLAGEN"
-  | "MISLUKT";
+export type BulkImportStatus = "GEIMPORTEERD" | "OVERGESLAGEN" | "MISLUKT";
 
 export type BulkImportBestandResultaat = {
   bestandsnaam: string;
@@ -55,27 +48,15 @@ type DatumregisterResultaat =
       message: string;
     };
 
-function normaliseerTekst(
-  waarde: unknown,
-) {
-  return String(
-    waarde ?? "",
-  ).trim();
+function normaliseerTekst(waarde: unknown) {
+  return String(waarde ?? "").trim();
 }
 
-function normaliseerAttestnummer(
-  waarde: unknown,
-) {
-  return normaliseerTekst(
-    waarde,
-  ).toUpperCase();
+function normaliseerAttestnummer(waarde: unknown) {
+  return normaliseerTekst(waarde).toUpperCase();
 }
 
-function maakUtcDatum(
-  jaar: number,
-  maand: number,
-  dag: number,
-) {
+function maakUtcDatum(jaar: number, maand: number, dag: number) {
   if (
     !Number.isInteger(jaar) ||
     !Number.isInteger(maand) ||
@@ -84,18 +65,11 @@ function maakUtcDatum(
     return null;
   }
 
-  const datum = new Date(
-    Date.UTC(
-      jaar,
-      maand - 1,
-      dag,
-    ),
-  );
+  const datum = new Date(Date.UTC(jaar, maand - 1, dag));
 
   if (
     datum.getUTCFullYear() !== jaar ||
-    datum.getUTCMonth() !==
-      maand - 1 ||
+    datum.getUTCMonth() !== maand - 1 ||
     datum.getUTCDate() !== dag
   ) {
     return null;
@@ -104,32 +78,20 @@ function maakUtcDatum(
   return datum;
 }
 
-function formatteerIsoDatum(
-  datum: Date,
-) {
-  const jaar =
-    datum.getUTCFullYear();
+function formatteerIsoDatum(datum: Date) {
+  const jaar = datum.getUTCFullYear();
 
-  const maand = String(
-    datum.getUTCMonth() + 1,
-  ).padStart(2, "0");
+  const maand = String(datum.getUTCMonth() + 1).padStart(2, "0");
 
-  const dag = String(
-    datum.getUTCDate(),
-  ).padStart(2, "0");
+  const dag = String(datum.getUTCDate()).padStart(2, "0");
 
   return `${jaar}-${maand}-${dag}`;
 }
 
-function leesCelTekst(
-  cel: ExcelJS.Cell,
-) {
+function leesCelTekst(cel: ExcelJS.Cell) {
   const waarde = cel.value;
 
-  if (
-    waarde === null ||
-    waarde === undefined
-  ) {
+  if (waarde === null || waarde === undefined) {
     return "";
   }
 
@@ -142,46 +104,26 @@ function leesCelTekst(
     typeof waarde === "number" ||
     typeof waarde === "boolean"
   ) {
-    return normaliseerTekst(
-      waarde,
-    );
+    return normaliseerTekst(waarde);
   }
 
-  if (
-    typeof waarde === "object" &&
-    "text" in waarde
-  ) {
-    return normaliseerTekst(
-      waarde.text,
-    );
+  if (typeof waarde === "object" && "text" in waarde) {
+    return normaliseerTekst(waarde.text);
   }
 
-  if (
-    typeof waarde === "object" &&
-    "result" in waarde
-  ) {
-    return normaliseerTekst(
-      waarde.result,
-    );
+  if (typeof waarde === "object" && "result" in waarde) {
+    return normaliseerTekst(waarde.result);
   }
 
   if (
     typeof waarde === "object" &&
     "richText" in waarde &&
-    Array.isArray(
-      waarde.richText,
-    )
+    Array.isArray(waarde.richText)
   ) {
     return waarde.richText
       .map((deel) => {
-        if (
-          typeof deel === "object" &&
-          deel !== null &&
-          "text" in deel
-        ) {
-          return String(
-            deel.text ?? "",
-          );
+        if (typeof deel === "object" && deel !== null && "text" in deel) {
+          return String(deel.text ?? "");
         }
 
         return "";
@@ -190,14 +132,10 @@ function leesCelTekst(
       .trim();
   }
 
-  return normaliseerTekst(
-    cel.text,
-  );
+  return normaliseerTekst(cel.text);
 }
 
-function leesDatumUitCel(
-  cel: ExcelJS.Cell,
-) {
+function leesDatumUitCel(cel: ExcelJS.Cell) {
   const waarde = cel.value;
 
   if (waarde instanceof Date) {
@@ -207,27 +145,14 @@ function leesDatumUitCel(
       waarde.getUTCDate(),
     );
 
-    return datum
-      ? formatteerIsoDatum(
-          datum,
-        )
-      : null;
+    return datum ? formatteerIsoDatum(datum) : null;
   }
 
-  if (
-    typeof waarde === "number" &&
-    Number.isFinite(waarde)
-  ) {
+  if (typeof waarde === "number" && Number.isFinite(waarde)) {
     const tijdstip =
-      Date.UTC(1899, 11, 30) +
-      Math.floor(waarde) *
-        24 *
-        60 *
-        60 *
-        1000;
+      Date.UTC(1899, 11, 30) + Math.floor(waarde) * 24 * 60 * 60 * 1000;
 
-    const excelDatum =
-      new Date(tijdstip);
+    const excelDatum = new Date(tijdstip);
 
     const datum = maakUtcDatum(
       excelDatum.getUTCFullYear(),
@@ -235,19 +160,12 @@ function leesDatumUitCel(
       excelDatum.getUTCDate(),
     );
 
-    return datum
-      ? formatteerIsoDatum(
-          datum,
-        )
-      : null;
+    return datum ? formatteerIsoDatum(datum) : null;
   }
 
-  const tekst =
-    leesCelTekst(cel);
+  const tekst = leesCelTekst(cel);
 
-  const gevonden = tekst.match(
-    /^(\d{4})-(\d{1,2})-(\d{1,2})/,
-  );
+  const gevonden = tekst.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
 
   if (!gevonden) {
     return null;
@@ -259,27 +177,16 @@ function leesDatumUitCel(
     Number(gevonden[3]),
   );
 
-  return datum
-    ? formatteerIsoDatum(
-        datum,
-      )
-    : null;
+  return datum ? formatteerIsoDatum(datum) : null;
 }
 
-async function laadWerkboek(
-  bestand: File,
-) {
-  const buffer = Buffer.from(
-    await bestand.arrayBuffer(),
-  );
+async function laadWerkboek(bestand: File) {
+  const buffer = Buffer.from(await bestand.arrayBuffer());
 
-  const werkboek =
-    new ExcelJS.Workbook();
+  const werkboek = new ExcelJS.Workbook();
 
   await werkboek.xlsx.load(
-    buffer as unknown as Parameters<
-      typeof werkboek.xlsx.load
-    >[0],
+    buffer as unknown as Parameters<typeof werkboek.xlsx.load>[0],
   );
 
   return werkboek;
@@ -288,86 +195,51 @@ async function laadWerkboek(
 async function leesDatumregister(
   bestand: File,
 ): Promise<DatumregisterResultaat> {
-  if (
-    !bestand.name
-      .toLowerCase()
-      .endsWith(".xlsx")
-  ) {
+  if (!bestand.name.toLowerCase().endsWith(".xlsx")) {
     return {
       succes: false,
-      message:
-        "Het datumregister moet een .xlsx-bestand zijn.",
+      message: "Het datumregister moet een .xlsx-bestand zijn.",
     };
   }
 
-  if (
-    bestand.size === 0 ||
-    bestand.size >
-      MAXIMALE_DATUMREGISTERGROOTTE
-  ) {
+  if (bestand.size === 0 || bestand.size > MAXIMALE_DATUMREGISTERGROOTTE) {
     return {
       succes: false,
-      message:
-        "Het datumregister is leeg of groter dan 5 MB.",
+      message: "Het datumregister is leeg of groter dan 5 MB.",
     };
   }
 
-  let werkboek:
-    ExcelJS.Workbook;
+  let werkboek: ExcelJS.Workbook;
 
   try {
-    werkboek =
-      await laadWerkboek(
-        bestand,
-      );
+    werkboek = await laadWerkboek(bestand);
   } catch (error) {
-    console.error(
-      "Datumregister openen mislukt:",
-      error,
-    );
+    console.error("Datumregister openen mislukt:", error);
 
     return {
       succes: false,
-      message:
-        "Het datumregister kon niet worden geopend.",
+      message: "Het datumregister kon niet worden geopend.",
     };
   }
 
-  const werkblad =
-    werkboek.getWorksheet(
-      WERKBLAD_DATUMREGISTER,
-    );
+  const werkblad = werkboek.getWorksheet(WERKBLAD_DATUMREGISTER);
 
   if (!werkblad) {
     return {
       succes: false,
-      message:
-        `Het werkblad "${WERKBLAD_DATUMREGISTER}" werd niet gevonden.`,
+      message: `Het werkblad "${WERKBLAD_DATUMREGISTER}" werd niet gevonden.`,
     };
   }
 
-  const kopA =
-    leesCelTekst(
-      werkblad.getCell("A1"),
-    )
-      .toLocaleLowerCase(
-        "nl-BE",
-      )
-      .replace(/\s+/g, "");
+  const kopA = leesCelTekst(werkblad.getCell("A1"))
+    .toLocaleLowerCase("nl-BE")
+    .replace(/\s+/g, "");
 
-  const kopB =
-    leesCelTekst(
-      werkblad.getCell("B1"),
-    )
-      .toLocaleLowerCase(
-        "nl-BE",
-      )
-      .replace(/\s+/g, "");
+  const kopB = leesCelTekst(werkblad.getCell("B1"))
+    .toLocaleLowerCase("nl-BE")
+    .replace(/\s+/g, "");
 
-  if (
-    kopA !== "attestnummer" ||
-    kopB !== "uitgegevenop"
-  ) {
+  if (kopA !== "attestnummer" || kopB !== "uitgegevenop") {
     return {
       succes: false,
       message:
@@ -375,74 +247,39 @@ async function leesDatumregister(
     };
   }
 
-  const datums =
-    new Map<string, string>();
+  const datums = new Map<string, string>();
 
-  const dubbeleAttestnummers =
-    new Set<string>();
+  const dubbeleAttestnummers = new Set<string>();
 
-  for (
-    let rij = 2;
-    rij <= werkblad.rowCount;
-    rij++
-  ) {
-    const attestnummer =
-      normaliseerAttestnummer(
-        leesCelTekst(
-          werkblad.getCell(
-            `A${rij}`,
-          ),
-        ),
-      );
-
-    const finalisatieDatum =
-      leesDatumUitCel(
-        werkblad.getCell(
-          `B${rij}`,
-        ),
-      );
-
-    if (
-      !attestnummer &&
-      !finalisatieDatum
-    ) {
-      continue;
-    }
-
-    if (
-      !attestnummer ||
-      !finalisatieDatum
-    ) {
-      continue;
-    }
-
-    const bestaandeDatum =
-      datums.get(
-        attestnummer,
-      );
-
-    if (
-      bestaandeDatum &&
-      bestaandeDatum !==
-        finalisatieDatum
-    ) {
-      dubbeleAttestnummers.add(
-        attestnummer,
-      );
-      continue;
-    }
-
-    datums.set(
-      attestnummer,
-      finalisatieDatum,
+  for (let rij = 2; rij <= werkblad.rowCount; rij++) {
+    const attestnummer = normaliseerAttestnummer(
+      leesCelTekst(werkblad.getCell(`A${rij}`)),
     );
+
+    const finalisatieDatum = leesDatumUitCel(werkblad.getCell(`B${rij}`));
+
+    if (!attestnummer && !finalisatieDatum) {
+      continue;
+    }
+
+    if (!attestnummer || !finalisatieDatum) {
+      continue;
+    }
+
+    const bestaandeDatum = datums.get(attestnummer);
+
+    if (bestaandeDatum && bestaandeDatum !== finalisatieDatum) {
+      dubbeleAttestnummers.add(attestnummer);
+      continue;
+    }
+
+    datums.set(attestnummer, finalisatieDatum);
   }
 
   if (datums.size === 0) {
     return {
       succes: false,
-      message:
-        "Het datumregister bevat geen geldige attestnummers en datums.",
+      message: "Het datumregister bevat geen geldige attestnummers en datums.",
     };
   }
 
@@ -468,94 +305,60 @@ type DeskcontroleVoorcontrole =
 async function controleerDeskcontroleBestand(
   bestand: File,
 ): Promise<DeskcontroleVoorcontrole> {
-  if (
-    !bestand.name
-      .toLowerCase()
-      .endsWith(".xlsx")
-  ) {
+  if (!bestand.name.toLowerCase().endsWith(".xlsx")) {
     return {
       succes: false,
       attestnummer: "",
-      message:
-        "Alleen .xlsx-bestanden worden ondersteund.",
+      message: "Alleen .xlsx-bestanden worden ondersteund.",
     };
   }
 
-  if (
-    bestand.size === 0 ||
-    bestand.size >
-      MAXIMALE_BESTANDSGROOTTE
-  ) {
+  if (bestand.size === 0 || bestand.size > MAXIMALE_BESTANDSGROOTTE) {
     return {
       succes: false,
       attestnummer: "",
-      message:
-        "Het bestand is leeg of groter dan 15 MB.",
+      message: "Het bestand is leeg of groter dan 15 MB.",
     };
   }
 
-  let werkboek:
-    ExcelJS.Workbook;
+  let werkboek: ExcelJS.Workbook;
 
   try {
-    werkboek =
-      await laadWerkboek(
-        bestand,
-      );
+    werkboek = await laadWerkboek(bestand);
   } catch {
     return {
       succes: false,
       attestnummer: "",
-      message:
-        "Het Excelbestand kon niet worden geopend.",
+      message: "Het Excelbestand kon niet worden geopend.",
     };
   }
 
-  const werkblad =
-    werkboek.getWorksheet(
-      WERKBLAD_DESKCONTROLE,
-    );
+  const werkblad = werkboek.getWorksheet(WERKBLAD_DESKCONTROLE);
 
   if (!werkblad) {
     return {
       succes: false,
       attestnummer: "",
-      message:
-        `Het werkblad "${WERKBLAD_DESKCONTROLE}" ontbreekt.`,
+      message: `Het werkblad "${WERKBLAD_DESKCONTROLE}" ontbreekt.`,
     };
   }
 
-  const attestnummer =
-    normaliseerAttestnummer(
-      leesCelTekst(
-        werkblad.getCell(
-          "A5",
-        ),
-      ),
-    );
+  const attestnummer = normaliseerAttestnummer(
+    leesCelTekst(werkblad.getCell("A5")),
+  );
 
   if (!attestnummer) {
     return {
       succes: false,
       attestnummer: "",
-      message:
-        "Cel A5 bevat geen attestnummer.",
+      message: "Cel A5 bevat geen attestnummer.",
     };
   }
 
   let aantalVaststellingen = 0;
 
-  for (
-    let rij = 16;
-    rij <= werkblad.rowCount;
-    rij++
-  ) {
-    const ncId =
-      leesCelTekst(
-        werkblad.getCell(
-          `B${rij}`,
-        ),
-      );
+  for (let rij = 16; rij <= werkblad.rowCount; rij++) {
+    const ncId = leesCelTekst(werkblad.getCell(`B${rij}`));
 
     if (ncId) {
       aantalVaststellingen++;
@@ -569,93 +372,49 @@ async function controleerDeskcontroleBestand(
   };
 }
 
-function isRedirectFout(
-  error: unknown,
-) {
-  if (
-    typeof error !== "object" ||
-    error === null ||
-    !("digest" in error)
-  ) {
+function isRedirectFout(error: unknown) {
+  if (typeof error !== "object" || error === null || !("digest" in error)) {
     return false;
   }
 
-  const digest =
-    String(
-      error.digest ?? "",
-    );
+  const digest = String(error.digest ?? "");
 
-  return digest.startsWith(
-    "NEXT_REDIRECT",
-  );
+  return digest.startsWith("NEXT_REDIRECT");
 }
 
-function geefImportFout(
-  status: ExcelImportState,
-) {
+function geefImportFout(status: ExcelImportState) {
   return (
-    status.errors
-      ?.excelBestand ||
-    status.errors
-      ?.finalisatieDatum ||
+    status.errors?.excelBestand ||
+    status.errors?.finalisatieDatum ||
     status.message ||
     "Onbekende importfout."
   );
 }
 
-function isDuplicaatmelding(
-  message: string,
-) {
-  const klein =
-    message.toLocaleLowerCase(
-      "nl-BE",
-    );
+function isDuplicaatmelding(message: string) {
+  const klein = message.toLocaleLowerCase("nl-BE");
 
   return (
-    klein.includes(
-      "bestaat al",
-    ) ||
-    klein.includes(
-      "al gemporteerd",
-    ) ||
-    klein.includes(
-      "al geïmporteerd",
-    ) ||
-    klein.includes(
-      "mogelijk al",
-    )
+    klein.includes("bestaat al") ||
+    klein.includes("al gemporteerd") ||
+    klein.includes("al geïmporteerd") ||
+    klein.includes("mogelijk al")
   );
 }
 
 export async function importeerDeskcontroleBatch(
   formData: FormData,
 ): Promise<BulkImportBatchResultaat> {
-  await vereisMachtiging(
-    "DESKCONTROLES_BEHEREN",
-  );
+  await vereisMachtiging("DESKCONTROLES_BEHEREN");
 
-  const datumregisterWaarde =
-    formData.get(
-      "datumregister",
-    );
+  const datumregisterWaarde = formData.get("datumregister");
 
   const datumregister =
-    datumregisterWaarde instanceof
-      File
-      ? datumregisterWaarde
-      : null;
+    datumregisterWaarde instanceof File ? datumregisterWaarde : null;
 
-  const bestanden =
-    formData
-      .getAll(
-        "excelBestanden",
-      )
-      .filter(
-        (
-          waarde,
-        ): waarde is File =>
-          waarde instanceof File,
-      );
+  const bestanden = formData
+    .getAll("excelBestanden")
+    .filter((waarde): waarde is File => waarde instanceof File);
 
   if (!datumregister) {
     return {
@@ -666,88 +425,55 @@ export async function importeerDeskcontroleBatch(
     };
   }
 
-  if (
-    bestanden.length === 0
-  ) {
+  if (bestanden.length === 0) {
     return {
       succes: false,
-      message:
-        "Deze batch bevat geen deskcontrolebestanden.",
+      message: "Deze batch bevat geen deskcontrolebestanden.",
       resultaten: [],
     };
   }
 
-  if (
-    bestanden.length >
-    MAXIMALE_BATCHGROOTTE
-  ) {
+  if (bestanden.length > MAXIMALE_BATCHGROOTTE) {
     return {
       succes: false,
-      message:
-        `Een batch mag maximaal ${MAXIMALE_BATCHGROOTTE} bestanden bevatten.`,
+      message: `Een batch mag maximaal ${MAXIMALE_BATCHGROOTTE} bestanden bevatten.`,
       resultaten: [],
     };
   }
 
-  const registerResultaat =
-    await leesDatumregister(
-      datumregister,
-    );
+  const registerResultaat = await leesDatumregister(datumregister);
 
-  if (
-    !registerResultaat.succes
-  ) {
+  if (!registerResultaat.succes) {
     return {
       succes: false,
-      message:
-        registerResultaat.message,
+      message: registerResultaat.message,
       resultaten: [],
     };
   }
 
-  const resultaten:
-    BulkImportBestandResultaat[] =
-    [];
+  const resultaten: BulkImportBestandResultaat[] = [];
 
-  for (
-    const bestand of bestanden
-  ) {
-    const voorcontrole =
-      await controleerDeskcontroleBestand(
-        bestand,
-      );
+  for (const bestand of bestanden) {
+    const voorcontrole = await controleerDeskcontroleBestand(bestand);
 
-    if (
-      !voorcontrole.succes
-    ) {
+    if (!voorcontrole.succes) {
       resultaten.push({
-        bestandsnaam:
-          bestand.name,
-        attestnummer:
-          voorcontrole.attestnummer,
+        bestandsnaam: bestand.name,
+        attestnummer: voorcontrole.attestnummer,
         finalisatieDatum: "",
         status: "MISLUKT",
-        message:
-          voorcontrole.message,
+        message: voorcontrole.message,
         aantalVaststellingen: 0,
       });
 
       continue;
     }
 
-    const {
-      attestnummer,
-      aantalVaststellingen,
-    } = voorcontrole;
+    const { attestnummer, aantalVaststellingen } = voorcontrole;
 
-    if (
-      registerResultaat
-        .dubbeleAttestnummers
-        .has(attestnummer)
-    ) {
+    if (registerResultaat.dubbeleAttestnummers.has(attestnummer)) {
       resultaten.push({
-        bestandsnaam:
-          bestand.name,
+        bestandsnaam: bestand.name,
         attestnummer,
         finalisatieDatum: "",
         status: "MISLUKT",
@@ -759,83 +485,53 @@ export async function importeerDeskcontroleBatch(
       continue;
     }
 
-    const finalisatieDatum =
-      registerResultaat.datums.get(
-        attestnummer,
-      );
+    const finalisatieDatum = registerResultaat.datums.get(attestnummer);
 
     if (!finalisatieDatum) {
       resultaten.push({
-        bestandsnaam:
-          bestand.name,
+        bestandsnaam: bestand.name,
         attestnummer,
         finalisatieDatum: "",
         status: "MISLUKT",
-        message:
-          "Het attestnummer werd niet gevonden in het datumregister.",
+        message: "Het attestnummer werd niet gevonden in het datumregister.",
         aantalVaststellingen,
       });
 
       continue;
     }
 
-    const formulier =
-      new FormData();
+    const formulier = new FormData();
 
-    formulier.set(
-      "finalisatieDatum",
-      finalisatieDatum,
-    );
+    formulier.set("finalisatieDatum", finalisatieDatum);
 
-    formulier.set(
-      "excelBestand",
-      bestand,
-    );
+    formulier.set("excelBestand", bestand);
 
     /*
-     * Hiermee gebruikt de onderliggende
-     * import de speciale bulkregels:
-     * B7 mag verwijderd zijn en C7
-     * wordt niet gecontroleerd.
+     * Hiermee mag B7 tijdens de bulkimport
+     * ook naar een verwijderd
+     * persoonscertificaat verwijzen.
+     * C7 is voor iedere import optioneel.
      */
-    formulier.set(
-      "bulkimport",
-      "1",
-    );
+    formulier.set("bulkimport", "1");
 
-    let status:
-      ExcelImportState | null =
-      null;
+    let status: ExcelImportState | null = null;
 
     let geimporteerd = false;
 
     try {
-      status =
-        await importeerDeskcontroleUitExcel(
-          {},
-          formulier,
-        );
+      status = await importeerDeskcontroleUitExcel({}, formulier);
     } catch (error) {
-      if (
-        isRedirectFout(
-          error,
-        )
-      ) {
+      if (isRedirectFout(error)) {
         geimporteerd = true;
       } else {
-        console.error(
-          `Bulkimport mislukt voor ${bestand.name}:`,
-          error,
-        );
+        console.error(`Bulkimport mislukt voor ${bestand.name}:`, error);
 
         resultaten.push({
-          bestandsnaam:
-            bestand.name,
+          bestandsnaam: bestand.name,
           attestnummer,
           finalisatieDatum,
           status: "MISLUKT",
-          message:
-            "Technische fout tijdens de import.",
+          message: "Technische fout tijdens de import.",
           aantalVaststellingen,
         });
 
@@ -844,81 +540,57 @@ export async function importeerDeskcontroleBatch(
     }
 
     if (geimporteerd) {
-      const aangemaakt =
-        await prisma.deskcontrole.findFirst({
-          where: {
-            attestnummer,
-          },
-          select: {
-            id: true,
-            _count: {
-              select: {
-                vaststellingen: true,
-              },
+      const aangemaakt = await prisma.deskcontrole.findFirst({
+        where: {
+          attestnummer,
+        },
+        select: {
+          id: true,
+          _count: {
+            select: {
+              vaststellingen: true,
             },
           },
-        });
+        },
+      });
 
       resultaten.push({
-        bestandsnaam:
-          bestand.name,
+        bestandsnaam: bestand.name,
         attestnummer,
         finalisatieDatum,
         status: "GEIMPORTEERD",
-        message:
-          "Deskcontrole en vaststellingen geïmporteerd.",
-        deskcontroleId:
-          aangemaakt?.id,
+        message: "Deskcontrole en vaststellingen geïmporteerd.",
+        deskcontroleId: aangemaakt?.id,
         aantalVaststellingen:
-          aangemaakt?._count
-            .vaststellingen ??
-          aantalVaststellingen,
+          aangemaakt?._count.vaststellingen ?? aantalVaststellingen,
       });
 
       continue;
     }
 
-    const message =
-      geefImportFout(
-        status ?? {},
-      );
+    const message = geefImportFout(status ?? {});
 
     resultaten.push({
-      bestandsnaam:
-        bestand.name,
+      bestandsnaam: bestand.name,
       attestnummer,
       finalisatieDatum,
-      status:
-        isDuplicaatmelding(
-          message,
-        )
-          ? "OVERGESLAGEN"
-          : "MISLUKT",
+      status: isDuplicaatmelding(message) ? "OVERGESLAGEN" : "MISLUKT",
       message,
       aantalVaststellingen,
     });
   }
 
-  const aantalGeimporteerd =
-    resultaten.filter(
-      (resultaat) =>
-        resultaat.status ===
-        "GEIMPORTEERD",
-    ).length;
+  const aantalGeimporteerd = resultaten.filter(
+    (resultaat) => resultaat.status === "GEIMPORTEERD",
+  ).length;
 
-  const aantalOvergeslagen =
-    resultaten.filter(
-      (resultaat) =>
-        resultaat.status ===
-        "OVERGESLAGEN",
-    ).length;
+  const aantalOvergeslagen = resultaten.filter(
+    (resultaat) => resultaat.status === "OVERGESLAGEN",
+  ).length;
 
-  const aantalMislukt =
-    resultaten.filter(
-      (resultaat) =>
-        resultaat.status ===
-        "MISLUKT",
-    ).length;
+  const aantalMislukt = resultaten.filter(
+    (resultaat) => resultaat.status === "MISLUKT",
+  ).length;
 
   return {
     succes: true,
