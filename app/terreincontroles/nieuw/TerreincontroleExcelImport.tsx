@@ -1,6 +1,9 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import {
+  useActionState,
+  useState,
+} from "react";
 import { useFormStatus } from "react-dom";
 
 import {
@@ -8,10 +11,12 @@ import {
   type TerreincontroleImportState,
 } from "@/app/terreincontroles/import-actions";
 
-const beginstatus: TerreincontroleImportState = {};
+const beginstatus:
+  TerreincontroleImportState = {};
 
 function ImportKnop() {
-  const { pending } = useFormStatus();
+  const { pending } =
+    useFormStatus();
 
   return (
     <button
@@ -19,19 +24,24 @@ function ImportKnop() {
       disabled={pending}
       className="inline-flex h-11 items-center justify-center rounded-xl bg-emerald-700 px-5 text-sm font-bold text-white transition hover:bg-emerald-800 disabled:cursor-not-allowed disabled:opacity-60"
     >
-      {pending ? "Importeren..." : "Excelbestand importeren"}
+      {pending
+        ? "Importeren..."
+        : "Excelbestand importeren"}
     </button>
   );
 }
 
 export default function TerreincontroleExcelImport() {
-  const [status, actie] = useActionState(
-    importeerTerreincontroleUitExcel,
-    beginstatus,
-  );
+  const [status, actie] =
+    useActionState(
+      importeerTerreincontroleUitExcel,
+      beginstatus,
+    );
 
-  const [geselecteerdeBestandsnaam, setGeselecteerdeBestandsnaam] =
-    useState("");
+  const [
+    geselecteerdeBestandsnaam,
+    setGeselecteerdeBestandsnaam,
+  ] = useState("");
 
   return (
     <section className="rounded-3xl border border-emerald-200 bg-emerald-50/60 p-6 shadow-sm sm:p-8">
@@ -44,26 +54,41 @@ export default function TerreincontroleExcelImport() {
       </h2>
 
       <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">
-        Alleen het werkblad <strong>Terreincontrole samenvatting</strong> wordt
-        verwerkt. De terreincontrole en alle non-conformiteiten worden samen
-        opgeslagen.
+        Alleen het werkblad{" "}
+        <strong>
+          Terreincontrole samenvatting
+        </strong>{" "}
+
+        wordt verwerkt. De terreincontrole en alle
+        non-conformiteiten worden samen opgeslagen.
       </p>
 
       <div className="mt-4 rounded-xl border border-emerald-200 bg-white p-4 text-sm text-slate-600">
         <ul className="list-disc space-y-1 pl-5">
-          <li>Alleen bestanden met extensie .xlsx.</li>
-          <li>Maximale bestandsgrootte: 15 MB.</li>
           <li>
-            Het PersoonsID moet al in de webapp bestaan. Cel C7 is optioneel en
-            blokkeert de import niet.
+            Alleen bestanden met extensie .xlsx.
           </li>
-          <li>De status begint na import op Geen.</li>
+          <li>
+            Maximale bestandsgrootte: 15 MB.
+          </li>
+          <li>
+            Het PersoonsID moet al in de webapp bestaan.
+            Cel C7 is optioneel en blokkeert de import niet.
+          </li>
+          <li>
+            De status begint na import op Geen.
+          </li>
         </ul>
       </div>
 
-      <form action={actie} className="mt-5 space-y-4">
+      <form
+        action={actie}
+        className="mt-5 space-y-4"
+      >
         <label className="block">
-          <span className="text-sm font-bold text-slate-700">Excelbestand</span>
+          <span className="text-sm font-bold text-slate-700">
+            Excelbestand
+          </span>
 
           <input
             type="file"
@@ -71,14 +96,20 @@ export default function TerreincontroleExcelImport() {
             accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
             required
             onChange={(event) =>
-              setGeselecteerdeBestandsnaam(event.target.files?.[0]?.name ?? "")
+              setGeselecteerdeBestandsnaam(
+                event.target.files?.[0]
+                  ?.name ?? "",
+              )
             }
             className="mt-2 block w-full rounded-xl border border-slate-300 bg-white px-3 py-3 text-sm file:mr-4 file:rounded-lg file:border-0 file:bg-emerald-100 file:px-4 file:py-2 file:font-bold file:text-emerald-800"
           />
 
           {geselecteerdeBestandsnaam ? (
             <span className="mt-2 block text-xs text-slate-500">
-              Geselecteerd: {geselecteerdeBestandsnaam}
+              Geselecteerd:{" "}
+              {
+                geselecteerdeBestandsnaam
+              }
             </span>
           ) : null}
         </label>
@@ -93,8 +124,14 @@ export default function TerreincontroleExcelImport() {
           >
             <p>{status.message}</p>
 
-            {status.errors?.excelBestand ? (
-              <p className="mt-1 font-normal">{status.errors.excelBestand}</p>
+            {status.errors
+              ?.excelBestand ? (
+              <p className="mt-1 font-normal">
+                {
+                  status.errors
+                    .excelBestand
+                }
+              </p>
             ) : null}
           </div>
         ) : null}

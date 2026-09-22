@@ -1,6 +1,10 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import {
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { useRouter } from "next/navigation";
 
 import {
@@ -10,18 +14,30 @@ import {
 
 const BATCHGROOTTE = 10;
 const MAXIMAAL_AANTAL_BESTANDEN = 1000;
-const MAXIMALE_BESTANDSGROOTTE = 15 * 1024 * 1024;
+const MAXIMALE_BESTANDSGROOTTE =
+  15 * 1024 * 1024;
 
-function csvCel(waarde: string | number) {
-  return `"${String(waarde).replace(/"/g, '""')}"`;
+function csvCel(
+  waarde: string | number,
+) {
+  return `"${String(
+    waarde,
+  ).replace(/"/g, '""')}"`;
 }
 
-function statusLabel(status: TerreincontroleBulkResultaat["status"]) {
-  if (status === "GEIMPORTEERD") {
+function statusLabel(
+  status:
+    TerreincontroleBulkResultaat["status"],
+) {
+  if (
+    status === "GEIMPORTEERD"
+  ) {
     return "Geïmporteerd";
   }
 
-  if (status === "OVERGESLAGEN") {
+  if (
+    status === "OVERGESLAGEN"
+  ) {
     return "Overgeslagen";
   }
 
@@ -31,60 +47,118 @@ function statusLabel(status: TerreincontroleBulkResultaat["status"]) {
 export default function BulkTerreincontroleImport() {
   const router = useRouter();
 
-  const [bestanden, setBestanden] = useState<File[]>([]);
+  const [
+    bestanden,
+    setBestanden,
+  ] = useState<File[]>([]);
 
-  const [resultaten, setResultaten] = useState<TerreincontroleBulkResultaat[]>(
-    [],
-  );
+  const [
+    resultaten,
+    setResultaten,
+  ] = useState<
+    TerreincontroleBulkResultaat[]
+  >([]);
 
-  const [bezig, setBezig] = useState(false);
+  const [
+    bezig,
+    setBezig,
+  ] = useState(false);
 
-  const [gestopt, setGestopt] = useState(false);
+  const [
+    gestopt,
+    setGestopt,
+  ] = useState(false);
 
-  const [foutmelding, setFoutmelding] = useState("");
+  const [
+    foutmelding,
+    setFoutmelding,
+  ] = useState("");
 
-  const [verwerkt, setVerwerkt] = useState(0);
+  const [
+    verwerkt,
+    setVerwerkt,
+  ] = useState(0);
 
-  const [huidigeBatch, setHuidigeBatch] = useState(0);
+  const [
+    huidigeBatch,
+    setHuidigeBatch,
+  ] = useState(0);
 
-  const [hervatVanaf, setHervatVanaf] = useState(0);
+  const [
+    hervatVanaf,
+    setHervatVanaf,
+  ] = useState(0);
 
-  const annulerenRef = useRef(false);
+  const annulerenRef =
+    useRef(false);
 
-  const totalen = useMemo(() => {
-    const geimporteerd = resultaten.filter(
-      (resultaat) => resultaat.status === "GEIMPORTEERD",
-    ).length;
+  const totalen =
+    useMemo(() => {
+      const geimporteerd =
+        resultaten.filter(
+          (resultaat) =>
+            resultaat.status ===
+            "GEIMPORTEERD",
+        ).length;
 
-    const overgeslagen = resultaten.filter(
-      (resultaat) => resultaat.status === "OVERGESLAGEN",
-    ).length;
+      const overgeslagen =
+        resultaten.filter(
+          (resultaat) =>
+            resultaat.status ===
+            "OVERGESLAGEN",
+        ).length;
 
-    const mislukt = resultaten.filter(
-      (resultaat) => resultaat.status === "MISLUKT",
-    ).length;
+      const mislukt =
+        resultaten.filter(
+          (resultaat) =>
+            resultaat.status ===
+            "MISLUKT",
+        ).length;
 
-    const vaststellingen = resultaten
-      .filter((resultaat) => resultaat.status === "GEIMPORTEERD")
-      .reduce(
-        (totaal, resultaat) => totaal + resultaat.aantalVaststellingen,
-        0,
-      );
+      const vaststellingen =
+        resultaten
+          .filter(
+            (resultaat) =>
+              resultaat.status ===
+              "GEIMPORTEERD",
+          )
+          .reduce(
+            (
+              totaal,
+              resultaat,
+            ) =>
+              totaal +
+              resultaat
+                .aantalVaststellingen,
+            0,
+          );
 
-    return {
-      geimporteerd,
-      overgeslagen,
-      mislukt,
-      vaststellingen,
-    };
-  }, [resultaten]);
+      return {
+        geimporteerd,
+        overgeslagen,
+        mislukt,
+        vaststellingen,
+      };
+    }, [resultaten]);
 
-  const totaalBatches = Math.ceil(bestanden.length / BATCHGROOTTE);
+  const totaalBatches =
+    Math.ceil(
+      bestanden.length /
+        BATCHGROOTTE,
+    );
 
   const voortgang =
-    bestanden.length > 0 ? Math.round((verwerkt / bestanden.length) * 100) : 0;
+    bestanden.length > 0
+      ? Math.round(
+          (verwerkt /
+            bestanden.length) *
+            100,
+        )
+      : 0;
 
-  function kiesBestanden(selectie: FileList | null) {
+  function kiesBestanden(
+    selectie: FileList | null,
+  ) {
     setFoutmelding("");
     setResultaten([]);
     setVerwerkt(0);
@@ -96,11 +170,25 @@ export default function BulkTerreincontroleImport() {
       return;
     }
 
-    const gekozen = Array.from(selectie)
-      .filter((bestand) => bestand.name.toLowerCase().endsWith(".xlsx"))
-      .sort((a, b) => a.name.localeCompare(b.name, "nl-BE"));
+    const gekozen =
+      Array.from(selectie)
+        .filter(
+          (bestand) =>
+            bestand.name
+              .toLowerCase()
+              .endsWith(".xlsx"),
+        )
+        .sort((a, b) =>
+          a.name.localeCompare(
+            b.name,
+            "nl-BE",
+          ),
+        );
 
-    if (gekozen.length > MAXIMAAL_AANTAL_BESTANDEN) {
+    if (
+      gekozen.length >
+      MAXIMAAL_AANTAL_BESTANDEN
+    ) {
       setBestanden([]);
       setFoutmelding(
         `Selecteer maximaal ${MAXIMAAL_AANTAL_BESTANDEN} bestanden.`,
@@ -108,67 +196,111 @@ export default function BulkTerreincontroleImport() {
       return;
     }
 
-    const teGroot = gekozen.find(
-      (bestand) => bestand.size > MAXIMALE_BESTANDSGROOTTE,
-    );
+    const teGroot =
+      gekozen.find(
+        (bestand) =>
+          bestand.size >
+          MAXIMALE_BESTANDSGROOTTE,
+      );
 
     if (teGroot) {
       setBestanden([]);
-      setFoutmelding(`${teGroot.name} is groter dan 15 MB.`);
+      setFoutmelding(
+        `${teGroot.name} is groter dan 15 MB.`,
+      );
       return;
     }
 
-    if (gekozen.length === 0) {
+    if (
+      gekozen.length === 0
+    ) {
       setBestanden([]);
-      setFoutmelding("Er werden geen .xlsx-bestanden geselecteerd.");
+      setFoutmelding(
+        "Er werden geen .xlsx-bestanden geselecteerd.",
+      );
       return;
     }
 
-    setBestanden(gekozen);
+    setBestanden(
+      gekozen,
+    );
   }
 
   async function verwerkVanaf(
     startIndex: number,
-    bestaandeResultaten: TerreincontroleBulkResultaat[],
+    bestaandeResultaten:
+      TerreincontroleBulkResultaat[],
   ) {
     if (bestanden.length === 0) {
-      setFoutmelding("Selecteer eerst de terreincontrolebestanden.");
+      setFoutmelding(
+        "Selecteer eerst de terreincontrolebestanden.",
+      );
       return;
     }
 
     setBezig(true);
     setGestopt(false);
     setFoutmelding("");
-    annulerenRef.current = false;
+    annulerenRef.current =
+      false;
 
-    let verzameldeResultaten = [...bestaandeResultaten];
+    let verzameldeResultaten = [
+      ...bestaandeResultaten,
+    ];
 
     for (
       let index = startIndex;
       index < bestanden.length;
       index += BATCHGROOTTE
     ) {
-      if (annulerenRef.current) {
+      if (
+        annulerenRef.current
+      ) {
         setHervatVanaf(index);
         setGestopt(true);
         break;
       }
 
-      const batch = bestanden.slice(index, index + BATCHGROOTTE);
+      const batch =
+        bestanden.slice(
+          index,
+          index +
+            BATCHGROOTTE,
+        );
 
-      setHuidigeBatch(Math.floor(index / BATCHGROOTTE) + 1);
+      setHuidigeBatch(
+        Math.floor(
+          index /
+            BATCHGROOTTE,
+        ) + 1,
+      );
 
-      const formData = new FormData();
+      const formData =
+        new FormData();
 
-      for (const bestand of batch) {
-        formData.append("excelBestanden", bestand);
+      for (
+        const bestand of batch
+      ) {
+        formData.append(
+          "excelBestanden",
+          bestand,
+        );
       }
 
       try {
-        const resultaat = await importeerTerreincontroleBatch(formData);
+        const resultaat =
+          await importeerTerreincontroleBatch(
+            formData,
+          );
 
-        if (!resultaat.succes && resultaat.resultaten.length === 0) {
-          setFoutmelding(resultaat.message);
+        if (
+          !resultaat.succes &&
+          resultaat.resultaten
+            .length === 0
+        ) {
+          setFoutmelding(
+            resultaat.message,
+          );
           setHervatVanaf(index);
           setGestopt(true);
           break;
@@ -179,17 +311,34 @@ export default function BulkTerreincontroleImport() {
           ...resultaat.resultaten,
         ];
 
-        setResultaten(verzameldeResultaten);
+        setResultaten(
+          verzameldeResultaten,
+        );
 
-        setVerwerkt(Math.min(index + batch.length, bestanden.length));
+        setVerwerkt(
+          Math.min(
+            index +
+              batch.length,
+            bestanden.length,
+          ),
+        );
 
-        setHervatVanaf(index + batch.length);
+        setHervatVanaf(
+          index +
+            batch.length,
+        );
       } catch (error) {
-        console.error("Terreincontrolebulkbatch mislukt:", error);
+        console.error(
+          "Terreincontrolebulkbatch mislukt:",
+          error,
+        );
 
         setFoutmelding(
           `Batch ${
-            Math.floor(index / BATCHGROOTTE) + 1
+            Math.floor(
+              index /
+                BATCHGROOTTE,
+            ) + 1
           } kon niet worden verwerkt. Je kunt vanaf deze batch hervatten.`,
         );
 
@@ -208,11 +357,17 @@ export default function BulkTerreincontroleImport() {
     setVerwerkt(0);
     setHervatVanaf(0);
 
-    void verwerkVanaf(0, []);
+    void verwerkVanaf(
+      0,
+      [],
+    );
   }
 
   function hervatImport() {
-    void verwerkVanaf(hervatVanaf, resultaten);
+    void verwerkVanaf(
+      hervatVanaf,
+      resultaten,
+    );
   }
 
   function downloadRapport() {
@@ -228,32 +383,48 @@ export default function BulkTerreincontroleImport() {
         .map(csvCel)
         .join(";"),
 
-      ...resultaten.map((resultaat) =>
-        [
-          resultaat.bestandsnaam,
-          resultaat.attestnummer,
-          statusLabel(resultaat.status),
-          resultaat.terreincontroleId ?? "",
-          resultaat.aantalVaststellingen,
-          resultaat.message,
-        ]
-          .map(csvCel)
-          .join(";"),
+      ...resultaten.map(
+        (resultaat) =>
+          [
+            resultaat.bestandsnaam,
+            resultaat.attestnummer,
+            statusLabel(
+              resultaat.status,
+            ),
+            resultaat
+              .terreincontroleId ??
+              "",
+            resultaat
+              .aantalVaststellingen,
+            resultaat.message,
+          ]
+            .map(csvCel)
+            .join(";"),
       ),
     ];
 
-    const blob = new Blob(["\uFEFF" + regels.join("\r\n")], {
-      type: "text/csv;charset=utf-8",
-    });
+    const blob = new Blob(
+      [
+        "\uFEFF" +
+          regels.join("\r\n"),
+      ],
+      {
+        type:
+          "text/csv;charset=utf-8",
+      },
+    );
 
-    const url = URL.createObjectURL(blob);
+    const url =
+      URL.createObjectURL(blob);
 
-    const link = document.createElement("a");
+    const link =
+      document.createElement("a");
 
     link.href = url;
-    link.download = `terreincontrole-bulkimport-${new Date()
-      .toISOString()
-      .slice(0, 10)}.csv`;
+    link.download =
+      `terreincontrole-bulkimport-${new Date()
+        .toISOString()
+        .slice(0, 10)}.csv`;
 
     link.click();
     URL.revokeObjectURL(url);
@@ -270,15 +441,16 @@ export default function BulkTerreincontroleImport() {
       </h2>
 
       <p className="mt-2 max-w-4xl text-sm leading-6 text-slate-600">
-        Selecteer alle terreincontrolebestanden tegelijk. Ze worden automatisch
-        in batches van {BATCHGROOTTE} verwerkt. Non-conformiteiten worden per
-        terreincontrole mee geïmporteerd.
+        Selecteer alle terreincontrolebestanden tegelijk.
+        Ze worden automatisch in batches van{" "}
+        {BATCHGROOTTE}  verwerkt. Non-conformiteiten worden
+        per terreincontrole mee geïmporteerd.
       </p>
 
       <p className="mt-2 max-w-4xl text-xs leading-5 text-slate-500">
-        Cel B7 wordt gekoppeld aan een actief persoonscertificaat. Cel C7 is
-        optioneel en blokkeert de import niet. Bij precies één overeenkomst
-        wordt het procescertificaat gekoppeld.
+        Cel B7 wordt gekoppeld aan een actief
+        persoonscertificaat. Cel C7 wordt bij deze
+        bulkimport volledig genegeerd.
       </p>
 
       <div className="mt-5 rounded-2xl border border-slate-200 bg-white p-4">
@@ -290,8 +462,8 @@ export default function BulkTerreincontroleImport() {
         </label>
 
         <p className="mt-1 text-xs leading-5 text-slate-500">
-          Selecteer alle .xlsx-bestanden. Gebruik in het bestandsvenster
-          eventueel Cmd+A.
+          Selecteer alle .xlsx-bestanden. Gebruik in het
+          bestandsvenster eventueel Cmd+A.
         </p>
 
         <input
@@ -300,7 +472,11 @@ export default function BulkTerreincontroleImport() {
           multiple
           disabled={bezig}
           accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-          onChange={(event) => kiesBestanden(event.target.files)}
+          onChange={(event) =>
+            kiesBestanden(
+              event.target.files,
+            )
+          }
           className="mt-3 block w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm"
         />
 
@@ -318,7 +494,9 @@ export default function BulkTerreincontroleImport() {
         </div>
       ) : null}
 
-      {bezig || verwerkt > 0 || resultaten.length > 0 ? (
+      {(bezig ||
+        verwerkt > 0 ||
+        resultaten.length > 0) ? (
         <div className="mt-6 rounded-2xl border border-slate-200 bg-white p-4">
           <div className="flex flex-wrap justify-between gap-3">
             <p className="text-sm font-bold">
@@ -340,25 +518,45 @@ export default function BulkTerreincontroleImport() {
           </div>
 
           <div className="mt-4 grid gap-3 sm:grid-cols-4">
-            <ResultaatVak label="Geïmporteerd" waarde={totalen.geimporteerd} />
+            <ResultaatVak
+              label="Geïmporteerd"
+              waarde={
+                totalen.geimporteerd
+              }
+            />
 
-            <ResultaatVak label="Overgeslagen" waarde={totalen.overgeslagen} />
+            <ResultaatVak
+              label="Overgeslagen"
+              waarde={
+                totalen.overgeslagen
+              }
+            />
 
-            <ResultaatVak label="Mislukt" waarde={totalen.mislukt} />
+            <ResultaatVak
+              label="Mislukt"
+              waarde={
+                totalen.mislukt
+              }
+            />
 
             <ResultaatVak
               label="Non-conformiteiten"
-              waarde={totalen.vaststellingen}
+              waarde={
+                totalen.vaststellingen
+              }
             />
           </div>
         </div>
       ) : null}
 
       <div className="mt-6 flex flex-wrap gap-3">
-        {!bezig && !gestopt ? (
+        {!bezig &&
+        !gestopt ? (
           <button
             type="button"
-            disabled={bestanden.length === 0}
+            disabled={
+              bestanden.length === 0
+            }
             onClick={startImport}
             className="h-11 rounded-xl bg-emerald-700 px-5 text-sm font-bold text-white disabled:bg-slate-300"
           >
@@ -370,7 +568,8 @@ export default function BulkTerreincontroleImport() {
           <button
             type="button"
             onClick={() => {
-              annulerenRef.current = true;
+              annulerenRef.current =
+                true;
             }}
             className="h-11 rounded-xl border border-amber-300 bg-amber-50 px-5 text-sm font-bold text-amber-900"
           >
@@ -378,7 +577,10 @@ export default function BulkTerreincontroleImport() {
           </button>
         ) : null}
 
-        {!bezig && gestopt && hervatVanaf < bestanden.length ? (
+        {!bezig &&
+        gestopt &&
+        hervatVanaf <
+          bestanden.length ? (
           <button
             type="button"
             onClick={hervatImport}
@@ -409,37 +611,59 @@ export default function BulkTerreincontroleImport() {
             <table className="min-w-[900px] text-left text-xs">
               <thead className="sticky top-0 bg-slate-50">
                 <tr>
-                  <th className="px-4 py-3">Bestand</th>
-                  <th className="px-4 py-3">Attestnummer</th>
-                  <th className="px-4 py-3">Status</th>
-                  <th className="px-4 py-3">Non-conformiteiten</th>
-                  <th className="px-4 py-3">Melding</th>
+                  <th className="px-4 py-3">
+                    Bestand
+                  </th>
+                  <th className="px-4 py-3">
+                    Attestnummer
+                  </th>
+                  <th className="px-4 py-3">
+                    Status
+                  </th>
+                  <th className="px-4 py-3">
+
+                    Non-conformiteiten
+                  </th>
+                  <th className="px-4 py-3">
+                    Melding
+                  </th>
                 </tr>
               </thead>
 
               <tbody>
-                {resultaten.map((resultaat, index) => (
-                  <tr
-                    key={`${resultaat.bestandsnaam}-${index}`}
-                    className="border-t align-top"
-                  >
-                    <td className="px-4 py-3 font-semibold">
-                      {resultaat.bestandsnaam}
-                    </td>
-                    <td className="px-4 py-3">
-                      {resultaat.attestnummer || "—"}
-                    </td>
-                    <td className="px-4 py-3">
-                      {statusLabel(resultaat.status)}
-                    </td>
-                    <td className="px-4 py-3">
-                      {resultaat.aantalVaststellingen}
-                    </td>
-                    <td className="max-w-lg whitespace-pre-wrap px-4 py-3">
-                      {resultaat.message}
-                    </td>
-                  </tr>
-                ))}
+                {resultaten.map(
+                  (
+                    resultaat,
+                    index,
+                  ) => (
+                    <tr
+                      key={`${resultaat.bestandsnaam}-${index}`}
+                      className="border-t align-top"
+                    >
+                      <td className="px-4 py-3 font-semibold">
+                        {resultaat.bestandsnaam}
+                      </td>
+                      <td className="px-4 py-3">
+                        {resultaat.attestnummer ||
+                          "—"}
+                      </td>
+                      <td className="px-4 py-3">
+                        {statusLabel(
+                          resultaat.status,
+                        )}
+                      </td>
+                      <td className="px-4 py-3">
+                        {
+                          resultaat
+                            .aantalVaststellingen
+                        }
+                      </td>
+                      <td className="max-w-lg whitespace-pre-wrap px-4 py-3">
+                        {resultaat.message}
+                      </td>
+                    </tr>
+                  ),
+                )}
               </tbody>
             </table>
           </div>
@@ -449,11 +673,21 @@ export default function BulkTerreincontroleImport() {
   );
 }
 
-function ResultaatVak({ label, waarde }: { label: string; waarde: number }) {
+function ResultaatVak({
+  label,
+  waarde,
+}: {
+  label: string;
+  waarde: number;
+}) {
   return (
     <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
-      <p className="text-xs font-semibold text-slate-500">{label}</p>
-      <p className="mt-1 text-2xl font-bold text-slate-950">{waarde}</p>
+      <p className="text-xs font-semibold text-slate-500">
+        {label}
+      </p>
+      <p className="mt-1 text-2xl font-bold text-slate-950">
+        {waarde}
+      </p>
     </div>
   );
 }
