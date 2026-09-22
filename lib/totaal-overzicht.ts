@@ -19,6 +19,11 @@ export type TerreincontroleTargetRij = {
   aantalNogNodig: number;
 };
 
+export type KalenderDagTelling = {
+  datum: string;
+  aantal: number;
+};
+
 export type TotaalOverzicht = {
   totaalDeskcontrolesNogNodig: number;
   totaalTerreincontrolesNogNodig: number;
@@ -26,12 +31,37 @@ export type TotaalOverzicht = {
   resterendeWerkdagen: number;
   deskcontrolesPerWerkdag: number;
   terreincontrolesPerWerkdag: number;
+  vandaag: string;
+  deskcontrolesPerDatum: KalenderDagTelling[];
+  terreincontrolesPerDatum: KalenderDagTelling[];
   topDeskcontroles: DeskcontroleTargetRij[];
   topTerreincontroles: TerreincontroleTargetRij[];
 };
 
 function normaliseerOvamId(waarde: string | null | undefined) {
   return waarde?.trim().toUpperCase() ?? "";
+}
+
+function dateNaarSleutel(datum: Date) {
+  return datumSleutel(
+    datum.getUTCFullYear(),
+    datum.getUTCMonth() + 1,
+    datum.getUTCDate(),
+  );
+}
+
+function telPerDatum(datums: readonly Date[]): KalenderDagTelling[] {
+  const tellingen = new Map<string, number>();
+
+  for (const datum of datums) {
+    const sleutel = dateNaarSleutel(datum);
+    tellingen.set(sleutel, (tellingen.get(sleutel) ?? 0) + 1);
+  }
+
+  return Array.from(tellingen, ([datum, aantal]) => ({
+    datum,
+    aantal,
+  })).sort((eerste, tweede) => eerste.datum.localeCompare(tweede.datum));
 }
 
 function berekenDeskcontroleTarget(aantalAttesten: number) {
@@ -163,6 +193,8 @@ export async function laadTotaalOverzicht(): Promise<TotaalOverzicht> {
     ingeplandeTerreincontroles,
     naFinalisaties,
     atteststatistieken,
+    terreincontroleDatums,
+    deskcontroleDatums,
   ] = await Promise.all([
     prisma.lid.findMany({
       where: {
@@ -224,7 +256,39 @@ export async function laadTotaalOverzicht(): Promise<TotaalOverzicht> {
         aantalAttesten: true,
       },
     }),
+
+    prisma.terreincontrole.findMany({
+      where: {
+        verwijderdOp: null,
+        afwezigOp: null,
+        datumPlaatsbezoek: {
+          not: null,
+        },
+      },
+      select: {
+        datumPlaatsbezoek: true,
+      },
+    }),
+
+    prisma.deskcontrole.findMany({
+      where: {
+        verwijderdOp: null,
+      },
+      select: {
+        datumControle: true,
+      },
+    }),
   ]);
+
+  const terreincontrolesPerDatum = telPerDatum(
+    terreincontroleDatums.flatMap((rij) =>
+      rij.datumPlaatsbezoek ? [rij.datumPlaatsbezoek] : [],
+    ),
+  );
+
+  const deskcontrolesPerDatum = telPerDatum(
+    deskcontroleDatums.map((rij) => rij.datumControle),
+  );
 
   const attestenPerOvamId = new Map<string, number>();
 
@@ -358,6 +422,12 @@ export async function laadTotaalOverzicht(): Promise<TotaalOverzicht> {
   );
 
   const resterendeWerkdagen = berekenResterendeWerkdagen();
+  const belgischeDatum = huidigeBelgischeDatum();
+  const vandaag = datumSleutel(
+    belgischeDatum.jaar,
+    belgischeDatum.maand,
+    belgischeDatum.dag,
+  );
 
   return {
     totaalDeskcontrolesNogNodig,
@@ -372,6 +442,9 @@ export async function laadTotaalOverzicht(): Promise<TotaalOverzicht> {
       resterendeWerkdagen > 0
         ? totaalTerreincontrolesNogNodig / resterendeWerkdagen
         : 0,
+    vandaag,
+    deskcontrolesPerDatum,
+    terreincontrolesPerDatum,
     topDeskcontroles,
     topTerreincontroles,
   };

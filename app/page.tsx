@@ -1,3 +1,7 @@
+import {
+  ControleMaandkalender,
+  type KalenderDagTelling,
+} from "@/components/ControleMaandkalender";
 import { PageHeader } from "@/components/PageHeader";
 import { vereisMachtiging } from "@/lib/auth";
 import {
@@ -73,6 +77,50 @@ function OverzichtKaart({
           {toelichting}
         </p>
       ) : null}
+    </article>
+  );
+}
+
+type DagplanningKaartProps = {
+  label: string;
+  waarde: string;
+  toelichting: string;
+  soort: "deskcontroles" | "terreincontroles";
+  tellingen: readonly KalenderDagTelling[];
+  vandaag: string;
+};
+
+function DagplanningKaart({
+  label,
+  waarde,
+  toelichting,
+  soort,
+  tellingen,
+  vandaag,
+}: DagplanningKaartProps) {
+  return (
+    <article className="rounded-2xl border border-emerald-300 bg-emerald-50 p-3 shadow-sm">
+      <div className="grid min-w-0 gap-3 lg:grid-cols-[minmax(140px,0.42fr)_minmax(0,1fr)] lg:items-start">
+        <div className="min-w-0">
+          <p className="text-xs font-bold uppercase tracking-wide text-emerald-800">
+            {label}
+          </p>
+
+          <p className="mt-1 text-3xl font-black tabular-nums text-emerald-950">
+            {waarde}
+          </p>
+
+          <p className="mt-1 text-xs leading-5 text-emerald-800">
+            {toelichting}
+          </p>
+        </div>
+
+        <ControleMaandkalender
+          soort={soort}
+          tellingen={tellingen}
+          vandaag={vandaag}
+        />
+      </div>
     </article>
   );
 }
@@ -287,22 +335,26 @@ export default async function TotaalOverzichtPage() {
 
       <div className="grid grid-cols-1 items-start gap-4 xl:grid-cols-2">
         <div className="space-y-3">
-          <OverzichtKaart
+          <DagplanningKaart
             label="Terreincontroles per werkdag"
             waarde={formatteerGemiddelde(overzicht.terreincontrolesPerWerkdag)}
             toelichting="Gemiddeld benodigd om het target tegen het jaareinde te behalen"
-            benadrukt
+            soort="terreincontroles"
+            tellingen={overzicht.terreincontrolesPerDatum}
+            vandaag={overzicht.vandaag}
           />
 
           <TerreincontroleTabel rijen={overzicht.topTerreincontroles} />
         </div>
 
         <div className="space-y-3">
-          <OverzichtKaart
+          <DagplanningKaart
             label="Deskcontroles per werkdag"
             waarde={formatteerGemiddelde(overzicht.deskcontrolesPerWerkdag)}
             toelichting="Gemiddeld benodigd om het target tegen het jaareinde te behalen"
-            benadrukt
+            soort="deskcontroles"
+            tellingen={overzicht.deskcontrolesPerDatum}
+            vandaag={overzicht.vandaag}
           />
 
           <DeskcontroleTabel rijen={overzicht.topDeskcontroles} />

@@ -1,0 +1,225 @@
+"use client";
+
+import { useMemo, useState } from "react";
+
+export type KalenderDagTelling = {
+  datum: string;
+  aantal: number;
+};
+
+type ControleMaandkalenderProps = {
+  soort: "deskcontroles" | "terreincontroles";
+  tellingen: readonly KalenderDagTelling[];
+  vandaag: string;
+};
+
+const WEEKDAGEN = ["Ma", "Di", "Wo", "Do", "Vr", "Za", "Zo"] as const;
+
+const maandFormatter = new Intl.DateTimeFormat("nl-BE", {
+  month: "long",
+  year: "numeric",
+  timeZone: "UTC",
+});
+
+const volledigeDatumFormatter = new Intl.DateTimeFormat("nl-BE", {
+  weekday: "long",
+  day: "numeric",
+  month: "long",
+  year: "numeric",
+  timeZone: "UTC",
+});
+
+function leesDatumSleutel(datum: string) {
+  const [jaar, maand, dag] = datum.split("-").map(Number);
+
+  return {
+    jaar,
+    maand: maand - 1,
+    dag,
+  };
+}
+
+function maakDatumSleutel(jaar: number, maand: number, dag: number) {
+  return [
+    jaar.toString().padStart(4, "0"),
+    (maand + 1).toString().padStart(2, "0"),
+    dag.toString().padStart(2, "0"),
+  ].join("-");
+}
+
+export function ControleMaandkalender({
+  soort,
+  tellingen,
+  vandaag,
+}: ControleMaandkalenderProps) {
+  const huidigeDatum = leesDatumSleutel(vandaag);
+
+  const [zichtbareMaand, setZichtbareMaand] = useState(() => ({
+    jaar: huidigeDatum.jaar,
+    maand: huidigeDatum.maand,
+  }));
+
+  const tellingPerDag = useMemo(
+    () =>
+      new Map(
+        tellingen.map((telling) => [telling.datum, telling.aantal] as const),
+      ),
+    [tellingen],
+  );
+
+  const eersteDag = new Date(
+    Date.UTC(zichtbareMaand.jaar, zichtbareMaand.maand, 1),
+  );
+
+  const aantalDagen = new Date(
+    Date.UTC(zichtbareMaand.jaar, zichtbareMaand.maand + 1, 0),
+  ).getUTCDate();
+
+  const legeDagenVooraf = (eersteDag.getUTCDay() + 6) % 7;
+  const aantalCellen = Math.ceil((legeDagenVooraf + aantalDagen) / 7) * 7;
+
+  const wijzigMaand = (verschil: number) => {
+    setZichtbareMaand((huidigeMaand) => {
+      const nieuweDatum = new Date(
+        Date.UTC(huidigeMaand.jaar, huidigeMaand.maand + verschil, 1),
+      );
+
+      return {
+        jaar: nieuweDatum.getUTCFullYear(),
+        maand: nieuweDatum.getUTCMonth(),
+      };
+    });
+  };
+
+  const gaNaarVandaag = () => {
+    setZichtbareMaand({
+      jaar: huidigeDatum.jaar,
+      maand: huidigeDatum.maand,
+    });
+  };
+
+  const titel =
+    soort === "terreincontroles"
+      ? "Ingeplande terreincontroles"
+      : "Ingeplande deskcontroles";
+
+  return (
+    <section
+      aria-label={`${titel} per dag`}
+      className="min-w-0 rounded-xl border border-emerald-200 bg-white p-2.5"
+    >
+      <div className="mb-2 flex items-center justify-between gap-2">
+        <button
+          type="button"
+          onClick={() => wijzigMaand(-1)}
+          className="inline-flex size-8 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-white text-lg font-bold text-slate-700 hover:border-emerald-300 hover:bg-emerald-50 focus:outline-none focus:ring-2 focus:ring-emerald-300"
+          aria-label="Vorige maand"
+        >
+          ‹
+        </button>
+
+        <div className="min-w-0 text-center">
+          <p className="truncate text-sm font-black capitalize text-slate-950">
+            {maandFormatter.format(eersteDag)}
+          </p>
+
+          <button
+            type="button"
+            onClick={gaNaarVandaag}
+            className="text-[10px] font-bold uppercase tracking-wide text-emerald-700 hover:text-emerald-900 focus:outline-none focus:underline"
+          >
+            Vandaag
+          </button>
+        </div>
+
+        <button
+          type="button"
+          onClick={() => wijzigMaand(1)}
+          className="inline-flex size-8 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-white text-lg font-bold text-slate-700 hover:border-emerald-300 hover:bg-emerald-50 focus:outline-none focus:ring-2 focus:ring-emerald-300"
+          aria-label="Volgende maand"
+        >
+          ›
+        </button>
+      </div>
+
+      <div className="grid grid-cols-7 gap-1" aria-hidden="true">
+        {WEEKDAGEN.map((weekdag) => (
+          <div
+            key={weekdag}
+            className="py-1 text-center text-[9px] font-black uppercase text-slate-500"
+          >
+            {weekdag}
+          </div>
+        ))}
+      </div>
+
+      <div className="grid grid-cols-7 gap-1">
+        {Array.from({ length: aantalCellen }, (_, index) => {
+          const dag = index - legeDagenVooraf + 1;
+
+          if (dag < 1 || dag > aantalDagen) {
+            return (
+              <div
+                key={`leeg-${index}`}
+                aria-hidden="true"
+                className="min-h-12 rounded-md bg-slate-50/60"
+              />
+            );
+          }
+
+          const datumSleutel = maakDatumSleutel(
+            zichtbareMaand.jaar,
+            zichtbareMaand.maand,
+            dag,
+          );
+
+          const aantal = tellingPerDag.get(datumSleutel) ?? 0;
+          const isVandaag = datumSleutel === vandaag;
+          const datum = new Date(
+            Date.UTC(zichtbareMaand.jaar, zichtbareMaand.maand, dag),
+          );
+
+          return (
+            <div
+              key={datumSleutel}
+              aria-label={`${volledigeDatumFormatter.format(
+                datum,
+              )}: ${aantal} ${soort}`}
+              className={
+                isVandaag
+                  ? "min-h-12 rounded-md border-2 border-emerald-600 bg-emerald-100 p-1 text-center"
+                  : aantal > 0
+                    ? "min-h-12 rounded-md border border-emerald-200 bg-emerald-50 p-1 text-center"
+                    : "min-h-12 rounded-md border border-slate-100 bg-white p-1 text-center"
+              }
+            >
+              <div
+                className={
+                  isVandaag
+                    ? "text-[10px] font-black text-emerald-900"
+                    : "text-[10px] font-bold text-slate-600"
+                }
+              >
+                {dag}
+              </div>
+
+              <div
+                className={
+                  aantal > 0
+                    ? "mt-0.5 text-sm font-black tabular-nums text-emerald-800"
+                    : "mt-0.5 text-xs font-bold tabular-nums text-slate-300"
+                }
+              >
+                {aantal}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      <p className="mt-2 text-center text-[10px] text-slate-500">
+        Aantal {soort} per controledatum
+      </p>
+    </section>
+  );
+}
