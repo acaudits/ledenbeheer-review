@@ -14,7 +14,11 @@ import {
   type LaattijdigePlaatsbezoekenServergegevens,
 } from "@/hooks/useLaattijdigePlaatsbezoekenQuery";
 
-export function LaattijdigePlaatsbezoekenKop() {
+export function LaattijdigePlaatsbezoekenKop({
+  toonFormuliergebruik = false,
+}: {
+  toonFormuliergebruik?: boolean;
+}) {
   const [
     overzicht,
     setOverzicht,
@@ -71,6 +75,16 @@ export function LaattijdigePlaatsbezoekenKop() {
       titel="Laattijdige plaatsbezoeken"
       beschrijving={
         beschrijving
+      }
+      secundaireActieTekst={
+        toonFormuliergebruik
+          ? "Formuliergebruik"
+          : undefined
+      }
+      secundaireActieHref={
+        toonFormuliergebruik
+          ? "/laattijdige-plaatsbezoeken/formuliergebruik"
+          : undefined
       }
     />
   );

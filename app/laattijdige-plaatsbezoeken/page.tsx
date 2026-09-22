@@ -12,13 +12,23 @@ export const dynamic =
   "force-dynamic";
 
 export default async function LaattijdigePlaatsbezoekenPage() {
-  await vereisMachtiging(
-    "TERREINCONTROLES_BEKIJKEN",
-  );
+  const gebruiker =
+    await vereisMachtiging(
+      "TERREINCONTROLES_BEKIJKEN",
+    );
+
+  const isBeheerder =
+    gebruiker.rollen.includes(
+      "BEHEERDER",
+    );
 
   return (
     <div className="space-y-4">
-      <LaattijdigePlaatsbezoekenKop />
+      <LaattijdigePlaatsbezoekenKop
+        toonFormuliergebruik={
+          isBeheerder
+        }
+      />
 
       <LaattijdigePlaatsbezoekenTabel
         serverModus
