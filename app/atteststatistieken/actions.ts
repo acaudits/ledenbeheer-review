@@ -2,16 +2,10 @@
 
 import ExcelJS from "exceljs";
 import JSZip from "jszip";
-import {
-  revalidatePath,
-} from "next/cache";
+import { revalidatePath } from "next/cache";
 
-import {
-  vereisMachtiging,
-} from "@/lib/auth";
-import {
-  prisma,
-} from "@/lib/prisma";
+import { vereisMachtiging } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
 
 export type ImportStatus = {
   succes?: boolean;
@@ -26,19 +20,12 @@ export type CorrectieStatus = {
   message?: string;
 };
 
-const MAXIMALE_BESTANDSGROOTTE =
-  15 * 1024 * 1024;
+const MAXIMALE_BESTANDSGROOTTE = 15 * 1024 * 1024;
 
-const MAXIMAAL_AANTAL_RIJEN =
-  200_000;
+const MAXIMAAL_AANTAL_RIJEN = 200_000;
 
-function normaliseerTekst(
-  waarde: unknown,
-) {
-  if (
-    waarde === null ||
-    waarde === undefined
-  ) {
+function normaliseerTekst(waarde: unknown) {
+  if (waarde === null || waarde === undefined) {
     return "";
   }
 
@@ -48,33 +35,18 @@ function normaliseerTekst(
     .trim();
 }
 
-function normaliseerPersoonsId(
-  waarde: unknown,
-) {
-  return normaliseerTekst(
-    waarde,
-  ).toUpperCase();
+function normaliseerPersoonsId(waarde: unknown) {
+  return normaliseerTekst(waarde).toUpperCase();
 }
 
-function normaliseerBedrijfsnaamSleutel(
-  waarde: unknown,
-) {
-  return normaliseerTekst(
-    waarde,
-  ).toLocaleLowerCase(
-    "nl-BE",
-  );
+function normaliseerBedrijfsnaamSleutel(waarde: unknown) {
+  return normaliseerTekst(waarde).toLocaleLowerCase("nl-BE");
 }
 
-function leesCelTekst(
-  cel: ExcelJS.Cell,
-) {
+function leesCelTekst(cel: ExcelJS.Cell) {
   const waarde = cel.value;
 
-  if (
-    waarde === null ||
-    waarde === undefined
-  ) {
+  if (waarde === null || waarde === undefined) {
     return "";
   }
 
@@ -83,9 +55,7 @@ function leesCelTekst(
     typeof waarde === "number" ||
     typeof waarde === "boolean"
   ) {
-    return normaliseerTekst(
-      waarde,
-    );
+    return normaliseerTekst(waarde);
   }
 
   if (waarde instanceof Date) {
@@ -95,42 +65,25 @@ function leesCelTekst(
   if (
     typeof waarde === "object" &&
     "text" in waarde &&
-    typeof waarde.text ===
-      "string"
+    typeof waarde.text === "string"
   ) {
-    return normaliseerTekst(
-      waarde.text,
-    );
+    return normaliseerTekst(waarde.text);
   }
 
-  if (
-    typeof waarde === "object" &&
-    "result" in waarde
-  ) {
-    return normaliseerTekst(
-      waarde.result,
-    );
+  if (typeof waarde === "object" && "result" in waarde) {
+    return normaliseerTekst(waarde.result);
   }
 
   if (
     typeof waarde === "object" &&
     "richText" in waarde &&
-    Array.isArray(
-      waarde.richText,
-    )
+    Array.isArray(waarde.richText)
   ) {
     return normaliseerTekst(
       waarde.richText
         .map((deel) => {
-          if (
-            typeof deel ===
-              "object" &&
-            deel !== null &&
-            "text" in deel
-          ) {
-            return normaliseerTekst(
-              deel.text,
-            );
+          if (typeof deel === "object" && deel !== null && "text" in deel) {
+            return normaliseerTekst(deel.text);
           }
 
           return "";
@@ -139,233 +92,144 @@ function leesCelTekst(
     );
   }
 
-  return normaliseerTekst(
-    cel.text,
-  );
+  return normaliseerTekst(cel.text);
 }
 
-function maakHeaderSleutel(
-  waarde: string,
-) {
-  return waarde
-    .toLocaleLowerCase(
-      "nl-BE",
-    )
-    .replace(/[\s_\-]+/g, "");
+function maakHeaderSleutel(waarde: string) {
+  return waarde.toLocaleLowerCase("nl-BE").replace(/[\s_\-]+/g, "");
 }
 
 function vernieuwPaden() {
-  revalidatePath(
-    "/atteststatistieken",
-  );
+  revalidatePath("/atteststatistieken");
 }
 
-
-
-function kolomnummerNaarLetters(
-  kolomnummer: number,
-) {
+function kolomnummerNaarLetters(kolomnummer: number) {
   let resultaat = "";
   let nummer = kolomnummer;
 
   while (nummer > 0) {
-    const rest =
-      (nummer - 1) % 26;
+    const rest = (nummer - 1) % 26;
 
-    resultaat =
-      String.fromCharCode(
-        65 + rest,
-      ) + resultaat;
+    resultaat = String.fromCharCode(65 + rest) + resultaat;
 
-    nummer = Math.floor(
-      (nummer - 1) / 26,
-    );
+    nummer = Math.floor((nummer - 1) / 26);
   }
 
   return resultaat;
 }
 
-function kolomlettersNaarNummer(
-  letters: string,
-) {
+function kolomlettersNaarNummer(letters: string) {
   return letters
     .toUpperCase()
     .split("")
-    .reduce(
-      (totaal, letter) =>
-        totaal * 26 +
-        letter.charCodeAt(0) -
-        64,
-      0,
-    );
+    .reduce((totaal, letter) => totaal * 26 + letter.charCodeAt(0) - 64, 0);
 }
 
-function voegOntbrekendeWerkbladAdressenToe(
-  xml: string,
-) {
+function voegOntbrekendeWerkbladAdressenToe(xml: string) {
   let laatsteRijNummer = 0;
 
   return xml.replace(
     /<row\b([^>]*)>([\s\S]*?)<\/row>/g,
-    (
-      _volledigeRij,
-      rijAttributen: string,
-      rijInhoud: string,
-    ) => {
-      const bestaandRijNummer =
-        rijAttributen.match(
-          /\br\s*=\s*["'](\d+)["']/i,
-        );
+    (_volledigeRij, rijAttributen: string, rijInhoud: string) => {
+      const bestaandRijNummer = rijAttributen.match(/\br\s*=\s*["'](\d+)["']/i);
 
-      const rijNummer =
-        bestaandRijNummer
-          ? Number(
-              bestaandRijNummer[1],
-            )
-          : laatsteRijNummer + 1;
+      const rijNummer = bestaandRijNummer
+        ? Number(bestaandRijNummer[1])
+        : laatsteRijNummer + 1;
 
-      laatsteRijNummer =
-        Math.max(
-          laatsteRijNummer,
-          rijNummer,
-        );
+      laatsteRijNummer = Math.max(laatsteRijNummer, rijNummer);
 
       let laatsteKolomNummer = 0;
 
-      const aangepasteRijInhoud =
-        rijInhoud.replace(
-          /<c\b([^>]*)>/g,
-          (
-            _volledigeCel,
-            celAttributen: string,
-          ) => {
-            const bestaandAdres =
-              celAttributen.match(
-                /\br\s*=\s*["']([A-Z]+)(\d+)["']/i,
-              );
+      const aangepasteRijInhoud = rijInhoud.replace(
+        /<c\b([^>]*)>/g,
+        (_volledigeCel, celAttributen: string) => {
+          const bestaandAdres = celAttributen.match(
+            /\br\s*=\s*["']([A-Z]+)(\d+)["']/i,
+          );
 
-            if (bestaandAdres) {
-              laatsteKolomNummer =
-                Math.max(
-                  laatsteKolomNummer,
-                  kolomlettersNaarNummer(
-                    bestaandAdres[1],
-                  ),
-                );
-
-              return `<c${celAttributen}>`;
-            }
-
-            laatsteKolomNummer += 1;
-
-            const adres =
-              `${kolomnummerNaarLetters(
-                laatsteKolomNummer,
-              )}${rijNummer}`;
-
-            return (
-              `<c${celAttributen} ` +
-              `r="${adres}">`
+          if (bestaandAdres) {
+            laatsteKolomNummer = Math.max(
+              laatsteKolomNummer,
+              kolomlettersNaarNummer(bestaandAdres[1]),
             );
-          },
-        );
 
-      const aangepasteRijAttributen =
-        bestaandRijNummer
-          ? rijAttributen
-          : `${rijAttributen} r="${rijNummer}"`;
+            return `<c${celAttributen}>`;
+          }
 
-      return (
-        `<row${aangepasteRijAttributen}>` +
-        `${aangepasteRijInhoud}</row>`
+          laatsteKolomNummer += 1;
+
+          const adres = `${kolomnummerNaarLetters(
+            laatsteKolomNummer,
+          )}${rijNummer}`;
+
+          return `<c${celAttributen} ` + `r="${adres}">`;
+        },
       );
+
+      const aangepasteRijAttributen = bestaandRijNummer
+        ? rijAttributen
+        : `${rijAttributen} r="${rijNummer}"`;
+
+      return `<row${aangepasteRijAttributen}>` + `${aangepasteRijInhoud}</row>`;
     },
   );
 }
 
-async function normaliseerExcelXmlElementPrefixes(
-  invoer: Uint8Array,
-) {
-  const zip =
-    await JSZip.loadAsync(invoer);
+async function normaliseerExcelXmlElementPrefixes(invoer: Uint8Array) {
+  const zip = await JSZip.loadAsync(invoer);
 
-  const xmlBestanden =
-    Object.keys(zip.files).filter(
-      (naam) =>
-        naam.startsWith("xl/") &&
-        naam.endsWith(".xml"),
-    );
+  const xmlBestanden = Object.keys(zip.files).filter(
+    (naam) => naam.startsWith("xl/") && naam.endsWith(".xml"),
+  );
 
   let aantalAangepast = 0;
 
   await Promise.all(
-    xmlBestanden.map(
-      async (naam) => {
-        const zipBestand =
-          zip.file(naam);
+    xmlBestanden.map(async (naam) => {
+      const zipBestand = zip.file(naam);
 
-        if (!zipBestand) {
-          return;
-        }
+      if (!zipBestand) {
+        return;
+      }
 
-        const xml =
-          await zipBestand.async(
-            "string",
-          );
+      const xml = await zipBestand.async("string");
 
+      /*
+       * Sommige exports gebruiken elementen zoals:
+       * <x:workbook>, <x:worksheet> en <x:row>.
+       *
+       * ExcelJS 4.4.0 verwacht elementen zonder prefix.
+       * Attributen zoals r:id blijven bewust ongewijzigd.
+       */
+      let genormaliseerdeXml = xml.replace(/(<\/?)[A-Za-z_][\w.-]*:/g, "$1");
+
+      if (naam.startsWith("xl/worksheets/")) {
         /*
-         * Sommige exports gebruiken elementen zoals:
-         * <x:workbook>, <x:worksheet> en <x:row>.
-         *
-         * ExcelJS 4.4.0 verwacht elementen zonder prefix.
-         * Attributen zoals r:id blijven bewust ongewijzigd.
+         * Zelfsluitende cellen moeten eerst worden
+         * omgezet. Anders komt een toegevoegd
+         * r-attribuut na de slash terecht.
          */
-        let genormaliseerdeXml =
-          xml.replace(
-            /(<\/?)[A-Za-z_][\w.-]*:/g,
-            "$1",
-          );
+        genormaliseerdeXml = genormaliseerdeXml.replace(
+          /<row\b([^>]*)\/>/g,
+          "<row$1></row>",
+        );
 
-        if (
-          naam.startsWith(
-            "xl/worksheets/",
-          )
-        ) {
-          /*
-           * Zelfsluitende cellen moeten eerst worden
-           * omgezet. Anders komt een toegevoegd
-           * r-attribuut na de slash terecht.
-           */
-          genormaliseerdeXml =
-            genormaliseerdeXml.replace(
-              /<row\b([^>]*)\/>/g,
-              "<row$1></row>",
-            );
+        genormaliseerdeXml = genormaliseerdeXml.replace(
+          /<c\b([^>]*)\/>/g,
+          "<c$1></c>",
+        );
 
-          genormaliseerdeXml =
-            genormaliseerdeXml.replace(
-              /<c\b([^>]*)\/>/g,
-              "<c$1></c>",
-            );
+        genormaliseerdeXml =
+          voegOntbrekendeWerkbladAdressenToe(genormaliseerdeXml);
+      }
 
-          genormaliseerdeXml =
-            voegOntbrekendeWerkbladAdressenToe(
-              genormaliseerdeXml,
-            );
-        }
+      if (genormaliseerdeXml !== xml) {
+        zip.file(naam, genormaliseerdeXml);
 
-        if (
-          genormaliseerdeXml !== xml
-        ) {
-          zip.file(
-            naam,
-            genormaliseerdeXml,
-          );
-
-          aantalAangepast += 1;
-        }
-      },
-    ),
+        aantalAangepast += 1;
+      }
+    }),
   );
 
   if (aantalAangepast === 0) {
@@ -392,65 +256,42 @@ export async function importeerAtteststatistieken(
 ): Promise<ImportStatus> {
   await vereisMachtiging("ATTESTSTATISTIEKEN_BEHEREN");
 
-  const bestandWaarde =
-    formData.get(
-      "excelBestand",
-    );
+  const bestandWaarde = formData.get("excelBestand");
 
-  if (
-    !(bestandWaarde instanceof File)
-  ) {
+  if (!(bestandWaarde instanceof File)) {
     return {
       succes: false,
-      message:
-        "Selecteer een Excelbestand.",
+      message: "Selecteer een Excelbestand.",
     };
   }
 
-  if (
-    bestandWaarde.size === 0
-  ) {
+  if (bestandWaarde.size === 0) {
     return {
       succes: false,
-      message:
-        "Het geselecteerde bestand is leeg.",
+      message: "Het geselecteerde bestand is leeg.",
     };
   }
 
-  if (
-    bestandWaarde.size >
-    MAXIMALE_BESTANDSGROOTTE
-  ) {
+  if (bestandWaarde.size > MAXIMALE_BESTANDSGROOTTE) {
     return {
       succes: false,
-      message:
-        "Het Excelbestand mag maximaal 15 MB groot zijn.",
+      message: "Het Excelbestand mag maximaal 15 MB groot zijn.",
     };
   }
 
-  if (
-    !bestandWaarde.name
-      .toLocaleLowerCase()
-      .endsWith(".xlsx")
-  ) {
+  if (!bestandWaarde.name.toLocaleLowerCase().endsWith(".xlsx")) {
     return {
       succes: false,
-      message:
-        "Alleen .xlsx-bestanden worden ondersteund.",
+      message: "Alleen .xlsx-bestanden worden ondersteund.",
     };
   }
 
-  let werkmap =
-    new ExcelJS.Workbook();
+  let werkmap = new ExcelJS.Workbook();
 
   try {
-    const arrayBuffer =
-      await bestandWaarde.arrayBuffer();
+    const arrayBuffer = await bestandWaarde.arrayBuffer();
 
-    const origineelBestand =
-      Buffer.from(
-        arrayBuffer,
-      );
+    const origineelBestand = Buffer.from(arrayBuffer);
 
     try {
       /*
@@ -459,9 +300,7 @@ export async function importeerAtteststatistieken(
        * controleren en opnieuw comprimeren met JSZip over.
        */
       await werkmap.xlsx.load(
-        Buffer.from(
-          origineelBestand,
-        ) as unknown as Parameters<
+        Buffer.from(origineelBestand) as unknown as Parameters<
           typeof werkmap.xlsx.load
         >[0],
       );
@@ -472,15 +311,11 @@ export async function importeerAtteststatistieken(
        * Alleen voor die bestanden gebruiken we de bestaande
        * herstelprocedure.
        */
-      const genormaliseerdBestand =
-        await normaliseerExcelXmlElementPrefixes(
-          new Uint8Array(
-            origineelBestand,
-          ),
-        );
+      const genormaliseerdBestand = await normaliseerExcelXmlElementPrefixes(
+        new Uint8Array(origineelBestand),
+      );
 
-      werkmap =
-        new ExcelJS.Workbook();
+      werkmap = new ExcelJS.Workbook();
 
       await werkmap.xlsx.load(
         genormaliseerdBestand as unknown as Parameters<
@@ -489,108 +324,66 @@ export async function importeerAtteststatistieken(
       );
     }
   } catch (fout) {
-    console.error(
-      "Excelbestand openen mislukt:",
-      fout,
-    );
+    console.error("Excelbestand openen mislukt:", fout);
 
     return {
       succes: false,
-      message:
-        "Het Excelbestand kon niet worden geopend.",
+      message: "Het Excelbestand kon niet worden geopend.",
     };
   }
 
-  const werkblad =
-    werkmap.getWorksheet(
-      "Export",
-    );
+  const werkblad = werkmap.getWorksheet("Export");
 
   if (!werkblad) {
     return {
       succes: false,
-      message:
-        'Het werkblad "Export" werd niet gevonden.',
+      message: 'Het werkblad "Export" werd niet gevonden.',
     };
   }
 
-  const aantalExcelRijen =
-    Math.max(
-      0,
-      werkblad.actualRowCount -
-        1,
-    );
+  const aantalExcelRijen = Math.max(0, werkblad.actualRowCount - 1);
 
-  if (
-    aantalExcelRijen >
-    MAXIMAAL_AANTAL_RIJEN
-  ) {
+  if (aantalExcelRijen > MAXIMAAL_AANTAL_RIJEN) {
     return {
       succes: false,
-      message:
-        `Het bestand bevat meer dan ${MAXIMAAL_AANTAL_RIJEN.toLocaleString(
-          "nl-BE",
-        )} gegevensrijen.`,
+      message: `Het bestand bevat meer dan ${MAXIMAAL_AANTAL_RIJEN.toLocaleString(
+        "nl-BE",
+      )} gegevensrijen.`,
     };
   }
 
   const verwachteHeaders = [
     {
       kolom: 1,
-      toegelaten: [
-        "persoonsid",
-      ],
-      label:
-        "Persoons ID (kolom A)",
+      toegelaten: ["persoonsid"],
+      label: "Persoons ID (kolom A)",
     },
     {
       kolom: 2,
-      toegelaten: [
-        "naam",
-      ],
+      toegelaten: ["naam"],
       label: "Naam (kolom B)",
     },
     {
       kolom: 5,
-      toegelaten: [
-        "bedrijfsnaam",
-      ],
-      label:
-        "Bedrijfsnaam (kolom E)",
+      toegelaten: ["bedrijfsnaam"],
+      label: "Bedrijfsnaam (kolom E)",
     },
     {
       kolom: 7,
-      toegelaten: [
-        "attestnummer",
-      ],
-      label:
-        "Attestnummer (kolom G)",
+      toegelaten: ["attestnummer"],
+      label: "Attestnummer (kolom G)",
     },
   ];
 
-  for (
-    const verwachteHeader
-    of verwachteHeaders
-  ) {
-    const header =
-      maakHeaderSleutel(
-        leesCelTekst(
-          werkblad.getCell(
-            1,
-            verwachteHeader.kolom,
-          ),
-        ),
-      );
+  for (const verwachteHeader of verwachteHeaders) {
+    const header = maakHeaderSleutel(
+      leesCelTekst(werkblad.getCell(1, verwachteHeader.kolom)),
+    );
 
-    if (
-      !verwachteHeader
-        .toegelaten
-        .includes(header)
-    ) {
+    if (!verwachteHeader.toegelaten.includes(header)) {
       return {
         succes: false,
-        message:
-          `De verwachte kolom ontbreekt: ${verwachteHeader.label}.`,
+        message: `De verwachte kolom ontbreekt: ${verwachteHeader.label}.`,
       };
     }
   }
@@ -599,8 +392,7 @@ export async function importeerAtteststatistieken(
     string,
     {
       naam: string;
-      attestnummers:
-        Set<string>;
+      attestnummers: Set<string>;
     }
   >();
 
@@ -608,8 +400,7 @@ export async function importeerAtteststatistieken(
     string,
     {
       bedrijfsnaam: string;
-      attestnummers:
-        Set<string>;
+      attestnummers: Set<string>;
     }
   >();
 
@@ -617,42 +408,18 @@ export async function importeerAtteststatistieken(
 
   for (
     let rijNummer = 2;
-    rijNummer <=
-    werkblad.actualRowCount;
+    rijNummer <= werkblad.actualRowCount;
     rijNummer += 1
   ) {
-    const rij =
-      werkblad.getRow(
-        rijNummer,
-      );
+    const rij = werkblad.getRow(rijNummer);
 
-    const persoonsId =
-      normaliseerPersoonsId(
-        leesCelTekst(
-          rij.getCell(1),
-        ),
-      );
+    const persoonsId = normaliseerPersoonsId(leesCelTekst(rij.getCell(1)));
 
-    const naam =
-      normaliseerTekst(
-        leesCelTekst(
-          rij.getCell(2),
-        ),
-      );
+    const naam = normaliseerTekst(leesCelTekst(rij.getCell(2)));
 
-    const bedrijfsnaam =
-      normaliseerTekst(
-        leesCelTekst(
-          rij.getCell(5),
-        ),
-      );
+    const bedrijfsnaam = normaliseerTekst(leesCelTekst(rij.getCell(5)));
 
-    const attestnummer =
-      normaliseerTekst(
-        leesCelTekst(
-          rij.getCell(7),
-        ),
-      );
+    const attestnummer = normaliseerTekst(leesCelTekst(rij.getCell(7)));
 
     if (!attestnummer) {
       continue;
@@ -661,217 +428,123 @@ export async function importeerAtteststatistieken(
     verwerkteRijen += 1;
 
     if (persoonsId) {
-      const bestaandPersoon =
-        personen.get(
-          persoonsId,
-        );
+      const bestaandPersoon = personen.get(persoonsId);
 
       if (bestaandPersoon) {
-        bestaandPersoon
-          .attestnummers
-          .add(
-            attestnummer,
-          );
+        bestaandPersoon.attestnummers.add(attestnummer);
 
-        if (
-          !bestaandPersoon
-            .naam &&
-          naam
-        ) {
-          bestaandPersoon.naam =
-            naam;
+        if (!bestaandPersoon.naam && naam) {
+          bestaandPersoon.naam = naam;
         }
       } else {
-        personen.set(
-          persoonsId,
-          {
-            naam,
-            attestnummers:
-              new Set([
-                attestnummer,
-              ]),
-          },
-        );
+        personen.set(persoonsId, {
+          naam,
+          attestnummers: new Set([attestnummer]),
+        });
       }
     }
 
     if (bedrijfsnaam) {
-      const sleutel =
-        normaliseerBedrijfsnaamSleutel(
-          bedrijfsnaam,
-        );
+      const sleutel = normaliseerBedrijfsnaamSleutel(bedrijfsnaam);
 
-      const bestaandBedrijf =
-        bedrijven.get(
-          sleutel,
-        );
+      const bestaandBedrijf = bedrijven.get(sleutel);
 
       if (bestaandBedrijf) {
-        bestaandBedrijf
-          .attestnummers
-          .add(
-            attestnummer,
-          );
+        bestaandBedrijf.attestnummers.add(attestnummer);
       } else {
-        bedrijven.set(
-          sleutel,
-          {
-            bedrijfsnaam,
-            attestnummers:
-              new Set([
-                attestnummer,
-              ]),
-          },
-        );
+        bedrijven.set(sleutel, {
+          bedrijfsnaam,
+          attestnummers: new Set([attestnummer]),
+        });
       }
     }
   }
 
-  if (
-    verwerkteRijen === 0
-  ) {
+  if (verwerkteRijen === 0) {
     return {
       succes: false,
-      message:
-        "Er werden geen rijen met een attestnummer gevonden.",
+      message: "Er werden geen rijen met een attestnummer gevonden.",
     };
   }
 
-  if (
-    personen.size === 0
-  ) {
+  if (personen.size === 0) {
     return {
       succes: false,
-      message:
-        "Er werden geen geldige Persoons ID's gevonden.",
+      message: "Er werden geen geldige Persoons ID's gevonden.",
     };
   }
 
-  if (
-    bedrijven.size === 0
-  ) {
+  if (bedrijven.size === 0) {
     return {
       succes: false,
-      message:
-        "Er werden geen geldige bedrijfsnamen gevonden.",
+      message: "Er werden geen geldige bedrijfsnamen gevonden.",
     };
   }
 
-  const persoonGegevens =
-    Array.from(
-      personen.entries(),
-    ).map(
-      ([
-        persoonsId,
-        gegevens,
-      ]) => ({
-        persoonsId,
-        naam:
-          gegevens.naam ||
-          "Onbekend",
-        aantalAttesten:
-          gegevens
-            .attestnummers
-            .size,
-        bronBestandsnaam:
-          bestandWaarde.name,
-      }),
-    );
+  const persoonGegevens = Array.from(personen.entries()).map(
+    ([persoonsId, gegevens]) => ({
+      persoonsId,
+      naam: gegevens.naam || "Onbekend",
+      aantalAttesten: gegevens.attestnummers.size,
+      bronBestandsnaam: bestandWaarde.name,
+    }),
+  );
 
-  const bedrijfGegevens =
-    Array.from(
-      bedrijven.entries(),
-    ).map(
-      ([
-        bedrijfsnaamSleutel,
-        gegevens,
-      ]) => ({
-        bedrijfsnaam:
-          gegevens
-            .bedrijfsnaam,
-        bedrijfsnaamSleutel,
-        aantalAttesten:
-          gegevens
-            .attestnummers
-            .size,
-        bronBestandsnaam:
-          bestandWaarde.name,
-      }),
-    );
+  const bedrijfGegevens = Array.from(bedrijven.entries()).map(
+    ([bedrijfsnaamSleutel, gegevens]) => ({
+      bedrijfsnaam: gegevens.bedrijfsnaam,
+      bedrijfsnaamSleutel,
+      aantalAttesten: gegevens.attestnummers.size,
+      bronBestandsnaam: bestandWaarde.name,
+    }),
+  );
 
   try {
     await prisma.$transaction(
       async (transactie) => {
-        await transactie
-          .attestPersoonStatistiek
-          .deleteMany();
+        await transactie.attestPersoonStatistiek.deleteMany();
 
-        await transactie
-          .attestBedrijfStatistiek
-          .deleteMany();
+        await transactie.attestBedrijfStatistiek.deleteMany();
 
-        await transactie
-          .attestPersoonStatistiek
-          .createMany({
-            data:
-              persoonGegevens,
-          });
+        await transactie.attestPersoonStatistiek.createMany({
+          data: persoonGegevens,
+        });
 
-        await transactie
-          .attestBedrijfStatistiek
-          .createMany({
-            data:
-              bedrijfGegevens,
-          });
+        await transactie.attestBedrijfStatistiek.createMany({
+          data: bedrijfGegevens,
+        });
 
-        await transactie
-          .attestStatistiekImport
-          .upsert({
-            where: {
-              id: 1,
-            },
+        await transactie.attestStatistiekImport.upsert({
+          where: {
+            id: 1,
+          },
 
-            create: {
-              id: 1,
-              bronBestandsnaam:
-                bestandWaarde.name,
-              geimporteerdOp:
-                new Date(),
-              aantalExcelRijen:
-                verwerkteRijen,
-              aantalPersonen:
-                persoonGegevens.length,
-              aantalBedrijven:
-                bedrijfGegevens.length,
-              correctiesToegepastOp:
-                null,
-            },
+          create: {
+            id: 1,
+            bronBestandsnaam: bestandWaarde.name,
+            geimporteerdOp: new Date(),
+            aantalExcelRijen: verwerkteRijen,
+            aantalPersonen: persoonGegevens.length,
+            aantalBedrijven: bedrijfGegevens.length,
+            correctiesToegepastOp: null,
+          },
 
-            update: {
-              bronBestandsnaam:
-                bestandWaarde.name,
-              geimporteerdOp:
-                new Date(),
-              aantalExcelRijen:
-                verwerkteRijen,
-              aantalPersonen:
-                persoonGegevens.length,
-              aantalBedrijven:
-                bedrijfGegevens.length,
-              correctiesToegepastOp:
-                null,
-            },
-          });
+          update: {
+            bronBestandsnaam: bestandWaarde.name,
+            geimporteerdOp: new Date(),
+            aantalExcelRijen: verwerkteRijen,
+            aantalPersonen: persoonGegevens.length,
+            aantalBedrijven: bedrijfGegevens.length,
+            correctiesToegepastOp: null,
+          },
+        });
       },
       {
         timeout: 120_000,
       },
     );
   } catch (fout) {
-    console.error(
-      "Atteststatistieken importeren mislukt:",
-      fout,
-    );
+    console.error("Atteststatistieken importeren mislukt:", fout);
 
     return {
       succes: false,
@@ -884,14 +557,10 @@ export async function importeerAtteststatistieken(
 
   return {
     succes: true,
-    message:
-      "De personen- en bedrijvenlijsten zijn volledig vervangen.",
-    aantalPersonen:
-      persoonGegevens.length,
-    aantalBedrijven:
-      bedrijfGegevens.length,
-    aantalExcelRijen:
-      verwerkteRijen,
+    message: "De personen- en bedrijvenlijsten zijn volledig vervangen.",
+    aantalPersonen: persoonGegevens.length,
+    aantalBedrijven: bedrijfGegevens.length,
+    aantalExcelRijen: verwerkteRijen,
   };
 }
 
@@ -901,126 +570,80 @@ export async function voegAttestCorrectieToe(
 ): Promise<CorrectieStatus> {
   await vereisMachtiging("ATTESTSTATISTIEKEN_BEHEREN");
 
-  const persoonsId =
-    normaliseerPersoonsId(
-      formData.get(
-        "persoonsId",
-      ),
-    );
+  const persoonsId = normaliseerPersoonsId(formData.get("persoonsId"));
 
-  const bedrijfsnaam =
-    normaliseerTekst(
-      formData.get(
-        "bedrijfsnaam",
-      ),
-    );
+  const bedrijfsnaam = normaliseerTekst(formData.get("bedrijfsnaam"));
 
-  const naam =
-    normaliseerTekst(
-      formData.get(
-        "naam",
-      ),
-    );
+  const naam = normaliseerTekst(formData.get("naam"));
 
-  const aantalTekst =
-    normaliseerTekst(
-      formData.get(
-        "aantalAttesten",
-      ),
-    );
+  const aantalTekst = normaliseerTekst(formData.get("aantalAttesten"));
 
-  const aantalAttesten =
-    Number(aantalTekst);
+  const aantalAttesten = Number(aantalTekst);
 
   if (!persoonsId) {
     return {
       succes: false,
-      message:
-        "PersoonsID is verplicht.",
+      message: "PersoonsID is verplicht.",
     };
   }
 
-  if (
-    persoonsId.length > 100
-  ) {
+  if (persoonsId.length > 100) {
     return {
       succes: false,
-      message:
-        "PersoonsID is te lang.",
+      message: "PersoonsID is te lang.",
     };
   }
 
   if (!bedrijfsnaam) {
     return {
       succes: false,
-      message:
-        "Bedrijfsnaam is verplicht.",
+      message: "Bedrijfsnaam is verplicht.",
     };
   }
 
-  if (
-    bedrijfsnaam.length >
-    500
-  ) {
+  if (bedrijfsnaam.length > 500) {
     return {
       succes: false,
-      message:
-        "Bedrijfsnaam is te lang.",
+      message: "Bedrijfsnaam is te lang.",
     };
   }
 
   if (!naam) {
     return {
       succes: false,
-      message:
-        "Naam is verplicht.",
+      message: "Naam is verplicht.",
     };
   }
 
-  if (
-    naam.length > 255
-  ) {
+  if (naam.length > 255) {
     return {
       succes: false,
-      message:
-        "Naam is te lang.",
+      message: "Naam is te lang.",
     };
   }
 
-  if (
-    !Number.isInteger(
-      aantalAttesten,
-    ) ||
-    aantalAttesten <= 0
-  ) {
+  if (!Number.isInteger(aantalAttesten) || aantalAttesten <= 0) {
     return {
       succes: false,
-      message:
-        "Aantal attesten moet een positief geheel getal zijn.",
+      message: "Aantal attesten moet een positief geheel getal zijn.",
     };
   }
 
   try {
-    await prisma
-      .attestCorrectie
-      .create({
-        data: {
-          persoonsId,
-          bedrijfsnaam,
-          naam,
-          aantalAttesten,
-        },
-      });
+    await prisma.attestCorrectie.create({
+      data: {
+        persoonsId,
+        bedrijfsnaam,
+        naam,
+        aantalAttesten,
+      },
+    });
   } catch (fout) {
-    console.error(
-      "Attestcorrectie toevoegen mislukt:",
-      fout,
-    );
+    console.error("Attestcorrectie toevoegen mislukt:", fout);
 
     return {
       succes: false,
-      message:
-        "De correctie kon niet worden toegevoegd.",
+      message: "De correctie kon niet worden toegevoegd.",
     };
   }
 
@@ -1028,8 +651,7 @@ export async function voegAttestCorrectieToe(
 
   return {
     succes: true,
-    message:
-      "De correctie is toegevoegd.",
+    message: "De correctie is toegevoegd.",
   };
 }
 
@@ -1038,46 +660,32 @@ export async function verwijderAttestCorrectie(
 ): Promise<CorrectieStatus> {
   await vereisMachtiging("ATTESTSTATISTIEKEN_BEHEREN");
 
-  if (
-    !Number.isInteger(id) ||
-    id <= 0
-  ) {
+  if (!Number.isInteger(id) || id <= 0) {
     return {
       succes: false,
-      message:
-        "Ongeldige correctie.",
+      message: "Ongeldige correctie.",
     };
   }
 
   try {
-    const resultaat =
-      await prisma
-        .attestCorrectie
-        .deleteMany({
-          where: {
-            id,
-          },
-        });
+    const resultaat = await prisma.attestCorrectie.deleteMany({
+      where: {
+        id,
+      },
+    });
 
-    if (
-      resultaat.count === 0
-    ) {
+    if (resultaat.count === 0) {
       return {
         succes: false,
-        message:
-          "De correctie bestaat niet.",
+        message: "De correctie bestaat niet.",
       };
     }
   } catch (fout) {
-    console.error(
-      "Attestcorrectie verwijderen mislukt:",
-      fout,
-    );
+    console.error("Attestcorrectie verwijderen mislukt:", fout);
 
     return {
       succes: false,
-      message:
-        "De correctie kon niet worden verwijderd.",
+      message: "De correctie kon niet worden verwijderd.",
     };
   }
 
@@ -1085,198 +693,129 @@ export async function verwijderAttestCorrectie(
 
   return {
     succes: true,
-    message:
-      "De correctie is definitief verwijderd.",
+    message: "De correctie is definitief verwijderd.",
   };
 }
 
 export async function pasAttestCorrectiesToe(): Promise<CorrectieStatus> {
   await vereisMachtiging("ATTESTSTATISTIEKEN_BEHEREN");
 
-  const correcties =
-    await prisma
-      .attestCorrectie
-      .findMany({
-        orderBy: {
-          id: "asc",
-        },
-      });
+  const correcties = await prisma.attestCorrectie.findMany({
+    orderBy: {
+      id: "asc",
+    },
+  });
 
-  if (
-    correcties.length === 0
-  ) {
+  if (correcties.length === 0) {
     return {
       succes: false,
-      message:
-        "Lijst 3 bevat geen correcties.",
+      message: "Lijst 3 bevat geen correcties.",
     };
   }
 
-  const persoonCorrecties =
-    new Map<
-      string,
-      {
-        naam: string;
-        aantal: number;
-      }
-    >();
+  const persoonCorrecties = new Map<
+    string,
+    {
+      naam: string;
+      aantal: number;
+    }
+  >();
 
-  const bedrijfCorrecties =
-    new Map<
-      string,
-      {
-        bedrijfsnaam: string;
-        aantal: number;
-      }
-    >();
+  const bedrijfCorrecties = new Map<
+    string,
+    {
+      bedrijfsnaam: string;
+      aantal: number;
+    }
+  >();
 
-  for (
-    const correctie
-    of correcties
-  ) {
-    const persoonsId =
-      normaliseerPersoonsId(
-        correctie.persoonsId,
-      );
+  for (const correctie of correcties) {
+    const persoonsId = normaliseerPersoonsId(correctie.persoonsId);
 
-    const bestaandePersoon =
-      persoonCorrecties.get(
-        persoonsId,
-      );
+    const bestaandePersoon = persoonCorrecties.get(persoonsId);
 
     if (bestaandePersoon) {
-      bestaandePersoon.aantal +=
-        correctie.aantalAttesten;
+      bestaandePersoon.aantal += correctie.aantalAttesten;
     } else {
-      persoonCorrecties.set(
-        persoonsId,
-        {
-          naam:
-            correctie.naam,
-          aantal:
-            correctie
-              .aantalAttesten,
-        },
-      );
+      persoonCorrecties.set(persoonsId, {
+        naam: correctie.naam,
+        aantal: correctie.aantalAttesten,
+      });
     }
 
-    const bedrijfSleutel =
-      normaliseerBedrijfsnaamSleutel(
-        correctie.bedrijfsnaam,
-      );
+    const bedrijfSleutel = normaliseerBedrijfsnaamSleutel(
+      correctie.bedrijfsnaam,
+    );
 
-    const bestaandBedrijf =
-      bedrijfCorrecties.get(
-        bedrijfSleutel,
-      );
+    const bestaandBedrijf = bedrijfCorrecties.get(bedrijfSleutel);
 
     if (bestaandBedrijf) {
-      bestaandBedrijf.aantal +=
-        correctie.aantalAttesten;
+      bestaandBedrijf.aantal += correctie.aantalAttesten;
     } else {
-      bedrijfCorrecties.set(
-        bedrijfSleutel,
-        {
-          bedrijfsnaam:
-            correctie
-              .bedrijfsnaam,
-          aantal:
-            correctie
-              .aantalAttesten,
-        },
-      );
+      bedrijfCorrecties.set(bedrijfSleutel, {
+        bedrijfsnaam: correctie.bedrijfsnaam,
+        aantal: correctie.aantalAttesten,
+      });
     }
   }
 
   try {
     await prisma.$transaction(
       async (transactie) => {
-        const blokkering =
-          await transactie
-            .attestStatistiekImport
-            .updateMany({
-              where: {
-                id: 1,
-                correctiesToegepastOp:
-                  null,
-              },
-              data: {
-                correctiesToegepastOp:
-                  new Date(),
-              },
-            });
+        const blokkering = await transactie.attestStatistiekImport.updateMany({
+          where: {
+            id: 1,
+            correctiesToegepastOp: null,
+          },
+          data: {
+            correctiesToegepastOp: new Date(),
+          },
+        });
 
-        if (
-          blokkering.count === 0
-        ) {
-          throw new Error(
-            "CORRECTIES_AL_TOEGEPAST_OF_GEEN_IMPORT",
-          );
+        if (blokkering.count === 0) {
+          throw new Error("CORRECTIES_AL_TOEGEPAST_OF_GEEN_IMPORT");
         }
 
-        for (
-          const [
-            persoonsId,
-            gegevens,
-          ] of persoonCorrecties
-        ) {
-          await transactie
-            .attestPersoonStatistiek
-            .upsert({
-              where: {
-                persoonsId,
-              },
+        for (const [persoonsId, gegevens] of persoonCorrecties) {
+          await transactie.attestPersoonStatistiek.upsert({
+            where: {
+              persoonsId,
+            },
 
-              create: {
-                persoonsId,
-                naam:
-                  gegevens.naam,
-                aantalAttesten:
-                  gegevens.aantal,
-                bronBestandsnaam:
-                  "Handmatige correctie",
-              },
+            create: {
+              persoonsId,
+              naam: gegevens.naam,
+              aantalAttesten: gegevens.aantal,
+              bronBestandsnaam: "Handmatige correctie",
+            },
 
-              update: {
-                aantalAttesten: {
-                  increment:
-                    gegevens.aantal,
-                },
+            update: {
+              aantalAttesten: {
+                increment: gegevens.aantal,
               },
-            });
+            },
+          });
         }
 
-        for (
-          const [
-            bedrijfsnaamSleutel,
-            gegevens,
-          ] of bedrijfCorrecties
-        ) {
-          await transactie
-            .attestBedrijfStatistiek
-            .upsert({
-              where: {
-                bedrijfsnaamSleutel,
-              },
+        for (const [bedrijfsnaamSleutel, gegevens] of bedrijfCorrecties) {
+          await transactie.attestBedrijfStatistiek.upsert({
+            where: {
+              bedrijfsnaamSleutel,
+            },
 
-              create: {
-                bedrijfsnaam:
-                  gegevens
-                    .bedrijfsnaam,
-                bedrijfsnaamSleutel,
-                aantalAttesten:
-                  gegevens.aantal,
-                bronBestandsnaam:
-                  "Handmatige correctie",
-              },
+            create: {
+              bedrijfsnaam: gegevens.bedrijfsnaam,
+              bedrijfsnaamSleutel,
+              aantalAttesten: gegevens.aantal,
+              bronBestandsnaam: "Handmatige correctie",
+            },
 
-              update: {
-                aantalAttesten: {
-                  increment:
-                    gegevens.aantal,
-                },
+            update: {
+              aantalAttesten: {
+                increment: gegevens.aantal,
               },
-            });
+            },
+          });
         }
       },
       {
@@ -1286,8 +825,7 @@ export async function pasAttestCorrectiesToe(): Promise<CorrectieStatus> {
   } catch (fout) {
     if (
       fout instanceof Error &&
-      fout.message ===
-        "CORRECTIES_AL_TOEGEPAST_OF_GEEN_IMPORT"
+      fout.message === "CORRECTIES_AL_TOEGEPAST_OF_GEEN_IMPORT"
     ) {
       return {
         succes: false,
@@ -1296,15 +834,228 @@ export async function pasAttestCorrectiesToe(): Promise<CorrectieStatus> {
       };
     }
 
-    console.error(
-      "Attestcorrecties toepassen mislukt:",
-      fout,
-    );
+    console.error("Attestcorrecties toepassen mislukt:", fout);
 
     return {
       succes: false,
-      message:
-        "De correcties konden niet worden toegepast.",
+      message: "De correcties konden niet worden toegepast.",
+    };
+  }
+
+  vernieuwPaden();
+
+  return {
+    succes: true,
+    message: "De correcties uit lijst 3 zijn bij lijst 1 en lijst 2 opgeteld.",
+  };
+}
+
+export type VoorverwerktePersoon = {
+  persoonsId: string;
+  naam: string;
+  aantalAttesten: number;
+};
+
+export type VoorverwerktBedrijf = {
+  bedrijfsnaam: string;
+  bedrijfsnaamSleutel: string;
+  aantalAttesten: number;
+};
+
+export type VoorverwerkteAttestimport = {
+  bronBestandsnaam: string;
+  aantalExcelRijen: number;
+  personen: VoorverwerktePersoon[];
+  bedrijven: VoorverwerktBedrijf[];
+};
+
+function isGeldigAantal(waarde: unknown, maximum: number) {
+  return (
+    typeof waarde === "number" &&
+    Number.isSafeInteger(waarde) &&
+    waarde >= 0 &&
+    waarde <= maximum
+  );
+}
+
+export async function importeerVoorverwerkteAtteststatistieken(
+  invoer: VoorverwerkteAttestimport,
+): Promise<ImportStatus> {
+  await vereisMachtiging("ATTESTSTATISTIEKEN_BEHEREN");
+
+  if (
+    !invoer ||
+    typeof invoer !== "object" ||
+    !Array.isArray(invoer.personen) ||
+    !Array.isArray(invoer.bedrijven)
+  ) {
+    return {
+      succes: false,
+      message: "De verwerkte importgegevens zijn ongeldig.",
+    };
+  }
+
+  const bronBestandsnaam = normaliseerTekst(invoer.bronBestandsnaam);
+
+  if (
+    !bronBestandsnaam ||
+    bronBestandsnaam.length > 255 ||
+    !bronBestandsnaam.toLocaleLowerCase().endsWith(".xlsx")
+  ) {
+    return {
+      succes: false,
+      message: "De bestandsnaam van de import is ongeldig.",
+    };
+  }
+
+  if (!isGeldigAantal(invoer.aantalExcelRijen, MAXIMAAL_AANTAL_RIJEN)) {
+    return {
+      succes: false,
+      message: "Het aantal Excelrijen is ongeldig.",
+    };
+  }
+
+  if (
+    invoer.personen.length === 0 ||
+    invoer.personen.length > invoer.aantalExcelRijen
+  ) {
+    return {
+      succes: false,
+      message: "De persoonssamenvatting is ongeldig.",
+    };
+  }
+
+  if (
+    invoer.bedrijven.length === 0 ||
+    invoer.bedrijven.length > invoer.aantalExcelRijen
+  ) {
+    return {
+      succes: false,
+      message: "De bedrijfssamenvatting is ongeldig.",
+    };
+  }
+
+  const persoonsIds = new Set<string>();
+  const bedrijfssleutels = new Set<string>();
+
+  const personen: VoorverwerktePersoon[] = [];
+
+  for (const persoon of invoer.personen) {
+    const persoonsId = normaliseerPersoonsId(persoon.persoonsId);
+
+    const naam = normaliseerTekst(persoon.naam) || "Onbekend";
+
+    if (
+      !persoonsId ||
+      persoonsId.length > 100 ||
+      naam.length > 255 ||
+      !isGeldigAantal(persoon.aantalAttesten, MAXIMAAL_AANTAL_RIJEN) ||
+      persoon.aantalAttesten === 0 ||
+      persoonsIds.has(persoonsId)
+    ) {
+      return {
+        succes: false,
+        message: "De persoonssamenvatting bevat ongeldige of dubbele gegevens.",
+      };
+    }
+
+    persoonsIds.add(persoonsId);
+
+    personen.push({
+      persoonsId,
+      naam,
+      aantalAttesten: persoon.aantalAttesten,
+    });
+  }
+
+  const bedrijven: VoorverwerktBedrijf[] = [];
+
+  for (const bedrijf of invoer.bedrijven) {
+    const bedrijfsnaam = normaliseerTekst(bedrijf.bedrijfsnaam);
+
+    const bedrijfsnaamSleutel = normaliseerBedrijfsnaamSleutel(bedrijfsnaam);
+
+    if (
+      !bedrijfsnaam ||
+      bedrijfsnaam.length > 500 ||
+      !bedrijfsnaamSleutel ||
+      bedrijfssleutels.has(bedrijfsnaamSleutel) ||
+      !isGeldigAantal(bedrijf.aantalAttesten, MAXIMAAL_AANTAL_RIJEN) ||
+      bedrijf.aantalAttesten === 0
+    ) {
+      return {
+        succes: false,
+        message: "De bedrijfssamenvatting bevat ongeldige of dubbele gegevens.",
+      };
+    }
+
+    bedrijfssleutels.add(bedrijfsnaamSleutel);
+
+    bedrijven.push({
+      bedrijfsnaam,
+      bedrijfsnaamSleutel,
+      aantalAttesten: bedrijf.aantalAttesten,
+    });
+  }
+
+  try {
+    await prisma.$transaction(
+      async (transactie) => {
+        await transactie.attestPersoonStatistiek.deleteMany();
+
+        await transactie.attestBedrijfStatistiek.deleteMany();
+
+        await transactie.attestPersoonStatistiek.createMany({
+          data: personen.map((persoon) => ({
+            persoonsId: persoon.persoonsId,
+            naam: persoon.naam,
+            aantalAttesten: persoon.aantalAttesten,
+            bronBestandsnaam,
+          })),
+        });
+
+        await transactie.attestBedrijfStatistiek.createMany({
+          data: bedrijven.map((bedrijf) => ({
+            bedrijfsnaam: bedrijf.bedrijfsnaam,
+            bedrijfsnaamSleutel: bedrijf.bedrijfsnaamSleutel,
+            aantalAttesten: bedrijf.aantalAttesten,
+            bronBestandsnaam,
+          })),
+        });
+
+        await transactie.attestStatistiekImport.upsert({
+          where: {
+            id: 1,
+          },
+          create: {
+            id: 1,
+            bronBestandsnaam,
+            geimporteerdOp: new Date(),
+            aantalExcelRijen: invoer.aantalExcelRijen,
+            aantalPersonen: personen.length,
+            aantalBedrijven: bedrijven.length,
+            correctiesToegepastOp: null,
+          },
+          update: {
+            bronBestandsnaam,
+            geimporteerdOp: new Date(),
+            aantalExcelRijen: invoer.aantalExcelRijen,
+            aantalPersonen: personen.length,
+            aantalBedrijven: bedrijven.length,
+            correctiesToegepastOp: null,
+          },
+        });
+      },
+      {
+        timeout: 120_000,
+      },
+    );
+  } catch (fout) {
+    console.error("Voorverwerkte attestimport mislukt:", fout);
+
+    return {
+      succes: false,
+      message: "De verwerkte gegevens konden niet worden geïmporteerd.",
     };
   }
 
@@ -1313,6 +1064,11 @@ export async function pasAttestCorrectiesToe(): Promise<CorrectieStatus> {
   return {
     succes: true,
     message:
-      "De correcties uit lijst 3 zijn bij lijst 1 en lijst 2 opgeteld.",
+      `Excelimport voltooid: ` +
+      `${personen.length.toLocaleString("nl-BE")} personen en ` +
+      `${bedrijven.length.toLocaleString("nl-BE")} bedrijven.`,
+    aantalPersonen: personen.length,
+    aantalBedrijven: bedrijven.length,
+    aantalExcelRijen: invoer.aantalExcelRijen,
   };
 }
