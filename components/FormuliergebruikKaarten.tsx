@@ -109,6 +109,55 @@ const kolommen: Kolom[] = [
   },
 ];
 
+const STATUSLEGENDA = [
+  {
+    status: "GESTART",
+    label: "Gestart",
+    uitleg: "geopend",
+    stip: "bg-slate-500",
+  },
+  {
+    status: "BEZIG",
+    label: "Bezig",
+    uitleg: "invoer actief",
+    stip: "bg-blue-600",
+  },
+  {
+    status: "GESLAAGD",
+    label: "Geslaagd",
+    uitleg: "verzonden",
+    stip: "bg-emerald-600",
+  },
+  {
+    status: "MISLUKT",
+    label: "Mislukt",
+    uitleg: "fout",
+    stip: "bg-red-600",
+  },
+  {
+    status: "ONVOLLEDIG",
+    label: "Onvolledig",
+    uitleg: "verlaten",
+    stip: "bg-amber-500",
+  },
+] as const;
+
+function kaartStatusStijl(status: string) {
+  switch (status) {
+    case "BEZIG":
+      return "border-blue-300 border-l-4 bg-blue-50 hover:border-blue-400";
+    case "GESLAAGD":
+      return "border-emerald-300 border-l-4 bg-emerald-50 hover:border-emerald-400";
+    case "MISLUKT":
+      return "border-red-300 border-l-4 bg-red-50 hover:border-red-400";
+    case "ONVOLLEDIG":
+      return "border-amber-300 border-l-4 bg-amber-50 hover:border-amber-400";
+    case "GESTART":
+    default:
+      return "border-slate-300 border-l-4 bg-slate-50 hover:border-slate-400";
+  }
+}
+
 function label(waarde: string | null) {
   if (!waarde) {
     return "—";
@@ -317,6 +366,24 @@ export function FormuliergebruikKaarten({ totaalSessies }: Props) {
 
   return (
     <section className="overflow-visible rounded-2xl border border-slate-200 bg-white shadow-sm">
+      <div
+        className="border-b border-slate-200 px-3 py-2"
+        aria-label="Legenda van formulierstatussen"
+      >
+        <ul className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-slate-700">
+          {STATUSLEGENDA.map((item) => (
+            <li key={item.status} className="flex items-center gap-1">
+              <span
+                aria-hidden="true"
+                className={`h-2.5 w-2.5 rounded-full ${item.stip}`}
+              />
+              <span className="font-bold">{item.label}</span>
+              <span className="text-slate-500">— {item.uitleg}</span>
+            </li>
+          ))}
+        </ul>
+      </div>
+
       <div className="border-b border-slate-200 p-3 sm:p-4">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
           <label className="min-w-0 flex-1">
@@ -422,8 +489,12 @@ export function FormuliergebruikKaarten({ totaalSessies }: Props) {
                   event.preventDefault();
                   setGeopendId(geopend ? null : rij.id);
                 }}
-                className="min-w-0 cursor-pointer rounded-xl border border-slate-200 bg-white p-3 shadow-sm transition hover:border-emerald-300 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2"
+                className={`min-w-0 cursor-pointer rounded-xl border p-3 shadow-sm transition hover:shadow-md focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 ${kaartStatusStijl(
+                  rij.status,
+                )}`}
               >
+                <span className="sr-only">Status: {label(rij.status)}. </span>
+
                 <dl className="grid min-w-0 grid-cols-1 gap-x-4 gap-y-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
                   <Waarde titel="Gestart" waarde={datumTijd(rij.gestartOp)} />
                   <Waarde
