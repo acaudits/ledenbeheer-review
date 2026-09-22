@@ -34,6 +34,7 @@ export type TotaalOverzicht = {
   vandaag: string;
   deskcontrolesPerDatum: KalenderDagTelling[];
   terreincontrolesPerDatum: KalenderDagTelling[];
+  naFinalisatiesPerDatum: KalenderDagTelling[];
   topDeskcontroles: DeskcontroleTargetRij[];
   topTerreincontroles: TerreincontroleTargetRij[];
 };
@@ -195,6 +196,7 @@ export async function laadTotaalOverzicht(): Promise<TotaalOverzicht> {
     atteststatistieken,
     terreincontroleDatums,
     deskcontroleDatums,
+    naFinalisatieDatums,
   ] = await Promise.all([
     prisma.lid.findMany({
       where: {
@@ -278,6 +280,15 @@ export async function laadTotaalOverzicht(): Promise<TotaalOverzicht> {
         datumControle: true,
       },
     }),
+
+    prisma.naFinalisatie.findMany({
+      where: {
+        verwijderdOp: null,
+      },
+      select: {
+        datumNaFinalisatie: true,
+      },
+    }),
   ]);
 
   const terreincontrolesPerDatum = telPerDatum(
@@ -288,6 +299,10 @@ export async function laadTotaalOverzicht(): Promise<TotaalOverzicht> {
 
   const deskcontrolesPerDatum = telPerDatum(
     deskcontroleDatums.map((rij) => rij.datumControle),
+  );
+
+  const naFinalisatiesPerDatum = telPerDatum(
+    naFinalisatieDatums.map((rij) => rij.datumNaFinalisatie),
   );
 
   const attestenPerOvamId = new Map<string, number>();
@@ -445,6 +460,7 @@ export async function laadTotaalOverzicht(): Promise<TotaalOverzicht> {
     vandaag,
     deskcontrolesPerDatum,
     terreincontrolesPerDatum,
+    naFinalisatiesPerDatum,
     topDeskcontroles,
     topTerreincontroles,
   };

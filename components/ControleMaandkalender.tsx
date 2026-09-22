@@ -10,6 +10,7 @@ export type KalenderDagTelling = {
 type ControleMaandkalenderProps = {
   soort: "deskcontroles" | "terreincontroles";
   tellingen: readonly KalenderDagTelling[];
+  naFinalisatieTellingen?: readonly KalenderDagTelling[];
   vandaag: string;
 };
 
@@ -50,6 +51,7 @@ function maakDatumSleutel(jaar: number, maand: number, dag: number) {
 export function ControleMaandkalender({
   soort,
   tellingen,
+  naFinalisatieTellingen = [],
   vandaag,
 }: ControleMaandkalenderProps) {
   const huidigeDatum = leesDatumSleutel(vandaag);
@@ -65,6 +67,16 @@ export function ControleMaandkalender({
         tellingen.map((telling) => [telling.datum, telling.aantal] as const),
       ),
     [tellingen],
+  );
+
+  const naFinalisatiesPerDag = useMemo(
+    () =>
+      new Map(
+        naFinalisatieTellingen.map(
+          (telling) => [telling.datum, telling.aantal] as const,
+        ),
+      ),
+    [naFinalisatieTellingen],
   );
 
   const eersteDag = new Date(
@@ -98,10 +110,10 @@ export function ControleMaandkalender({
     });
   };
 
-  const titel =
-    soort === "terreincontroles"
-      ? "Ingeplande terreincontroles"
-      : "Ingeplande deskcontroles";
+  const isTerrein = soort === "terreincontroles";
+  const titel = isTerrein
+    ? "Ingeplande terreincontroles"
+    : "Ingeplande deskcontroles";
 
   return (
     <section
@@ -142,6 +154,29 @@ export function ControleMaandkalender({
         </button>
       </div>
 
+      {isTerrein ? (
+        <div
+          className="mb-2 flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-[10px] font-semibold"
+          aria-label="Kalenderlegende"
+        >
+          <span className="inline-flex items-center gap-1 text-emerald-800">
+            <span
+              className="size-2 rounded-full bg-emerald-600"
+              aria-hidden="true"
+            />
+            T = terreincontrole
+          </span>
+
+          <span className="inline-flex items-center gap-1 text-amber-800">
+            <span
+              className="size-2 rounded-full bg-amber-500"
+              aria-hidden="true"
+            />
+            NF = na-finalisatie
+          </span>
+        </div>
+      ) : null}
+
       <div className="grid grid-cols-7 gap-1" aria-hidden="true">
         {WEEKDAGEN.map((weekdag) => (
           <div
@@ -162,7 +197,7 @@ export function ControleMaandkalender({
               <div
                 key={`leeg-${index}`}
                 aria-hidden="true"
-                className="min-h-12 rounded-md bg-slate-50/60"
+                className="min-h-14 rounded-md bg-slate-50/60"
               />
             );
           }
@@ -174,51 +209,88 @@ export function ControleMaandkalender({
           );
 
           const aantal = tellingPerDag.get(datumSleutel) ?? 0;
+          const aantalNaFinalisaties =
+            naFinalisatiesPerDag.get(datumSleutel) ?? 0;
+
           const isVandaag = datumSleutel === vandaag;
           const datum = new Date(
             Date.UTC(zichtbareMaand.jaar, zichtbareMaand.maand, dag),
           );
 
+          const ariaBeschrijving = isTerrein
+            ? `${volledigeDatumFormatter.format(
+                datum,
+              )}: ${aantal} terreincontroles en ${aantalNaFinalisaties} na-finalisaties`
+            : `${volledigeDatumFormatter.format(
+                datum,
+              )}: ${aantal} deskcontroles`;
+
+          const celStijl = isVandaag
+            ? "min-h-14 rounded-md border-2 border-emerald-600 bg-emerald-100 p-1 text-center"
+            : aantal > 0
+              ? "min-h-14 rounded-md border border-emerald-200 bg-emerald-50 p-1 text-center"
+              : aantalNaFinalisaties > 0
+                ? "min-h-14 rounded-md border border-amber-300 bg-amber-50 p-1 text-center"
+                : "min-h-14 rounded-md border border-slate-100 bg-white p-1 text-center";
+
           return (
             <div
               key={datumSleutel}
-              aria-label={`${volledigeDatumFormatter.format(
-                datum,
-              )}: ${aantal} ${soort}`}
-              className={
-                isVandaag
-                  ? "min-h-12 rounded-md border-2 border-emerald-600 bg-emerald-100 p-1 text-center"
-                  : aantal > 0
-                    ? "min-h-12 rounded-md border border-emerald-200 bg-emerald-50 p-1 text-center"
-                    : "min-h-12 rounded-md border border-slate-100 bg-white p-1 text-center"
-              }
+              aria-label={ariaBeschrijving}
+              className={celStijl}
             >
               <div
                 className={
                   isVandaag
-                    ? "text-[10px] font-black text-emerald-900"
+                    ? "text-[10px] font-black text-emerald-950"
                     : "text-[10px] font-bold text-slate-600"
                 }
               >
                 {dag}
               </div>
 
-              <div
-                className={
-                  aantal > 0
-                    ? "mt-0.5 text-sm font-black tabular-nums text-emerald-800"
-                    : "mt-0.5 text-xs font-bold tabular-nums text-slate-300"
-                }
-              >
-                {aantal}
-              </div>
+              {isTerrein ? (
+                <div className="mt-0.5 space-y-0.5 text-[9px] font-black tabular-nums">
+                  <div
+                    className={
+                      aantal > 0 ? "text-emerald-800" : "text-emerald-300"
+                    }
+                    title={`${aantal} terreincontroles`}
+                  >
+                    T {aantal}
+                  </div>
+
+                  <div
+                    className={
+                      aantalNaFinalisaties > 0
+                        ? "text-amber-700"
+                        : "text-amber-300"
+                    }
+                    title={`${aantalNaFinalisaties} na-finalisaties`}
+                  >
+                    NF {aantalNaFinalisaties}
+                  </div>
+                </div>
+              ) : (
+                <div
+                  className={
+                    aantal > 0
+                      ? "mt-0.5 text-sm font-black tabular-nums text-emerald-800"
+                      : "mt-0.5 text-xs font-bold tabular-nums text-slate-300"
+                  }
+                >
+                  {aantal}
+                </div>
+              )}
             </div>
           );
         })}
       </div>
 
       <p className="mt-2 text-center text-[10px] text-slate-500">
-        Aantal {soort} per controledatum
+        {isTerrein
+          ? "Groen: terreincontroles · amber: na-finalisaties"
+          : "Aantal deskcontroles per controledatum"}
       </p>
     </section>
   );

@@ -87,6 +87,7 @@ type DagplanningKaartProps = {
   toelichting: string;
   soort: "deskcontroles" | "terreincontroles";
   tellingen: readonly KalenderDagTelling[];
+  naFinalisatieTellingen?: readonly KalenderDagTelling[];
   vandaag: string;
 };
 
@@ -96,6 +97,7 @@ function DagplanningKaart({
   toelichting,
   soort,
   tellingen,
+  naFinalisatieTellingen,
   vandaag,
 }: DagplanningKaartProps) {
   return (
@@ -118,6 +120,7 @@ function DagplanningKaart({
         <ControleMaandkalender
           soort={soort}
           tellingen={tellingen}
+          naFinalisatieTellingen={naFinalisatieTellingen}
           vandaag={vandaag}
         />
       </div>
@@ -341,6 +344,7 @@ export default async function TotaalOverzichtPage() {
             toelichting="Gemiddeld benodigd om het target tegen het jaareinde te behalen"
             soort="terreincontroles"
             tellingen={overzicht.terreincontrolesPerDatum}
+            naFinalisatieTellingen={overzicht.naFinalisatiesPerDatum}
             vandaag={overzicht.vandaag}
           />
 
