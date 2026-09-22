@@ -366,6 +366,28 @@ function voegLegendaToe(werkboek: ExcelJS.Workbook) {
   }
 
   formatteerWerkblad(werkblad, []);
+
+  // De algemene zebrakleuren zijn nu toegepast. Herstel daarna bewust
+  // iedere legendakleur, zodat geen enkele status als grijs verschijnt.
+  for (let index = 0; index < legendaRijen.length; index += 1) {
+    const item = legendaRijen[index];
+    const rij = werkblad.getRow(index + 2);
+
+    rij.eachCell(
+      {
+        includeEmpty: true,
+      },
+      (cel) => {
+        cel.fill = {
+          type: "pattern",
+          pattern: "solid",
+          fgColor: {
+            argb: geefTargetRijkleur(item.status),
+          },
+        };
+      },
+    );
+  }
 }
 
 export async function GET() {
