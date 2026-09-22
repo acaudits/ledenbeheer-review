@@ -285,8 +285,8 @@ function voegLegendaToe(werkboek: ExcelJS.Workbook) {
   }> = [
     {
       status: "FEL_ROOD",
-      kleur: "Donkerrood",
-      betekenis: "In opvolging",
+      kleur: "Bruin",
+      betekenis: "Actieve sanctie-opvolging",
       berekening:
         "Er bestaat minstens één niet-verwijderde sanctie-opvolging die nog niet is afgerond. Deze status krijgt voorrang op de targets.",
     },
