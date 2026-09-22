@@ -24,6 +24,7 @@ export type TotaalOverzicht = {
   totaalTerreincontrolesNogNodig: number;
   totaalAantalAttesten: number;
   resterendeWerkdagen: number;
+  deskcontrolesPerWerkdag: number;
   terreincontrolesPerWerkdag: number;
   topDeskcontroles: DeskcontroleTargetRij[];
   topTerreincontroles: TerreincontroleTargetRij[];
@@ -363,6 +364,10 @@ export async function laadTotaalOverzicht(): Promise<TotaalOverzicht> {
     totaalTerreincontrolesNogNodig,
     totaalAantalAttesten,
     resterendeWerkdagen,
+    deskcontrolesPerWerkdag:
+      resterendeWerkdagen > 0
+        ? totaalDeskcontrolesNogNodig / resterendeWerkdagen
+        : 0,
     terreincontrolesPerWerkdag:
       resterendeWerkdagen > 0
         ? totaalTerreincontrolesNogNodig / resterendeWerkdagen
