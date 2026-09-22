@@ -287,25 +287,25 @@ export default async function TotaalOverzichtPage() {
 
       <div className="grid grid-cols-1 items-start gap-4 xl:grid-cols-2">
         <div className="space-y-3">
-          <TerreincontroleTabel rijen={overzicht.topTerreincontroles} />
-
           <OverzichtKaart
             label="Terreincontroles per werkdag"
             waarde={formatteerGemiddelde(overzicht.terreincontrolesPerWerkdag)}
             toelichting="Gemiddeld benodigd om het target tegen het jaareinde te behalen"
             benadrukt
           />
+
+          <TerreincontroleTabel rijen={overzicht.topTerreincontroles} />
         </div>
 
         <div className="space-y-3">
-          <DeskcontroleTabel rijen={overzicht.topDeskcontroles} />
-
           <OverzichtKaart
             label="Deskcontroles per werkdag"
             waarde={formatteerGemiddelde(overzicht.deskcontrolesPerWerkdag)}
             toelichting="Gemiddeld benodigd om het target tegen het jaareinde te behalen"
             benadrukt
           />
+
+          <DeskcontroleTabel rijen={overzicht.topDeskcontroles} />
         </div>
       </div>
     </div>
