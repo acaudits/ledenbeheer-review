@@ -7,24 +7,44 @@ datasource db {
   provider = "postgresql"
 }
 
+enum LidSoort {
+  NIEUW_LID
+  OVERNAME
+}
+
+enum OvergekomenVan {
+  COPRO
+  DNV
+}
+
 model Lid {
-  id                      Int                              @id @default(autoincrement())
-  naamPersoon             String                           @map("naam_persoon")
-  telefoonnummer          String?
-  mailadres               String?
-  ovamId                  String                           @unique @map("ovam_id")
-  certificaatnummer       String                           @unique
-  uitgereiktOp            DateTime?                        @map("uitgereikt_op") @db.Date
-  bedrijf                 String?
-  aansluiting             String?
-  opmerking               String?                          @db.Text
-  certificatiePlatform    String?                          @map("certificatie_platform")
-  aangemaaktOp            DateTime                         @default(now()) @map("aangemaakt_op")
-  bijgewerktOp            DateTime                         @updatedAt @map("bijgewerkt_op")
-  verwijderdOp            DateTime?                        @map("verwijderd_op")
-  deskcontroles           Deskcontrole[]
-  terreincontroleDossiers TerreincontroleDossier[]
-  laattijdigeMeldingen    LaattijdigePlaatsbezoekMelding[]
+  id                           Int                              @id @default(autoincrement())
+  naamPersoon                  String                           @map("naam_persoon")
+  telefoonnummer               String?
+  mailadres                    String?
+  ovamId                       String                           @unique @map("ovam_id")
+  certificaatnummer            String                           @unique
+  uitgereiktOp                 DateTime?                        @map("uitgereikt_op") @db.Date
+  bedrijf                      String?
+  aansluiting                  String?
+  verzekeringVerlooptOp        DateTime?                        @map("verzekering_verloopt_op") @db.Date
+  praktijkBijscholingGevolgd   Boolean?                         @map("praktijk_bijscholing_gevolgd")
+  bijscholing2026Gevolgd       Boolean?                         @map("bijscholing_2026_gevolgd")
+  lidSoort                     LidSoort?                        @map("lid_soort")
+  begeleidingstraject          Boolean                          @default(false)
+  overgekomenVan               OvergekomenVan?                  @map("overgekomen_van")
+  aantalAttestenAndereCi2026   Int?                             @map("aantal_attesten_andere_ci_2026")
+  controleverslagenOvergenomen Boolean?                         @map("controleverslagen_overgenomen")
+  officieleKlachten            Boolean?                         @map("officiele_klachten")
+  officieleKlachtenToelichting String?                          @map("officiele_klachten_toelichting") @db.Text
+  opmerking                    String?                          @db.Text
+  certificatiePlatform         String?                          @map("certificatie_platform")
+  aangemaaktOp                 DateTime                         @default(now()) @map("aangemaakt_op")
+  bijgewerktOp                 DateTime                         @updatedAt @map("bijgewerkt_op")
+  verwijderdOp                 DateTime?                        @map("verwijderd_op")
+  deskcontroles                Deskcontrole[]
+  terreincontroleDossiers      TerreincontroleDossier[]
+  laattijdigeMeldingen         LaattijdigePlaatsbezoekMelding[]
 
   @@index([verwijderdOp])
   @@index([verwijderdOp, naamPersoon, id])
