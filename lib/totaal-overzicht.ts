@@ -140,6 +140,14 @@ function belgischeFeestdagen(jaar: number) {
   ]);
 }
 
+function isKerstvakantie(datum: Date) {
+  return (
+    datum.getUTCMonth() === 11 &&
+    datum.getUTCDate() >= 19 &&
+    datum.getUTCDate() <= 31
+  );
+}
+
 function huidigeBelgischeDatum() {
   const onderdelen = Object.fromEntries(
     new Intl.DateTimeFormat("nl-BE", {
@@ -178,7 +186,12 @@ function berekenResterendeWerkdagen() {
       huidigeDatum.getUTCDate(),
     );
 
-    if (weekdag !== 0 && weekdag !== 6 && !feestdagen.has(sleutel)) {
+    if (
+      weekdag !== 0 &&
+      weekdag !== 6 &&
+      !feestdagen.has(sleutel) &&
+      !isKerstvakantie(huidigeDatum)
+    ) {
       aantalWerkdagen += 1;
     }
 
