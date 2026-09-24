@@ -306,6 +306,8 @@ export default async function TotaalOverzichtPage() {
       <PageHeader
         titel="Totaal overzicht"
         beschrijving="Actuele planning van desk- en terreincontroles."
+        secundaireActieTekst="Export naar Excel"
+        secundaireActieHref="/atteststatistieken/export"
       />
 
       <section
@@ -332,7 +334,7 @@ export default async function TotaalOverzichtPage() {
         <OverzichtKaart
           label="Resterende werkdagen"
           waarde={formatteerGetal(overzicht.resterendeWerkdagen)}
-          toelichting="Tot en met 31 december"
+          toelichting="Weekends, feestdagen en kerstvakantie 19–31 december uitgesloten"
         />
       </section>
 
