@@ -42,7 +42,6 @@ type Kolom = {
   sleutel: Sorteersleutel;
   label: string;
   numeriek: boolean;
-  breedte: string;
 };
 
 const getalFormatter = new Intl.NumberFormat("nl-BE");
@@ -122,37 +121,31 @@ export function DashboardControlelijst(props: DashboardControlelijstProps) {
               sleutel: "naamPersoonscertificaat",
               label: "Naam",
               numeriek: false,
-              breedte: "min-w-56",
             },
             {
               sleutel: "ovamId",
               label: "OVAM-ID",
               numeriek: false,
-              breedte: "min-w-36",
             },
             {
               sleutel: "aantalAttesten",
               label: "Attesten",
               numeriek: true,
-              breedte: "min-w-28",
             },
             {
               sleutel: "aantalIngeplandeTerreincontroles",
               label: "Ingepland",
               numeriek: true,
-              breedte: "min-w-28",
             },
             {
               sleutel: "aantalNaFinalisaties",
               label: "Na-finalisaties",
               numeriek: true,
-              breedte: "min-w-32",
             },
             {
               sleutel: "aantalNogNodig",
               label: "Nog nodig",
               numeriek: true,
-              breedte: "min-w-28",
             },
           ]
         : [
@@ -160,31 +153,26 @@ export function DashboardControlelijst(props: DashboardControlelijstProps) {
               sleutel: "naamPersoonscertificaat",
               label: "Naam",
               numeriek: false,
-              breedte: "min-w-56",
             },
             {
               sleutel: "ovamId",
               label: "OVAM-ID",
               numeriek: false,
-              breedte: "min-w-36",
             },
             {
               sleutel: "aantalAttesten",
               label: "Attesten",
               numeriek: true,
-              breedte: "min-w-28",
             },
             {
               sleutel: "aantalDeskcontroles",
               label: "Deskcontroles",
               numeriek: true,
-              breedte: "min-w-32",
             },
             {
               sleutel: "aantalNogNodig",
               label: "Nog nodig",
               numeriek: true,
-              breedte: "min-w-28",
             },
           ],
     [isTerrein],
@@ -221,7 +209,14 @@ export function DashboardControlelijst(props: DashboardControlelijstProps) {
       .filter((rij) => {
         if (algemeneZoekterm) {
           const alleWaarden = kolommen
-            .map((kolom) => formatteerWaarde(leesWaarde(rij, kolom.sleutel)))
+            .map((kolom) => {
+              const waarde = leesWaarde(rij, kolom.sleutel);
+
+              return [
+                formatteerWaarde(waarde),
+                waarde === null ? "" : String(waarde),
+              ].join(" ");
+            })
             .join(" ");
 
           if (!normaliseerZoekwaarde(alleWaarden).includes(algemeneZoekterm)) {
@@ -238,9 +233,14 @@ export function DashboardControlelijst(props: DashboardControlelijstProps) {
             return true;
           }
 
-          return normaliseerZoekwaarde(
-            formatteerWaarde(leesWaarde(rij, kolom.sleutel)),
-          ).includes(filter);
+          const waarde = leesWaarde(rij, kolom.sleutel);
+
+          const zoekbareWaarde = [
+            formatteerWaarde(waarde),
+            waarde === null ? "" : String(waarde),
+          ].join(" ");
+
+          return normaliseerZoekwaarde(zoekbareWaarde).includes(filter);
         });
       })
       .sort((eerste, tweede) => {
@@ -270,81 +270,133 @@ export function DashboardControlelijst(props: DashboardControlelijstProps) {
     zoekterm,
   ]);
 
-  function wijzigSortering(sleutel: Sorteersleutel) {
-    if (sorteersleutel === sleutel) {
-      setSorteerrichting((huidige) =>
-        huidige === "oplopend" ? "aflopend" : "oplopend",
-      );
-
-      return;
-    }
-
-    setSorteersleutel(sleutel);
-
-    setSorteerrichting(
-      sleutel === "naamPersoonscertificaat" || sleutel === "ovamId"
-        ? "oplopend"
-        : "aflopend",
-    );
-  }
-
   const heeftFilters =
     Boolean(zoekterm.trim()) ||
     Object.values(kolomFilters).some((waarde) => Boolean(waarde?.trim()));
+
+  const kaartRaster = isTerrein
+    ? "grid-cols-2 sm:grid-cols-3 lg:grid-cols-[minmax(180px,1.7fr)_minmax(100px,1fr)_repeat(4,minmax(84px,0.7fr))]"
+    : "grid-cols-2 sm:grid-cols-3 lg:grid-cols-[minmax(180px,1.7fr)_minmax(100px,1fr)_repeat(3,minmax(84px,0.7fr))]";
+
+  function wisFilters() {
+    setZoekterm("");
+    setKolomFilters({});
+  }
 
   return (
     <section
       aria-labelledby={titelId}
       className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm"
     >
-      <div className="border-b border-slate-200 px-3 py-3">
-        <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+      <div className="border-b border-slate-200 p-3">
+        <div className="flex flex-col gap-3 xl:flex-row xl:items-end xl:justify-between">
           <div>
             <h2 id={titelId} className="text-sm font-bold text-slate-950">
               {titel}
             </h2>
 
             <p className="mt-0.5 text-xs text-slate-500">
-              Volledige lijst met resterende tekorten. Ongeveer 10 rijen zijn
-              tegelijk zichtbaar.
+              Volledige lijst met resterende tekorten. Scroll verticaal voor
+              meer resultaten.
             </p>
           </div>
 
-          <div className="flex w-full flex-col gap-2 sm:flex-row lg:w-auto">
-            <label className="min-w-0 flex-1 lg:w-72">
+          <div className="grid w-full gap-2 sm:grid-cols-[minmax(0,1fr)_minmax(180px,0.55fr)_auto] xl:w-auto xl:min-w-[620px]">
+            <label className="min-w-0">
               <span className="sr-only">Zoek in {titel.toLowerCase()}</span>
 
               <input
                 type="search"
                 value={zoekterm}
                 onChange={(event) => setZoekterm(event.target.value)}
-                placeholder="Zoeken in alle kolommen…"
+                placeholder="Zoeken in alle velden…"
                 className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-950 outline-none transition placeholder:text-slate-400 focus:border-emerald-600 focus:ring-2 focus:ring-emerald-100"
               />
             </label>
 
-            {heeftFilters ? (
-              <button
-                type="button"
-                onClick={() => {
-                  setZoekterm("");
-                  setKolomFilters({});
-                }}
-                className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-bold text-slate-700 transition hover:border-emerald-500 hover:text-emerald-800"
+            <label className="min-w-0">
+              <span className="sr-only">Sorteren op</span>
+
+              <select
+                value={sorteersleutel}
+                onChange={(event) =>
+                  setSorteersleutel(event.target.value as Sorteersleutel)
+                }
+                className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-800 outline-none transition focus:border-emerald-600 focus:ring-2 focus:ring-emerald-100"
               >
-                Filters wissen
-              </button>
-            ) : null}
+                {kolommen.map((kolom) => (
+                  <option key={kolom.sleutel} value={kolom.sleutel}>
+                    Sorteer: {kolom.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <button
+              type="button"
+              onClick={() =>
+                setSorteerrichting((huidige) =>
+                  huidige === "oplopend" ? "aflopend" : "oplopend",
+                )
+              }
+              aria-label={
+                sorteerrichting === "oplopend"
+                  ? "Wijzig naar aflopende sortering"
+                  : "Wijzig naar oplopende sortering"
+              }
+              className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-bold text-slate-700 transition hover:border-emerald-500 hover:text-emerald-800"
+            >
+              {sorteerrichting === "oplopend" ? "Oplopend ▲" : "Aflopend ▼"}
+            </button>
           </div>
         </div>
 
-        <p
-          className="mt-2 text-xs font-medium text-slate-600"
-          aria-live="polite"
-        >
-          {getalFormatter.format(zichtbareRijen.length)} van{" "}
-          {getalFormatter.format(basisRijen.length)} resultaten
-        </p>
+        <details className="mt-3 rounded-xl border border-slate-200 bg-slate-50">
+          <summary className="cursor-pointer select-none px-3 py-2 text-xs font-bold text-slate-700 hover:text-emerald-800">
+            Filters per kolom
+          </summary>
+
+          <div className="grid gap-2 border-t border-slate-200 p-3 sm:grid-cols-2 lg:grid-cols-3">
+            {kolommen.map((kolom) => (
+              <label key={kolom.sleutel} className="min-w-0">
+                <span className="mb-1 block text-[11px] font-bold uppercase tracking-wide text-slate-500">
+                  {kolom.label}
+                </span>
+
+                <input
+                  type="search"
+                  inputMode={kolom.numeriek ? "numeric" : "search"}
+                  value={kolomFilters[kolom.sleutel] ?? ""}
+                  onChange={(event) =>
+                    setKolomFilters((huidige) => ({
+                      ...huidige,
+                      [kolom.sleutel]: event.target.value,
+                    }))
+                  }
+                  placeholder={`Filter ${kolom.label.toLowerCase()}…`}
+                  className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-950 outline-none transition placeholder:text-slate-400 focus:border-emerald-600 focus:ring-2 focus:ring-emerald-100"
+                />
+              </label>
+            ))}
+          </div>
+        </details>
+
+        <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
+          <p className="text-xs font-medium text-slate-600" aria-live="polite">
+            {getalFormatter.format(zichtbareRijen.length)} van{" "}
+            {getalFormatter.format(basisRijen.length)} resultaten
+          </p>
+
+          {heeftFilters ? (
+            <button
+              type="button"
+              onClick={wisFilters}
+              className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-bold text-slate-700 transition hover:border-emerald-500 hover:text-emerald-800"
+            >
+              Filters wissen
+            </button>
+          ) : null}
+        </div>
       </div>
 
       {basisRijen.length === 0 ? (
@@ -352,130 +404,58 @@ export function DashboardControlelijst(props: DashboardControlelijstProps) {
           Alle persoonscertificaten hebben het target voor {props.soort}
           controles bereikt.
         </div>
+      ) : zichtbareRijen.length === 0 ? (
+        <div className="p-8 text-center text-sm text-slate-500">
+          Geen resultaten gevonden voor de ingestelde zoekopdracht en filters.
+        </div>
       ) : (
-        <div className="max-h-[41.5rem] overflow-auto">
-          <table className="w-full min-w-max border-separate border-spacing-0 text-left text-sm">
-            <thead className="sticky top-0 z-10 bg-slate-100 shadow-sm">
-              <tr>
-                {kolommen.map((kolom) => (
-                  <th
-                    key={kolom.sleutel}
-                    scope="col"
-                    className={`${kolom.breedte} border-b border-slate-200 px-3 py-2 align-top`}
-                  >
-                    <button
-                      type="button"
-                      onClick={() => wijzigSortering(kolom.sleutel)}
-                      className={`flex w-full items-center gap-1 font-bold text-slate-800 hover:text-emerald-800 ${
-                        kolom.numeriek
-                          ? "justify-end text-right"
-                          : "justify-start text-left"
+        <ol className="max-h-[45rem] space-y-1.5 overflow-y-auto overflow-x-hidden p-2">
+          {zichtbareRijen.map((rij) => (
+            <li
+              key={rij.ovamId}
+              className="rounded-xl border border-slate-200 bg-slate-50/70 p-2.5 transition hover:border-emerald-300 hover:bg-emerald-50/50"
+            >
+              <dl className={`grid min-w-0 gap-x-3 gap-y-2 ${kaartRaster}`}>
+                {kolommen.map((kolom) => {
+                  const waarde = leesWaarde(rij, kolom.sleutel);
+
+                  const isNaam = kolom.sleutel === "naamPersoonscertificaat";
+
+                  const isOvam = kolom.sleutel === "ovamId";
+
+                  const isTekort = kolom.sleutel === "aantalNogNodig";
+
+                  return (
+                    <div
+                      key={kolom.sleutel}
+                      className={`min-w-0 ${
+                        isNaam ? "col-span-2 sm:col-span-2 lg:col-span-1" : ""
                       }`}
                     >
-                      <span>{kolom.label}</span>
+                      <dt className="text-[10px] font-bold uppercase tracking-wide text-slate-500">
+                        {kolom.label}
+                      </dt>
 
-                      <span
-                        aria-hidden="true"
-                        className={
-                          sorteersleutel === kolom.sleutel
-                            ? "text-emerald-700"
-                            : "text-slate-400"
-                        }
-                      >
-                        {sorteersleutel === kolom.sleutel
-                          ? sorteerrichting === "oplopend"
-                            ? "▲"
-                            : "▼"
-                          : "↕"}
-                      </span>
-
-                      <span className="sr-only">Sorteer op {kolom.label}</span>
-                    </button>
-                  </th>
-                ))}
-              </tr>
-
-              <tr>
-                {kolommen.map((kolom) => (
-                  <th
-                    key={kolom.sleutel}
-                    className="border-b border-slate-300 bg-slate-50 px-2 py-2"
-                  >
-                    <label>
-                      <span className="sr-only">
-                        Filter kolom {kolom.label}
-                      </span>
-
-                      <input
-                        type="search"
-                        inputMode={kolom.numeriek ? "numeric" : "search"}
-                        value={kolomFilters[kolom.sleutel] ?? ""}
-                        onChange={(event) =>
-                          setKolomFilters((huidige) => ({
-                            ...huidige,
-                            [kolom.sleutel]: event.target.value,
-                          }))
-                        }
-                        placeholder="Filter…"
-                        className={`w-full rounded-md border border-slate-300 bg-white px-2 py-1.5 text-xs font-normal text-slate-900 outline-none placeholder:text-slate-400 focus:border-emerald-600 focus:ring-2 focus:ring-emerald-100 ${
-                          kolom.numeriek ? "text-right" : "text-left"
-                        }`}
-                      />
-                    </label>
-                  </th>
-                ))}
-              </tr>
-            </thead>
-
-            <tbody>
-              {zichtbareRijen.map((rij) => (
-                <tr
-                  key={rij.ovamId}
-                  className="h-14 transition even:bg-slate-50/70 hover:bg-emerald-50"
-                >
-                  {kolommen.map((kolom) => {
-                    const waarde = leesWaarde(rij, kolom.sleutel);
-
-                    return (
-                      <td
-                        key={kolom.sleutel}
-                        className={`border-b border-slate-100 px-3 py-2 ${
-                          kolom.numeriek
-                            ? "text-right font-bold tabular-nums text-slate-900"
-                            : "text-left text-slate-800"
-                        } ${
-                          kolom.sleutel === "aantalNogNodig"
-                            ? "font-black text-red-700"
-                            : ""
+                      <dd
+                        className={`mt-0.5 ${
+                          isNaam
+                            ? "break-words text-sm font-bold text-slate-950"
+                            : isOvam
+                              ? "break-all text-xs font-semibold text-slate-700"
+                              : isTekort
+                                ? "text-sm font-black tabular-nums text-red-700"
+                                : "text-sm font-bold tabular-nums text-slate-900"
                         }`}
                       >
-                        <span
-                          className={
-                            kolom.sleutel === "naamPersoonscertificaat"
-                              ? "block max-w-72 truncate font-bold text-slate-950"
-                              : kolom.sleutel === "ovamId"
-                                ? "block max-w-48 truncate font-medium text-slate-600"
-                                : ""
-                          }
-                          title={formatteerWaarde(waarde)}
-                        >
-                          {formatteerWaarde(waarde)}
-                        </span>
-                      </td>
-                    );
-                  })}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-
-          {zichtbareRijen.length === 0 ? (
-            <div className="p-8 text-center text-sm text-slate-500">
-              Geen resultaten gevonden voor de ingestelde zoekopdracht en
-              filters.
-            </div>
-          ) : null}
-        </div>
+                        {formatteerWaarde(waarde)}
+                      </dd>
+                    </div>
+                  );
+                })}
+              </dl>
+            </li>
+          ))}
+        </ol>
       )}
     </section>
   );
