@@ -53,6 +53,44 @@ function normaliseerTekst(
     : "";
 }
 
+function komenPersoonsnamenInBeideVolgordesOvereen(
+  ingevoerdeNaam: string,
+  geregistreerdeNaam: string,
+) {
+  const onderdelen = ingevoerdeNaam
+    .trim()
+    .replaceAll(",", " ")
+    .split(/\s+/)
+    .filter(Boolean);
+
+  if (onderdelen.length === 0) {
+    return false;
+  }
+
+  /*
+   * Controleer de oorspronkelijke volgorde en verschuif
+   * vervolgens telkens het eerste naamdeel naar achteren.
+   *
+   * Hierdoor werken bijvoorbeeld:
+   * - Jan Peeters
+   * - Peeters Jan
+   * - Jan Van den Berg
+   * - Van den Berg Jan
+   */
+  return onderdelen.some((_, index) => {
+    const variant = [
+      ...onderdelen.slice(index),
+      ...onderdelen.slice(0, index),
+    ].join(" ");
+
+    return komenPersoonsnamenOvereen(
+      variant,
+      geregistreerdeNaam,
+    );
+  });
+}
+
+
 async function haalClientSleutelOp() {
   const requestHeaders = await headers();
 
@@ -211,7 +249,7 @@ async function zoekActiefLid(
   }
 
   if (
-    !komenPersoonsnamenOvereen(
+    !komenPersoonsnamenInBeideVolgordesOvereen(
       naamAdi,
       kandidaat.naamPersoon,
     )
@@ -232,7 +270,7 @@ export async function meldLaattijdigePlaatsbezoeken(
   if (
     !(await controleerPubliekeRateLimit({
       sleutel: `melding:${sleutel}`,
-      maximum: 5,
+      maximum: 20,
       vensterMs: 60 * 60_000,
     }))
   ) {
