@@ -418,8 +418,7 @@ export async function laadTotaalOverzicht(): Promise<TotaalOverzicht> {
       aantalNogNodig: rij.aantalDeskcontrolesNogNodig,
     }))
     .filter((rij) => rij.aantalNogNodig > 0)
-    .sort(sorteerOpPrioriteit)
-    .slice(0, 20);
+    .sort(sorteerOpPrioriteit);
 
   const topTerreincontroles: TerreincontroleTargetRij[] = rijen
     .map((rij) => ({
@@ -431,8 +430,7 @@ export async function laadTotaalOverzicht(): Promise<TotaalOverzicht> {
       aantalNogNodig: rij.aantalTerreincontrolesNogNodig,
     }))
     .filter((rij) => rij.aantalNogNodig > 0)
-    .sort(sorteerOpPrioriteit)
-    .slice(0, 20);
+    .sort(sorteerOpPrioriteit);
 
   const totaalDeskcontrolesNogNodig = rijen.reduce(
     (totaal, rij) => totaal + rij.aantalDeskcontrolesNogNodig,
