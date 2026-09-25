@@ -19,7 +19,6 @@ type DashboardControlelijstProps =
 
 type Sorteersleutel =
   | "naamPersoonscertificaat"
-  | "ovamId"
   | "aantalAttesten"
   | "aantalDeskcontroles"
   | "aantalIngeplandeTerreincontroles"
@@ -64,6 +63,21 @@ function formatteerWaarde(waarde: string | number | null) {
 
 function leesWaarde(rij: TabelRij, sleutel: Sorteersleutel) {
   return rij[sleutel];
+}
+
+function maakZoektekst(rij: TabelRij, sleutel: Sorteersleutel) {
+  const waarde = leesWaarde(rij, sleutel);
+
+  const delen = [
+    formatteerWaarde(waarde),
+    waarde === null ? "" : String(waarde),
+  ];
+
+  if (sleutel === "naamPersoonscertificaat") {
+    delen.push(rij.ovamId);
+  }
+
+  return normaliseerZoekwaarde(delen.join(" "));
 }
 
 function vergelijkWaarden(
@@ -119,12 +133,7 @@ export function DashboardControlelijst(props: DashboardControlelijstProps) {
         ? [
             {
               sleutel: "naamPersoonscertificaat",
-              label: "Naam",
-              numeriek: false,
-            },
-            {
-              sleutel: "ovamId",
-              label: "OVAM-ID",
+              label: "Naam / OVAM-ID",
               numeriek: false,
             },
             {
@@ -151,12 +160,7 @@ export function DashboardControlelijst(props: DashboardControlelijstProps) {
         : [
             {
               sleutel: "naamPersoonscertificaat",
-              label: "Naam",
-              numeriek: false,
-            },
-            {
-              sleutel: "ovamId",
-              label: "OVAM-ID",
+              label: "Naam / OVAM-ID",
               numeriek: false,
             },
             {
@@ -207,21 +211,13 @@ export function DashboardControlelijst(props: DashboardControlelijstProps) {
 
     return basisRijen
       .filter((rij) => {
-        if (algemeneZoekterm) {
-          const alleWaarden = kolommen
-            .map((kolom) => {
-              const waarde = leesWaarde(rij, kolom.sleutel);
-
-              return [
-                formatteerWaarde(waarde),
-                waarde === null ? "" : String(waarde),
-              ].join(" ");
-            })
-            .join(" ");
-
-          if (!normaliseerZoekwaarde(alleWaarden).includes(algemeneZoekterm)) {
-            return false;
-          }
+        if (
+          algemeneZoekterm &&
+          !kolommen.some((kolom) =>
+            maakZoektekst(rij, kolom.sleutel).includes(algemeneZoekterm),
+          )
+        ) {
+          return false;
         }
 
         return kolommen.every((kolom) => {
@@ -229,18 +225,7 @@ export function DashboardControlelijst(props: DashboardControlelijstProps) {
             kolomFilters[kolom.sleutel] ?? "",
           );
 
-          if (!filter) {
-            return true;
-          }
-
-          const waarde = leesWaarde(rij, kolom.sleutel);
-
-          const zoekbareWaarde = [
-            formatteerWaarde(waarde),
-            waarde === null ? "" : String(waarde),
-          ].join(" ");
-
-          return normaliseerZoekwaarde(zoekbareWaarde).includes(filter);
+          return !filter || maakZoektekst(rij, kolom.sleutel).includes(filter);
         });
       })
       .sort((eerste, tweede) => {
@@ -275,8 +260,8 @@ export function DashboardControlelijst(props: DashboardControlelijstProps) {
     Object.values(kolomFilters).some((waarde) => Boolean(waarde?.trim()));
 
   const kaartRaster = isTerrein
-    ? "grid-cols-2 sm:grid-cols-3 lg:grid-cols-[minmax(180px,1.7fr)_minmax(100px,1fr)_repeat(4,minmax(84px,0.7fr))]"
-    : "grid-cols-2 sm:grid-cols-3 lg:grid-cols-[minmax(180px,1.7fr)_minmax(100px,1fr)_repeat(3,minmax(84px,0.7fr))]";
+    ? "grid-cols-2 sm:grid-cols-[minmax(0,1.8fr)_repeat(4,minmax(0,0.7fr))]"
+    : "grid-cols-2 sm:grid-cols-[minmax(0,1.8fr)_repeat(3,minmax(0,0.7fr))]";
 
   function wisFilters() {
     setZoekterm("");
@@ -288,75 +273,73 @@ export function DashboardControlelijst(props: DashboardControlelijstProps) {
       aria-labelledby={titelId}
       className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm"
     >
-      <div className="border-b border-slate-200 p-3">
-        <div className="flex flex-col gap-3 xl:flex-row xl:items-end xl:justify-between">
-          <div>
-            <h2 id={titelId} className="text-sm font-bold text-slate-950">
-              {titel}
-            </h2>
+      <div className="space-y-3 border-b border-slate-200 p-3">
+        <div>
+          <h2 id={titelId} className="text-sm font-bold text-slate-950">
+            {titel}
+          </h2>
 
-            <p className="mt-0.5 text-xs text-slate-500">
-              Volledige lijst met resterende tekorten. Scroll verticaal voor
-              meer resultaten.
-            </p>
-          </div>
-
-          <div className="grid w-full gap-2 sm:grid-cols-[minmax(0,1fr)_minmax(180px,0.55fr)_auto] xl:w-auto xl:min-w-[620px]">
-            <label className="min-w-0">
-              <span className="sr-only">Zoek in {titel.toLowerCase()}</span>
-
-              <input
-                type="search"
-                value={zoekterm}
-                onChange={(event) => setZoekterm(event.target.value)}
-                placeholder="Zoeken in alle velden…"
-                className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-950 outline-none transition placeholder:text-slate-400 focus:border-emerald-600 focus:ring-2 focus:ring-emerald-100"
-              />
-            </label>
-
-            <label className="min-w-0">
-              <span className="sr-only">Sorteren op</span>
-
-              <select
-                value={sorteersleutel}
-                onChange={(event) =>
-                  setSorteersleutel(event.target.value as Sorteersleutel)
-                }
-                className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-800 outline-none transition focus:border-emerald-600 focus:ring-2 focus:ring-emerald-100"
-              >
-                {kolommen.map((kolom) => (
-                  <option key={kolom.sleutel} value={kolom.sleutel}>
-                    Sorteer: {kolom.label}
-                  </option>
-                ))}
-              </select>
-            </label>
-
-            <button
-              type="button"
-              onClick={() =>
-                setSorteerrichting((huidige) =>
-                  huidige === "oplopend" ? "aflopend" : "oplopend",
-                )
-              }
-              aria-label={
-                sorteerrichting === "oplopend"
-                  ? "Wijzig naar aflopende sortering"
-                  : "Wijzig naar oplopende sortering"
-              }
-              className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-bold text-slate-700 transition hover:border-emerald-500 hover:text-emerald-800"
-            >
-              {sorteerrichting === "oplopend" ? "Oplopend ▲" : "Aflopend ▼"}
-            </button>
-          </div>
+          <p className="mt-0.5 text-xs text-slate-500">
+            Volledige lijst met resterende tekorten. Scroll verticaal voor meer
+            resultaten.
+          </p>
         </div>
 
-        <details className="mt-3 rounded-xl border border-slate-200 bg-slate-50">
+        <label className="block w-full">
+          <span className="sr-only">Zoek in {titel.toLowerCase()}</span>
+
+          <input
+            type="search"
+            value={zoekterm}
+            onChange={(event) => setZoekterm(event.target.value)}
+            placeholder="Zoeken op naam, OVAM-ID of aantallen…"
+            className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-950 outline-none transition placeholder:text-slate-400 focus:border-emerald-600 focus:ring-2 focus:ring-emerald-100"
+          />
+        </label>
+
+        <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto]">
+          <label className="min-w-0">
+            <span className="sr-only">Sorteren op</span>
+
+            <select
+              value={sorteersleutel}
+              onChange={(event) =>
+                setSorteersleutel(event.target.value as Sorteersleutel)
+              }
+              className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-800 outline-none transition focus:border-emerald-600 focus:ring-2 focus:ring-emerald-100"
+            >
+              {kolommen.map((kolom) => (
+                <option key={kolom.sleutel} value={kolom.sleutel}>
+                  Sorteer: {kolom.label}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <button
+            type="button"
+            onClick={() =>
+              setSorteerrichting((huidige) =>
+                huidige === "oplopend" ? "aflopend" : "oplopend",
+              )
+            }
+            aria-label={
+              sorteerrichting === "oplopend"
+                ? "Wijzig naar aflopende sortering"
+                : "Wijzig naar oplopende sortering"
+            }
+            className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-bold text-slate-700 transition hover:border-emerald-500 hover:text-emerald-800"
+          >
+            {sorteerrichting === "oplopend" ? "Oplopend ▲" : "Aflopend ▼"}
+          </button>
+        </div>
+
+        <details className="rounded-xl border border-slate-200 bg-slate-50">
           <summary className="cursor-pointer select-none px-3 py-2 text-xs font-bold text-slate-700 hover:text-emerald-800">
             Filters per kolom
           </summary>
 
-          <div className="grid gap-2 border-t border-slate-200 p-3 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-2 border-t border-slate-200 p-3 sm:grid-cols-2">
             {kolommen.map((kolom) => (
               <label key={kolom.sleutel} className="min-w-0">
                 <span className="mb-1 block text-[11px] font-bold uppercase tracking-wide text-slate-500">
@@ -381,7 +364,7 @@ export function DashboardControlelijst(props: DashboardControlelijstProps) {
           </div>
         </details>
 
-        <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
+        <div className="flex flex-wrap items-center justify-between gap-2">
           <p className="text-xs font-medium text-slate-600" aria-live="polite">
             {getalFormatter.format(zichtbareRijen.length)} van{" "}
             {getalFormatter.format(basisRijen.length)} resultaten
@@ -409,7 +392,7 @@ export function DashboardControlelijst(props: DashboardControlelijstProps) {
           Geen resultaten gevonden voor de ingestelde zoekopdracht en filters.
         </div>
       ) : (
-        <ol className="max-h-[45rem] space-y-1.5 overflow-y-auto overflow-x-hidden p-2">
+        <ol className="max-h-[42rem] space-y-1.5 overflow-y-auto overflow-x-hidden p-2">
           {zichtbareRijen.map((rij) => (
             <li
               key={rij.ovamId}
@@ -421,15 +404,13 @@ export function DashboardControlelijst(props: DashboardControlelijstProps) {
 
                   const isNaam = kolom.sleutel === "naamPersoonscertificaat";
 
-                  const isOvam = kolom.sleutel === "ovamId";
-
                   const isTekort = kolom.sleutel === "aantalNogNodig";
 
                   return (
                     <div
                       key={kolom.sleutel}
                       className={`min-w-0 ${
-                        isNaam ? "col-span-2 sm:col-span-2 lg:col-span-1" : ""
+                        isNaam ? "col-span-2 sm:col-span-1" : ""
                       }`}
                     >
                       <dt className="text-[10px] font-bold uppercase tracking-wide text-slate-500">
@@ -440,14 +421,18 @@ export function DashboardControlelijst(props: DashboardControlelijstProps) {
                         className={`mt-0.5 ${
                           isNaam
                             ? "break-words text-sm font-bold text-slate-950"
-                            : isOvam
-                              ? "break-all text-xs font-semibold text-slate-700"
-                              : isTekort
-                                ? "text-sm font-black tabular-nums text-red-700"
-                                : "text-sm font-bold tabular-nums text-slate-900"
+                            : isTekort
+                              ? "text-sm font-black tabular-nums text-red-700"
+                              : "text-sm font-bold tabular-nums text-slate-900"
                         }`}
                       >
                         {formatteerWaarde(waarde)}
+
+                        {isNaam ? (
+                          <span className="mt-0.5 block break-all text-[11px] font-semibold leading-4 text-slate-500">
+                            {rij.ovamId}
+                          </span>
+                        ) : null}
                       </dd>
                     </div>
                   );
