@@ -449,7 +449,10 @@ export default async function PersoonscertificaatDetailPage({
           (eerste, tweede) =>
             tweede.datumSorteerwaarde - eerste.datumSorteerwaarde,
         )
-        .map(({ datumSorteerwaarde: _, ...voorkomen }) => voorkomen),
+        .map(({ datumSorteerwaarde: _, ...voorkomen }) => {
+          void _;
+          return voorkomen;
+        }),
     }))
     .sort(
       (eerste, tweede) =>
