@@ -17,6 +17,7 @@ export type NonConformiteitSortering =
   | "ovamId"
   | "datumControle"
   | "attestnummer"
+  | "adres"
   | "vastgesteldDoorCi"
   | "groteImpact";
 
@@ -67,6 +68,7 @@ const KOLOMMEN: Array<{
     type: "datum",
   },
   { sleutel: "attestnummer", label: "Attestnummer" },
+  { sleutel: "adres", label: "Adres" },
   {
     sleutel: "vastgesteldDoorCi",
     label: "Vastgesteld door CI",
@@ -130,6 +132,10 @@ export function NonConformiteitenLijst() {
     },
   ]);
   const [openKaartId, setOpenKaartId] = useState<number | null>(null);
+  const [excelDownloadBezig, setExcelDownloadBezig] = useState(false);
+  const [excelDownloadFout, setExcelDownloadFout] = useState<string | null>(
+    null,
+  );
 
   const query = useNonConformiteitenQuery({
     zoekterm,
@@ -156,21 +162,118 @@ export function NonConformiteitenLijst() {
     setOpenKaartId(null);
   }
 
+  async function downloadExcel() {
+    setExcelDownloadBezig(true);
+    setExcelDownloadFout(null);
+
+    try {
+      const queryString = query.exportQueryString
+        ? `?${query.exportQueryString}`
+        : "";
+
+      const antwoord = await fetch(
+        `/api/non-conformiteiten/export${queryString}`,
+        {
+          credentials: "include",
+          cache: "no-store",
+          headers: {
+            Accept:
+              "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+          },
+        },
+      );
+
+      if (!antwoord.ok) {
+        let foutmelding = "Het Excel-bestand kon niet worden aangemaakt.";
+
+        try {
+          const inhoud = (await antwoord.json()) as {
+            fout?: unknown;
+          };
+
+          if (typeof inhoud.fout === "string" && inhoud.fout.trim()) {
+            foutmelding = inhoud.fout;
+          }
+        } catch {
+          // Gebruik de veilige algemene foutmelding.
+        }
+
+        throw new Error(foutmelding);
+      }
+
+      const bestand = await antwoord.blob();
+      const downloadUrl = URL.createObjectURL(bestand);
+      const link = document.createElement("a");
+
+      link.href = downloadUrl;
+      link.download = `non-conformiteiten-${new Date()
+        .toISOString()
+        .slice(0, 10)}.xlsx`;
+
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(downloadUrl);
+    } catch (fout) {
+      setExcelDownloadFout(
+        fout instanceof Error
+          ? fout.message
+          : "Het Excel-bestand kon niet worden aangemaakt.",
+      );
+    } finally {
+      setExcelDownloadBezig(false);
+    }
+  }
+
   return (
     <section className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
       <header className="border-b border-slate-200 px-4 py-5 sm:px-6">
-        <div>
-          <p className="text-xs font-bold uppercase tracking-[0.15em] text-emerald-700">
-            Desk- en terreincontroles
-          </p>
-          <h1 className="mt-1 text-2xl font-black text-slate-950">
-            Non-conformiteiten
-          </h1>
-          <p className="mt-1 text-sm text-slate-500">
-            {query.rijen.length} van {query.aantalTotaal ?? "…"}{" "}
-            non-conformiteiten geladen
-          </p>
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <p className="text-xs font-bold uppercase tracking-[0.15em] text-emerald-700">
+              Desk- en terreincontroles
+            </p>
+            <h1 className="mt-1 text-2xl font-black text-slate-950">
+              Non-conformiteiten
+            </h1>
+            <p className="mt-1 text-sm text-slate-500">
+              {query.rijen.length} van {query.aantalTotaal ?? "…"}{" "}
+              non-conformiteiten geladen
+            </p>
+          </div>
+
+          <button
+            type="button"
+            disabled={excelDownloadBezig}
+            onClick={() => void downloadExcel()}
+            className="inline-flex h-11 shrink-0 items-center justify-center gap-2 self-start rounded-xl bg-emerald-700 px-4 text-sm font-bold text-white shadow-sm transition hover:bg-emerald-600 disabled:cursor-wait disabled:opacity-60"
+          >
+            <svg
+              aria-hidden="true"
+              viewBox="0 0 24 24"
+              fill="none"
+              className="size-4"
+            >
+              <path
+                d="M12 3v12m0 0 4-4m-4 4-4-4M5 19h14"
+                stroke="currentColor"
+                strokeWidth="1.8"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+            {excelDownloadBezig ? "Excel maken..." : "Excel downloaden"}
+          </button>
         </div>
+
+        {excelDownloadFout ? (
+          <p
+            role="alert"
+            className="mt-3 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm font-semibold text-red-800"
+          >
+            {excelDownloadFout}
+          </p>
+        ) : null}
 
         <div className="mt-4 flex flex-col gap-2 sm:flex-row">
           <label className="min-w-0 flex-1">
@@ -359,7 +462,18 @@ export function NonConformiteitenLijst() {
                     </div>
 
                     <Waarde label="Datum controle" waarde={rij.datumControle} />
-                    <Waarde label="Attestnummer" waarde={rij.attestnummer} />
+
+                    <div>
+                      <p className="text-[10px] font-bold uppercase tracking-wide text-slate-500">
+                        Attestnummer / adres
+                      </p>
+                      <p className="mt-0.5 break-words text-sm font-bold text-slate-950">
+                        {rij.attestnummer || ""}
+                      </p>
+                      <p className="mt-0.5 break-words text-xs text-slate-500">
+                        {rij.adres || ""}
+                      </p>
+                    </div>
                   </div>
                 </div>
 
@@ -434,7 +548,6 @@ export function NonConformiteitenLijst() {
                         label="Procescertificaat"
                         waarde={rij.procescertificaat}
                       />
-                      <Waarde label="Adres" waarde={rij.adres} breed />
                       <Waarde label="Toegevoegd op" waarde={rij.aangemaaktOp} />
                     </dl>
 

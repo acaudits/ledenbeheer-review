@@ -17,6 +17,7 @@ const FILTERPARAMETERS: Record<NonConformiteitSortering, string> = {
   ovamId: "filterOvamId",
   datumControle: "filterDatumControle",
   attestnummer: "filterAttestnummer",
+  adres: "filterAdres",
   vastgesteldDoorCi: "filterVastgesteldDoorCi",
   groteImpact: "filterGroteImpact",
 };
@@ -33,6 +34,38 @@ type Invoer = {
   filters: Record<string, string>;
   sorteringen: NonConformiteitCardSortering[];
 };
+
+function maakAanvraagParameters(aanvraag: Invoer) {
+  const parameters = new URLSearchParams();
+
+  if (aanvraag.zoekterm) {
+    parameters.set("q", aanvraag.zoekterm);
+  }
+
+  for (const [sleutel, parameter] of Object.entries(FILTERPARAMETERS)) {
+    const waarde = aanvraag.filters[sleutel]?.trim();
+
+    if (waarde) {
+      parameters.set(parameter, waarde);
+    }
+  }
+
+  if (aanvraag.sorteringen.length) {
+    parameters.set(
+      "sorteringen",
+      aanvraag.sorteringen
+        .map(
+          (sortering) =>
+            `${sortering.sleutel}:${
+              sortering.richting === "oplopend" ? "asc" : "desc"
+            }`,
+        )
+        .join(","),
+    );
+  }
+
+  return parameters;
+}
 
 function isPagina(waarde: unknown): waarde is Pagina {
   if (typeof waarde !== "object" || waarde === null || Array.isArray(waarde)) {
@@ -96,39 +129,18 @@ export function useNonConformiteitenQuery({
     [uitgesteld, sorteringen],
   );
 
+  const exportQueryString = useMemo(
+    () => maakAanvraagParameters(aanvraag).toString(),
+    [aanvraag],
+  );
+
   const query = useInfiniteQuery({
     queryKey: ["non-conformiteiten", aanvraag],
     initialPageParam: null as string | null,
     queryFn: async ({ pageParam, signal }) => {
-      const parameters = new URLSearchParams({
-        limiet: "50",
-      });
+      const parameters = maakAanvraagParameters(aanvraag);
 
-      if (aanvraag.zoekterm) {
-        parameters.set("q", aanvraag.zoekterm);
-      }
-
-      for (const [sleutel, parameter] of Object.entries(FILTERPARAMETERS)) {
-        const waarde = aanvraag.filters[sleutel]?.trim();
-
-        if (waarde) {
-          parameters.set(parameter, waarde);
-        }
-      }
-
-      if (aanvraag.sorteringen.length) {
-        parameters.set(
-          "sorteringen",
-          aanvraag.sorteringen
-            .map(
-              (sortering) =>
-                `${sortering.sleutel}:${
-                  sortering.richting === "oplopend" ? "asc" : "desc"
-                }`,
-            )
-            .join(","),
-        );
-      }
+      parameters.set("limiet", "50");
 
       if (pageParam) {
         parameters.set("cursor", pageParam);
@@ -188,6 +200,7 @@ export function useNonConformiteitenQuery({
     isEersteKeerLaden: query.isPending,
     isVolgendePaginaLaden: query.isFetchingNextPage,
     heeftVolgendePagina: Boolean(query.hasNextPage),
+    exportQueryString,
     laadVolgendePagina: query.fetchNextPage,
     opnieuwLaden: query.refetch,
   };

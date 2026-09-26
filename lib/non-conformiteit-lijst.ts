@@ -13,6 +13,7 @@ export const NON_CONFORMITEIT_SORTERINGEN = [
   "ovamId",
   "datumControle",
   "attestnummer",
+  "adres",
   "vastgesteldDoorCi",
   "groteImpact",
 ] as const;
@@ -72,6 +73,7 @@ const FILTERPARAMETERS: Record<NonConformiteitSortering, string> = {
   ovamId: "filterOvamId",
   datumControle: "filterDatumControle",
   attestnummer: "filterAttestnummer",
+  adres: "filterAdres",
   vastgesteldDoorCi: "filterVastgesteldDoorCi",
   groteImpact: "filterGroteImpact",
 };
@@ -321,6 +323,8 @@ function tekstExpressie(sleutel: NonConformiteitSortering, alias = "b") {
       return Prisma.sql`${prefix}"ovamId"`;
     case "attestnummer":
       return Prisma.sql`${prefix}"attestnummer"`;
+    case "adres":
+      return Prisma.sql`${prefix}"adres"`;
     case "vastgesteldDoorCi":
       return Prisma.sql`${prefix}"vastgesteldDoorCi"`;
     case "groteImpact":
@@ -413,6 +417,7 @@ function maakZoekVoorwaarde(zoekterm: string) {
     Prisma.sql`b."ovamId"`,
     Prisma.sql`TO_CHAR(b."datumControle", 'DD/MM/YYYY')`,
     Prisma.sql`b.attestnummer`,
+    Prisma.sql`b.adres`,
     Prisma.sql`b.omschrijving`,
     Prisma.sql`b."vastgesteldDoorCi"`,
     Prisma.sql`b.verduidelijking`,
@@ -477,7 +482,7 @@ export async function laadNonConformiteiten({
   zoekterm: string;
   filters: NonConformiteitFilters;
   sorteringen: NonConformiteitSorteercriterium[];
-  limiet: number;
+  limiet: number | null;
   cursorId: number | null;
 }) {
   const cursorVoorwaarde =
@@ -494,6 +499,9 @@ export async function laadNonConformiteiten({
               0
             )
         `;
+
+  const limietVoorwaarde =
+    limiet === null ? Prisma.empty : Prisma.sql`LIMIT ${limiet + 1}`;
 
   return prisma.$queryRaw<NonConformiteitSelectieRij[]>(Prisma.sql`
     WITH
@@ -546,7 +554,7 @@ export async function laadNonConformiteiten({
     FROM "gerangschikt" g
     ${cursorVoorwaarde}
     ORDER BY g."positie" ASC
-    LIMIT ${limiet + 1}
+    ${limietVoorwaarde}
   `);
 }
 
