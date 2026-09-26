@@ -206,6 +206,66 @@ export async function GET(verzoek: Request) {
     werkblad.getColumn("aangemaaktOp").numFmt = "dd/mm/yyyy";
     werkblad.autoFilter = "A1:Y1";
 
+    const tellingenPerNcId = new Map<string, number>();
+
+    for (const rij of rijen) {
+      const ncId = rij.ncId.trim() || "(Geen NC-ID)";
+
+      tellingenPerNcId.set(ncId, (tellingenPerNcId.get(ncId) ?? 0) + 1);
+    }
+
+    const ncIdSamenvatting = werkboek.addWorksheet("Samenvatting NC-ID", {
+      views: [{ state: "frozen", ySplit: 1 }],
+    });
+
+    ncIdSamenvatting.columns = [
+      {
+        header: "NC-ID",
+        key: "ncId",
+        width: 30,
+      },
+      {
+        header: "Aantal keer gegeven",
+        key: "aantal",
+        width: 22,
+      },
+    ];
+
+    const samenvattingKopregel = ncIdSamenvatting.getRow(1);
+
+    samenvattingKopregel.height = 24;
+    samenvattingKopregel.font = {
+      bold: true,
+      color: { argb: "FFFFFFFF" },
+    };
+    samenvattingKopregel.alignment = {
+      vertical: "middle",
+      horizontal: "left",
+    };
+    samenvattingKopregel.fill = {
+      type: "pattern",
+      pattern: "solid",
+      fgColor: { argb: "FF047857" },
+    };
+
+    const gesorteerdeTellingen = Array.from(tellingenPerNcId.entries()).sort(
+      ([eersteNcId], [tweedeNcId]) =>
+        eersteNcId.localeCompare(tweedeNcId, "nl-BE", {
+          numeric: true,
+          sensitivity: "base",
+        }),
+    );
+
+    for (const [ncId, aantal] of gesorteerdeTellingen) {
+      ncIdSamenvatting.addRow({
+        ncId,
+        aantal,
+      });
+    }
+
+    ncIdSamenvatting.getColumn("aantal").numFmt = "0";
+    ncIdSamenvatting.autoFilter = "A1:B1";
+
     const bestand = await werkboek.xlsx.writeBuffer();
     const bestandsdatum = new Date().toISOString().slice(0, 10);
 

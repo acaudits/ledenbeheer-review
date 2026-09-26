@@ -167,21 +167,14 @@ export function NonConformiteitenLijst() {
     setExcelDownloadFout(null);
 
     try {
-      const queryString = query.exportQueryString
-        ? `?${query.exportQueryString}`
-        : "";
-
-      const antwoord = await fetch(
-        `/api/non-conformiteiten/export${queryString}`,
-        {
-          credentials: "include",
-          cache: "no-store",
-          headers: {
-            Accept:
-              "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-          },
+      const antwoord = await fetch("/api/non-conformiteiten/export", {
+        credentials: "include",
+        cache: "no-store",
+        headers: {
+          Accept:
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         },
-      );
+      });
 
       if (!antwoord.ok) {
         let foutmelding = "Het Excel-bestand kon niet worden aangemaakt.";

@@ -129,11 +129,6 @@ export function useNonConformiteitenQuery({
     [uitgesteld, sorteringen],
   );
 
-  const exportQueryString = useMemo(
-    () => maakAanvraagParameters(aanvraag).toString(),
-    [aanvraag],
-  );
-
   const query = useInfiniteQuery({
     queryKey: ["non-conformiteiten", aanvraag],
     initialPageParam: null as string | null,
@@ -200,7 +195,6 @@ export function useNonConformiteitenQuery({
     isEersteKeerLaden: query.isPending,
     isVolgendePaginaLaden: query.isFetchingNextPage,
     heeftVolgendePagina: Boolean(query.hasNextPage),
-    exportQueryString,
     laadVolgendePagina: query.fetchNextPage,
     opnieuwLaden: query.refetch,
   };
