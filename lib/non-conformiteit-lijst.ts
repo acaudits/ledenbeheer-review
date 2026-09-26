@@ -64,6 +64,15 @@ export type NonConformiteitFilterwaarde = {
   aantal: number;
 };
 
+export type NonConformiteitTrendPunt = {
+  periode: string;
+  aantal: number;
+};
+
+type NonConformiteitTrendRij = NonConformiteitTrendPunt & {
+  ncId: string;
+};
+
 const FILTERPARAMETERS: Record<NonConformiteitSortering, string> = {
   bron: "filterBron",
   ncId: "filterNcId",
@@ -556,6 +565,58 @@ export async function laadNonConformiteiten({
     ORDER BY g."positie" ASC
     ${limietVoorwaarde}
   `);
+}
+
+export async function laadNonConformiteitTrends(ncIds: string[]) {
+  const uniekeNcIds = Array.from(
+    new Set(ncIds.map((ncId) => ncId.trim()).filter(Boolean)),
+  );
+
+  const resultaat: Record<string, NonConformiteitTrendPunt[]> = {};
+
+  for (const ncId of uniekeNcIds) {
+    resultaat[ncId] = [];
+  }
+
+  if (uniekeNcIds.length === 0) {
+    return resultaat;
+  }
+
+  const rijen = await prisma.$queryRaw<NonConformiteitTrendRij[]>(
+    Prisma.sql`
+        WITH ${basisCte()}
+        SELECT
+          BTRIM(b."ncId") AS "ncId",
+          TO_CHAR(
+            DATE_TRUNC('month', b."datumControle"),
+            'YYYY-MM'
+          ) AS periode,
+          COUNT(*)::integer AS aantal
+        FROM "basis" b
+        WHERE
+          b."datumControle" IS NOT NULL
+          AND BTRIM(b."ncId") IN (${Prisma.join(uniekeNcIds)})
+        GROUP BY
+          BTRIM(b."ncId"),
+          DATE_TRUNC('month', b."datumControle")
+        ORDER BY
+          BTRIM(b."ncId") ASC,
+          DATE_TRUNC('month', b."datumControle") ASC
+      `,
+  );
+
+  for (const rij of rijen) {
+    const trend = resultaat[rij.ncId] ?? [];
+
+    trend.push({
+      periode: rij.periode,
+      aantal: rij.aantal,
+    });
+
+    resultaat[rij.ncId] = trend;
+  }
+
+  return resultaat;
 }
 
 export async function laadNonConformiteitFilterwaarden({

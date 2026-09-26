@@ -4,6 +4,7 @@ import { haalIngelogdeGebruikerOp } from "@/lib/auth";
 import {
   laadNonConformiteiten,
   laadNonConformiteitFilterwaarden,
+  laadNonConformiteitTrends,
   leesNonConformiteitFilters,
   leesNonConformiteitSorteringen,
   NON_CONFORMITEIT_SORTERINGEN,
@@ -138,7 +139,7 @@ export async function GET(verzoek: Request) {
     const aantalTotaal =
       pagina[0]?.aantalTotaal ?? (aanvraag.cursor === null ? 0 : null);
 
-    const rijen = pagina.map((selectieRij) => {
+    const basisRijen = pagina.map((selectieRij) => {
       const {
         aantalTotaal: rijAantalTotaal,
         datumControle,
@@ -154,6 +155,15 @@ export async function GET(verzoek: Request) {
         aangemaaktOp: formatteerDatum(aangemaaktOp),
       };
     });
+
+    const trendsPerNcId = await laadNonConformiteitTrends(
+      basisRijen.map((rij) => rij.ncId),
+    );
+
+    const rijen = basisRijen.map((rij) => ({
+      ...rij,
+      trend: trendsPerNcId[rij.ncId.trim()] ?? [],
+    }));
 
     const laatsteRij = rijen.at(-1);
 
