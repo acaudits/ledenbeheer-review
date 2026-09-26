@@ -6,22 +6,17 @@ import { PersoonsIngeplandeTerreincontroles } from "@/components/PersoonsIngepla
 import { PersoonsNaFinalisatie } from "@/components/PersoonsNaFinalisatie";
 import { PersoonsDossierSectieKaart } from "@/components/PersoonsDossierSectieKaart";
 import { PersoonsOpvolgingSancties } from "@/components/PersoonsOpvolgingSancties";
-import {
-  notFound,
-} from "next/navigation";
+import { notFound } from "next/navigation";
 
+import { vereisMachtiging } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
 import {
-  vereisMachtiging,
-} from "@/lib/auth";
-import {
-  prisma,
-} from "@/lib/prisma";
-import {
-  normaliseerTelefoonnummer,
-} from "@/lib/telefoonnummer";
+  geefCanoniekeNcId,
+  laadCanoniekeNcIdKaart,
+} from "@/lib/non-conformiteit-nc-id";
+import { normaliseerTelefoonnummer } from "@/lib/telefoonnummer";
 
-export const dynamic =
-  "force-dynamic";
+export const dynamic = "force-dynamic";
 
 type PaginaProps = {
   params: Promise<{
@@ -29,45 +24,28 @@ type PaginaProps = {
   }>;
 };
 
-function formatteerDatum(
-  datum: Date | null,
-) {
+function formatteerDatum(datum: Date | null) {
   if (!datum) {
     return "—";
   }
 
-  return new Intl.DateTimeFormat(
-    "nl-BE",
-    {
-      day: "2-digit",
-      month: "2-digit",
-      year: "numeric",
-      timeZone: "UTC",
-    },
-  ).format(datum);
+  return new Intl.DateTimeFormat("nl-BE", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    timeZone: "UTC",
+  }).format(datum);
 }
 
-function toonWaarde(
-  waarde:
-    | string
-    | number
-    | null
-    | undefined,
-) {
-  if (
-    waarde === null ||
-    waarde === undefined ||
-    String(waarde).trim() === ""
-  ) {
+function toonWaarde(waarde: string | number | null | undefined) {
+  if (waarde === null || waarde === undefined || String(waarde).trim() === "") {
     return "—";
   }
 
   return String(waarde);
 }
 
-function deskcontroleStatusLabel(
-  status: string,
-) {
+function deskcontroleStatusLabel(status: string) {
   switch (status) {
     case "IN_OPMAAK":
       return "In opmaak";
@@ -83,9 +61,7 @@ function deskcontroleStatusLabel(
   }
 }
 
-function deskcontroleStatusStijl(
-  status: string,
-) {
+function deskcontroleStatusStijl(status: string) {
   switch (status) {
     case "AFGEROND":
       return "border-green-200 bg-green-100 text-green-900";
@@ -103,27 +79,13 @@ function deskcontroleStatusStijl(
 
 type GegevensVeldProps = {
   label: string;
-  waarde:
-    | string
-    | number
-    | null
-    | undefined;
+  waarde: string | number | null | undefined;
   breed?: boolean;
 };
 
-function GegevensVeld({
-  label,
-  waarde,
-  breed = false,
-}: GegevensVeldProps) {
+function GegevensVeld({ label, waarde, breed = false }: GegevensVeldProps) {
   return (
-    <div
-      className={
-        breed
-          ? "sm:col-span-2 xl:col-span-3"
-          : ""
-      }
-    >
+    <div className={breed ? "sm:col-span-2 xl:col-span-3" : ""}>
       <dt className="text-xs font-bold uppercase tracking-wide text-slate-500">
         {label}
       </dt>
@@ -138,105 +100,91 @@ function GegevensVeld({
 export default async function PersoonscertificaatDetailPage({
   params,
 }: PaginaProps) {
-  await vereisMachtiging(
-    "CERTIFICATEN_BEKIJKEN",
-  );
+  await vereisMachtiging("CERTIFICATEN_BEKIJKEN");
 
-  const {
-    id: idTekst,
-  } = await params;
+  const { id: idTekst } = await params;
 
   const id = Number(idTekst);
 
-  if (
-    !Number.isInteger(id) ||
-    id <= 0
-  ) {
+  if (!Number.isInteger(id) || id <= 0) {
     notFound();
   }
 
-  const persoon =
-    await prisma.lid.findFirst({
-      where: {
-        id,
-        verwijderdOp: null,
-      },
-      select: {
-        id: true,
-        naamPersoon: true,
-        telefoonnummer: true,
-        mailadres: true,
-        ovamId: true,
-        certificaatnummer: true,
-        uitgereiktOp: true,
-        bedrijf: true,
-        aansluiting: true,
-        opmerking: true,
-        certificatiePlatform:
-          true,
+  const persoon = await prisma.lid.findFirst({
+    where: {
+      id,
+      verwijderdOp: null,
+    },
+    select: {
+      id: true,
+      naamPersoon: true,
+      telefoonnummer: true,
+      mailadres: true,
+      ovamId: true,
+      certificaatnummer: true,
+      uitgereiktOp: true,
+      bedrijf: true,
+      aansluiting: true,
+      opmerking: true,
+      certificatiePlatform: true,
 
-        deskcontroles: {
-          where: {
-            verwijderdOp: null,
+      deskcontroles: {
+        where: {
+          verwijderdOp: null,
+        },
+        orderBy: [
+          {
+            datumControle: "desc",
           },
-          orderBy: [
-            {
-              datumControle:
-                "desc",
-            },
-            {
-              id: "desc",
-            },
-          ],
-          select: {
-            id: true,
-            attestnummer: true,
-            attestId: true,
-            status: true,
-            typeControle: true,
-            datumControle: true,
-            deadlineSanctie: true,
-            deadlineCorrectie: true,
-            adres: true,
-            opmerkingen: true,
+          {
+            id: "desc",
+          },
+        ],
+        select: {
+          id: true,
+          attestnummer: true,
+          attestId: true,
+          status: true,
+          typeControle: true,
+          datumControle: true,
+          deadlineSanctie: true,
+          deadlineCorrectie: true,
+          adres: true,
+          opmerkingen: true,
 
-            procescertificaat: {
-              select: {
-                naamBedrijf: true,
-                certificaatnummer:
-                  true,
-              },
+          procescertificaat: {
+            select: {
+              naamBedrijf: true,
+              certificaatnummer: true,
             },
+          },
 
-            vaststellingen: {
-              orderBy: [
-                {
-                  excelRij: "asc",
-                },
-                {
-                  id: "asc",
-                },
-              ],
-              select: {
-                id: true,
-                excelRij: true,
-                parameter: true,
-                ncId: true,
-                omschrijving: true,
-                vastgesteldDoorCi:
-                  true,
-                verduidelijking:
-                  true,
-                groteImpact: true,
-                categorie: true,
-                motivatieAanpassing:
-                  true,
+          vaststellingen: {
+            orderBy: [
+              {
+                excelRij: "asc",
               },
+              {
+                id: "asc",
+              },
+            ],
+            select: {
+              id: true,
+              excelRij: true,
+              parameter: true,
+              ncId: true,
+              omschrijving: true,
+              vastgesteldDoorCi: true,
+              verduidelijking: true,
+              groteImpact: true,
+              categorie: true,
+              motivatieAanpassing: true,
             },
           },
         },
       },
-    });
+    },
+  });
 
   if (!persoon) {
     notFound();
@@ -248,164 +196,149 @@ export default async function PersoonscertificaatDetailPage({
    * overeen met het OVAM-ID van het
    * persoonscertificaat.
    */
-  const atteststatistiek =
-    await prisma.attestPersoonStatistiek.findFirst({
-      where: {
-        persoonsId: {
-          equals: persoon.ovamId,
-          mode: "insensitive",
-        },
+  const atteststatistiek = await prisma.attestPersoonStatistiek.findFirst({
+    where: {
+      persoonsId: {
+        equals: persoon.ovamId,
+        mode: "insensitive",
       },
-      select: {
-        aantalAttesten: true,
-      },
-    });
+    },
+    select: {
+      aantalAttesten: true,
+    },
+  });
 
-  const aantalAttesten =
-    atteststatistiek?.aantalAttesten ??
-    0;
+  const aantalAttesten = atteststatistiek?.aantalAttesten ?? 0;
 
   /*
    * Deze gegevens worden uitsluitend
    * server-side geladen, nadat de
    * machtiging is gecontroleerd.
    */
-  const [
-    aantalNaFinalisaties,
-    openSanctieOpvolging,
-    aantalOpvolgingSancties,
-  ] = await Promise.all([
-    prisma.naFinalisatie.count({
-      where: {
-        verwijderdOp: null,
-        persoonsId: {
-          equals: persoon.ovamId,
-          mode: "insensitive",
-        },
-      },
-    }),
-
-    prisma.opvolgingSanctie.findFirst({
-      where: {
-        verwijderdOp: null,
-        opvolgingAfgerond: false,
-        ovamId: {
-          equals: persoon.ovamId,
-          mode: "insensitive",
-        },
-      },
-      select: {
-        id: true,
-      },
-    }),
-
-    prisma.opvolgingSanctie.count({
-      where: {
-        verwijderdOp: null,
-        ovamId: {
-          equals: persoon.ovamId,
-          mode: "insensitive",
-        },
-      },
-    }),
-  ]);
-
-  const inOpvolging =
-    openSanctieOpvolging !== null;
-
-  const ingeplandeTerreincontroles =
-    await prisma.terreincontrole.findMany({
-      where: {
-        verwijderdOp: null,
-        afwezigOp: null,
-        ovamId: {
-          equals: persoon.ovamId,
-          mode: "insensitive",
-        },
-      },
-      orderBy: [
-        {
-          datumPlaatsbezoek:
-            "desc",
-        },
-        {
-          id: "desc",
-        },
-      ],
-      select: {
-        id: true,
-        auditeur: true,
-        factuurVerzonden: true,
-        status: true,
-        attestUrl: true,
-        opmerkingen: true,
-        adres: true,
-        inspectielocatie: true,
-        datumPlaatsbezoek:
-          true,
-        uurPlaatsbezoek: true,
-        naamAdi: true,
-        bedrijfsnaam: true,
-        attestId: true,
-      },
-    });
-
-  const terreincontroleDossiers =
-    await prisma.terreincontroleDossier.findMany({
-      where: {
-        verwijderdOp: null,
-        lidId: persoon.id,
-      },
-      select: {
-        id: true,
-        attestnummer: true,
-        datumControle: true,
-        vaststellingen: {
-          select: {
-            id: true,
-            parameter: true,
-            ncId: true,
-            omschrijving: true,
-            groteImpact: true,
-            categorie: true,
+  const [aantalNaFinalisaties, openSanctieOpvolging, aantalOpvolgingSancties] =
+    await Promise.all([
+      prisma.naFinalisatie.count({
+        where: {
+          verwijderdOp: null,
+          persoonsId: {
+            equals: persoon.ovamId,
+            mode: "insensitive",
           },
         },
+      }),
+
+      prisma.opvolgingSanctie.findFirst({
+        where: {
+          verwijderdOp: null,
+          opvolgingAfgerond: false,
+          ovamId: {
+            equals: persoon.ovamId,
+            mode: "insensitive",
+          },
+        },
+        select: {
+          id: true,
+        },
+      }),
+
+      prisma.opvolgingSanctie.count({
+        where: {
+          verwijderdOp: null,
+          ovamId: {
+            equals: persoon.ovamId,
+            mode: "insensitive",
+          },
+        },
+      }),
+    ]);
+
+  const inOpvolging = openSanctieOpvolging !== null;
+
+  const ingeplandeTerreincontroles = await prisma.terreincontrole.findMany({
+    where: {
+      verwijderdOp: null,
+      afwezigOp: null,
+      ovamId: {
+        equals: persoon.ovamId,
+        mode: "insensitive",
       },
-    });
+    },
+    orderBy: [
+      {
+        datumPlaatsbezoek: "desc",
+      },
+      {
+        id: "desc",
+      },
+    ],
+    select: {
+      id: true,
+      auditeur: true,
+      factuurVerzonden: true,
+      status: true,
+      attestUrl: true,
+      opmerkingen: true,
+      adres: true,
+      inspectielocatie: true,
+      datumPlaatsbezoek: true,
+      uurPlaatsbezoek: true,
+      naamAdi: true,
+      bedrijfsnaam: true,
+      attestId: true,
+    },
+  });
 
-  const aantalDeskcontroleVaststellingen =
-    persoon.deskcontroles.reduce(
-      (
-        totaal,
-        deskcontrole,
-      ) =>
-        totaal +
-        deskcontrole
-          .vaststellingen.length,
-      0,
-    );
+  const terreincontroleDossiers = await prisma.terreincontroleDossier.findMany({
+    where: {
+      verwijderdOp: null,
+      lidId: persoon.id,
+    },
+    select: {
+      id: true,
+      attestnummer: true,
+      datumControle: true,
+      vaststellingen: {
+        select: {
+          id: true,
+          parameter: true,
+          ncId: true,
+          omschrijving: true,
+          groteImpact: true,
+          categorie: true,
+        },
+      },
+    },
+  });
 
-  const aantalTerreincontroleVaststellingen =
-    terreincontroleDossiers.reduce(
-      (
-        totaal,
-        terreincontrole,
-      ) =>
-        totaal +
-        terreincontrole
-          .vaststellingen.length,
-      0,
-    );
+  const canoniekeNcIdKaart = await laadCanoniekeNcIdKaart([
+    ...persoon.deskcontroles.flatMap((deskcontrole) =>
+      deskcontrole.vaststellingen.map((vaststelling) => vaststelling.ncId),
+    ),
+    ...terreincontroleDossiers.flatMap((terreincontrole) =>
+      terreincontrole.vaststellingen.map((vaststelling) => vaststelling.ncId),
+    ),
+  ]);
+
+  function canoniekeNcId(ncId: string) {
+    return geefCanoniekeNcId(ncId, canoniekeNcIdKaart);
+  }
+
+  const aantalDeskcontroleVaststellingen = persoon.deskcontroles.reduce(
+    (totaal, deskcontrole) => totaal + deskcontrole.vaststellingen.length,
+    0,
+  );
+
+  const aantalTerreincontroleVaststellingen = terreincontroleDossiers.reduce(
+    (totaal, terreincontrole) => totaal + terreincontrole.vaststellingen.length,
+    0,
+  );
 
   const aantalVaststellingen =
-    aantalDeskcontroleVaststellingen +
-    aantalTerreincontroleVaststellingen;
+    aantalDeskcontroleVaststellingen + aantalTerreincontroleVaststellingen;
 
   type NonConformiteitVoorkomen = {
     sleutel: string;
-    typeControle:
-      | "Deskcontrole"
-      | "Terreincontrole";
+    typeControle: "Deskcontrole" | "Terreincontrole";
     attestnummer: string;
     datumControle: string;
     datumSorteerwaarde: number;
@@ -419,15 +352,10 @@ export default async function PersoonscertificaatDetailPage({
     groteImpact: string | null;
     categorie: string | null;
     aantal: number;
-    voorkomens:
-      NonConformiteitVoorkomen[];
+    voorkomens: NonConformiteitVoorkomen[];
   };
 
-  const nonConformiteitenPerNcId =
-    new Map<
-      string,
-      NonConformiteitTopRij
-    >();
+  const nonConformiteitenPerNcId = new Map<string, NonConformiteitTopRij>();
 
   function voegNonConformiteitToe({
     nonConformiteit,
@@ -440,158 +368,96 @@ export default async function PersoonscertificaatDetailPage({
       groteImpact: string | null;
       categorie: string | null;
     };
-    voorkomen:
-      NonConformiteitVoorkomen;
+    voorkomen: NonConformiteitVoorkomen;
   }) {
-    const ncId =
-      nonConformiteit.ncId.trim();
+    const ncId = nonConformiteit.ncId.trim();
 
     if (!ncId) {
       return;
     }
 
-    const sleutel =
-      ncId.toLocaleUpperCase(
-        "nl-BE",
-      );
+    const sleutel = ncId.toLocaleUpperCase("nl-BE");
 
-    const bestaande =
-      nonConformiteitenPerNcId.get(
-        sleutel,
-      );
+    const bestaande = nonConformiteitenPerNcId.get(sleutel);
 
     if (bestaande) {
       bestaande.aantal += 1;
-      bestaande.parameter ??=
-        nonConformiteit.parameter;
-      bestaande.omschrijving ??=
-        nonConformiteit.omschrijving;
-      bestaande.groteImpact ??=
-        nonConformiteit.groteImpact;
-      bestaande.categorie ??=
-        nonConformiteit.categorie;
-      bestaande.voorkomens.push(
-        voorkomen,
-      );
+      bestaande.parameter ??= nonConformiteit.parameter;
+      bestaande.omschrijving ??= nonConformiteit.omschrijving;
+      bestaande.groteImpact ??= nonConformiteit.groteImpact;
+      bestaande.categorie ??= nonConformiteit.categorie;
+      bestaande.voorkomens.push(voorkomen);
 
       return;
     }
 
-    nonConformiteitenPerNcId.set(
-      sleutel,
-      {
-        ncId,
-        parameter:
-          nonConformiteit.parameter,
-        omschrijving:
-          nonConformiteit.omschrijving,
-        groteImpact:
-          nonConformiteit.groteImpact,
-        categorie:
-          nonConformiteit.categorie,
-        aantal: 1,
-        voorkomens: [
-          voorkomen,
-        ],
-      },
-    );
+    nonConformiteitenPerNcId.set(sleutel, {
+      ncId,
+      parameter: nonConformiteit.parameter,
+      omschrijving: nonConformiteit.omschrijving,
+      groteImpact: nonConformiteit.groteImpact,
+      categorie: nonConformiteit.categorie,
+      aantal: 1,
+      voorkomens: [voorkomen],
+    });
   }
 
-  for (
-    const deskcontrole of
-    persoon.deskcontroles
-  ) {
-    for (
-      const nonConformiteit of
-      deskcontrole.vaststellingen
-    ) {
+  for (const deskcontrole of persoon.deskcontroles) {
+    for (const nonConformiteit of deskcontrole.vaststellingen) {
       voegNonConformiteitToe({
-        nonConformiteit,
+        nonConformiteit: {
+          ...nonConformiteit,
+          ncId: canoniekeNcId(nonConformiteit.ncId),
+        },
         voorkomen: {
-          sleutel:
-            `desk-${deskcontrole.id}-${nonConformiteit.id}`,
-          typeControle:
-            "Deskcontrole",
+          sleutel: `desk-${deskcontrole.id}-${nonConformiteit.id}`,
+          typeControle: "Deskcontrole",
           attestnummer:
-            deskcontrole.attestnummer ??
-            `Deskcontrole #${deskcontrole.id}`,
-          datumControle:
-            formatteerDatum(
-              deskcontrole.datumControle,
-            ),
-          datumSorteerwaarde:
-            deskcontrole.datumControle
-              .getTime(),
-          href:
-            `/deskcontroles/${deskcontrole.id}`,
+            deskcontrole.attestnummer ?? `Deskcontrole #${deskcontrole.id}`,
+          datumControle: formatteerDatum(deskcontrole.datumControle),
+          datumSorteerwaarde: deskcontrole.datumControle.getTime(),
+          href: `/deskcontroles/${deskcontrole.id}`,
         },
       });
     }
   }
 
-  for (
-    const terreincontrole of
-    terreincontroleDossiers
-  ) {
-    for (
-      const nonConformiteit of
-      terreincontrole.vaststellingen
-    ) {
+  for (const terreincontrole of terreincontroleDossiers) {
+    for (const nonConformiteit of terreincontrole.vaststellingen) {
       voegNonConformiteitToe({
-        nonConformiteit,
+        nonConformiteit: {
+          ...nonConformiteit,
+          ncId: canoniekeNcId(nonConformiteit.ncId),
+        },
         voorkomen: {
-          sleutel:
-            `terrein-${terreincontrole.id}-${nonConformiteit.id}`,
-          typeControle:
-            "Terreincontrole",
-          attestnummer:
-            terreincontrole.attestnummer,
-          datumControle:
-            formatteerDatum(
-              terreincontrole.datumControle,
-            ),
-          datumSorteerwaarde:
-            terreincontrole.datumControle
-              .getTime(),
-          href:
-            `/terreincontroles/${terreincontrole.id}`,
+          sleutel: `terrein-${terreincontrole.id}-${nonConformiteit.id}`,
+          typeControle: "Terreincontrole",
+          attestnummer: terreincontrole.attestnummer,
+          datumControle: formatteerDatum(terreincontrole.datumControle),
+          datumSorteerwaarde: terreincontrole.datumControle.getTime(),
+          href: `/terreincontroles/${terreincontrole.id}`,
         },
       });
     }
   }
 
-  const topTienNonConformiteiten = [
-    ...nonConformiteitenPerNcId.values(),
-  ]
+  const topTienNonConformiteiten = [...nonConformiteitenPerNcId.values()]
     .map((rij) => ({
       ...rij,
-      voorkomens: [
-        ...rij.voorkomens,
-      ]
+      voorkomens: [...rij.voorkomens]
         .sort(
           (eerste, tweede) =>
-            tweede.datumSorteerwaarde -
-            eerste.datumSorteerwaarde,
+            tweede.datumSorteerwaarde - eerste.datumSorteerwaarde,
         )
-        .map(
-          ({
-            datumSorteerwaarde: _,
-            ...voorkomen
-          }) => voorkomen,
-        ),
+        .map(({ datumSorteerwaarde: _, ...voorkomen }) => voorkomen),
     }))
     .sort(
       (eerste, tweede) =>
-        tweede.aantal -
-          eerste.aantal ||
-        eerste.ncId.localeCompare(
-          tweede.ncId,
-          "nl-BE",
-          {
-            numeric: true,
-            sensitivity: "base",
-          },
-        ),
+        tweede.aantal - eerste.aantal ||
+        eerste.ncId.localeCompare(tweede.ncId, "nl-BE", {
+          numeric: true,
+          sensitivity: "base",
+        }),
     )
     .slice(0, 10);
 
@@ -611,8 +477,7 @@ export default async function PersoonscertificaatDetailPage({
           </h1>
 
           <p className="mt-2 text-sm text-slate-600">
-            Persoonscertificaat{" "}
-            {persoon.certificaatnummer}
+            Persoonscertificaat {persoon.certificaatnummer}
           </p>
         </div>
 
@@ -630,40 +495,26 @@ export default async function PersoonscertificaatDetailPage({
             Persoonscertificaat
           </p>
 
-          <h2 className="mt-2 text-2xl font-bold">
-            {persoon.naamPersoon}
-          </h2>
+          <h2 className="mt-2 text-2xl font-bold">{persoon.naamPersoon}</h2>
 
           <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
             <div className="rounded-2xl bg-white/10 p-4">
-              <p className="text-2xl font-bold">
-                {aantalAttesten}
-              </p>
+              <p className="text-2xl font-bold">{aantalAttesten}</p>
 
-              <p className="text-sm text-emerald-100">
-                Opgemaakte attesten
-              </p>
+              <p className="text-sm text-emerald-100">Opgemaakte attesten</p>
             </div>
 
             <div className="rounded-2xl bg-white/10 p-4">
               <p className="text-2xl font-bold">
-                {
-                  persoon
-                    .deskcontroles
-                    .length
-                }
+                {persoon.deskcontroles.length}
               </p>
 
-              <p className="text-sm text-emerald-100">
-                Deskcontroles
-              </p>
+              <p className="text-sm text-emerald-100">Deskcontroles</p>
             </div>
 
             <div className="rounded-2xl bg-white/10 p-4">
               <p className="text-2xl font-bold">
-                {
-                  ingeplandeTerreincontroles.length
-                }
+                {ingeplandeTerreincontroles.length}
               </p>
 
               <p className="text-sm text-emerald-100">
@@ -673,9 +524,7 @@ export default async function PersoonscertificaatDetailPage({
 
             <div className="rounded-2xl bg-white/10 p-4">
               <p className="text-2xl font-bold">
-                {
-                  terreincontroleDossiers.length
-                }
+                {terreincontroleDossiers.length}
               </p>
 
               <p className="text-sm text-emerald-100">
@@ -684,13 +533,9 @@ export default async function PersoonscertificaatDetailPage({
             </div>
 
             <div className="rounded-2xl bg-white/10 p-4">
-              <p className="text-2xl font-bold">
-                {aantalNaFinalisaties}
-              </p>
+              <p className="text-2xl font-bold">{aantalNaFinalisaties}</p>
 
-              <p className="text-sm text-emerald-100">
-                Na finalisatie
-              </p>
+              <p className="text-sm text-emerald-100">Na finalisatie</p>
             </div>
 
             <div
@@ -700,9 +545,7 @@ export default async function PersoonscertificaatDetailPage({
                   : "rounded-2xl bg-white/10 p-4"
               }
             >
-              <p className="text-2xl font-bold">
-                {inOpvolging ? "Ja" : "Nee"}
-              </p>
+              <p className="text-2xl font-bold">{inOpvolging ? "Ja" : "Nee"}</p>
 
               <p
                 className={
@@ -716,108 +559,57 @@ export default async function PersoonscertificaatDetailPage({
             </div>
 
             <div className="rounded-2xl bg-white/10 p-4">
-              <p className="text-2xl font-bold">
-                {
-                  aantalVaststellingen
-                }
-              </p>
+              <p className="text-2xl font-bold">{aantalVaststellingen}</p>
 
-              <p className="text-sm text-emerald-100">
-
-                Non-conformiteiten
-              </p>
+              <p className="text-sm text-emerald-100">Non-conformiteiten</p>
             </div>
           </div>
         </header>
 
         <dl className="grid gap-x-8 gap-y-6 px-6 py-6 sm:grid-cols-2 sm:px-8 xl:grid-cols-3">
-          <GegevensVeld
-            label="Naam"
-            waarde={
-              persoon.naamPersoon
-            }
-          />
+          <GegevensVeld label="Naam" waarde={persoon.naamPersoon} />
 
-          <GegevensVeld
-            label="OVAM-ID"
-            waarde={persoon.ovamId}
-          />
+          <GegevensVeld label="OVAM-ID" waarde={persoon.ovamId} />
 
           <GegevensVeld
             label="Certificaatnummer"
-            waarde={
-              persoon
-                .certificaatnummer
-            }
+            waarde={persoon.certificaatnummer}
           />
 
           <GegevensVeld
             label="Uitgereikt op"
-            waarde={formatteerDatum(
-              persoon.uitgereiktOp,
-            )}
+            waarde={formatteerDatum(persoon.uitgereiktOp)}
           />
 
           <GegevensVeld
             label="Telefoonnummer"
             waarde={
-              normaliseerTelefoonnummer(
-                persoon.telefoonnummer,
-              ) ??
+              normaliseerTelefoonnummer(persoon.telefoonnummer) ??
               persoon.telefoonnummer
             }
           />
 
-          <GegevensVeld
-            label="E-mailadres"
-            waarde={persoon.mailadres}
-          />
+          <GegevensVeld label="E-mailadres" waarde={persoon.mailadres} />
 
-          <GegevensVeld
-            label="Bedrijf"
-            waarde={persoon.bedrijf}
-          />
+          <GegevensVeld label="Bedrijf" waarde={persoon.bedrijf} />
 
-          <GegevensVeld
-            label="Aansluiting"
-            waarde={
-              persoon.aansluiting
-            }
-          />
+          <GegevensVeld label="Aansluiting" waarde={persoon.aansluiting} />
 
           <GegevensVeld
             label="Certificatieplatform"
-            waarde={
-              persoon
-                .certificatiePlatform
-            }
+            waarde={persoon.certificatiePlatform}
           />
 
-          <GegevensVeld
-            label="Opmerking"
-            waarde={persoon.opmerking}
-            breed
-          />
+          <GegevensVeld label="Opmerking" waarde={persoon.opmerking} breed />
         </dl>
       </section>
 
       <ControleTargetOverzicht
-        aantalAttesten={
-          aantalAttesten
-        }
-        aantalDeskcontroles={
-          persoon.deskcontroles
-            .length
-        }
-        aantalTerreincontroles={
-          ingeplandeTerreincontroles.length
-        }
-        aantalNaFinalisaties={
-          aantalNaFinalisaties
-        }
-        inOpvolging={
-          inOpvolging
-        }
+        aantalAttesten={aantalAttesten}
+        aantalDeskcontroles={persoon.deskcontroles.length}
+        aantalTerreincontroles={ingeplandeTerreincontroles.length}
+        aantalNaFinalisaties={aantalNaFinalisaties}
+        inOpvolging={inOpvolging}
       />
 
       <PersoonsDossierSectieKaart
@@ -828,11 +620,7 @@ export default async function PersoonscertificaatDetailPage({
         aantalLabelMeervoud="non-conformiteiten"
         accent="purple"
       >
-      <TopTienNonConformiteiten
-        rijen={
-          topTienNonConformiteiten
-        }
-      />
+        <TopTienNonConformiteiten rijen={topTienNonConformiteiten} />
       </PersoonsDossierSectieKaart>
 
       <PersoonsDossierSectieKaart
@@ -843,23 +631,18 @@ export default async function PersoonscertificaatDetailPage({
         aantalLabelMeervoud="deskcontroles"
         accent="emerald"
       >
-      <section className="space-y-4">
-{persoon.deskcontroles.length ===
-        0 ? (
-          <div className="rounded-3xl border border-slate-200 bg-white px-6 py-12 text-center shadow-sm">
-            <p className="font-bold text-slate-900">
-              Geen deskcontroles
-            </p>
+        <section className="space-y-4">
+          {persoon.deskcontroles.length === 0 ? (
+            <div className="rounded-3xl border border-slate-200 bg-white px-6 py-12 text-center shadow-sm">
+              <p className="font-bold text-slate-900">Geen deskcontroles</p>
 
-            <p className="mt-2 text-sm text-slate-500">
-              Aan dit persoonscertificaat
-              zijn geen actieve
-              deskcontroles gekoppeld.
-            </p>
-          </div>
-        ) : (
-          persoon.deskcontroles.map(
-            (deskcontrole) => (
+              <p className="mt-2 text-sm text-slate-500">
+                Aan dit persoonscertificaat zijn geen actieve deskcontroles
+                gekoppeld.
+              </p>
+            </div>
+          ) : (
+            persoon.deskcontroles.map((deskcontrole) => (
               <details
                 key={deskcontrole.id}
                 className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm"
@@ -877,34 +660,20 @@ export default async function PersoonscertificaatDetailPage({
                           deskcontrole.status,
                         )}`}
                       >
-                        {deskcontroleStatusLabel(
-                          deskcontrole.status,
-                        )}
+                        {deskcontroleStatusLabel(deskcontrole.status)}
                       </span>
                     </div>
 
                     <p className="mt-2 text-sm text-slate-600">
-                      Controle op{" "}
-                      {formatteerDatum(
-                        deskcontrole
-                          .datumControle,
-                      )}
+                      Controle op {formatteerDatum(deskcontrole.datumControle)}
                       {" · "}
-                      {deskcontrole
-                        .procescertificaat
-                        ?.naamBedrijf ??
+                      {deskcontrole.procescertificaat?.naamBedrijf ??
                         "Geen bedrijf gekoppeld"}
                     </p>
 
                     <p className="mt-1 text-sm text-slate-500">
-                      {
-                        deskcontrole
-                          .vaststellingen
-                          .length
-                      }{" "}
-                      {deskcontrole
-                        .vaststellingen
-                        .length === 1
+                      {deskcontrole.vaststellingen.length}{" "}
+                      {deskcontrole.vaststellingen.length === 1
                         ? "vaststelling"
                         : "non-conformiteiten"}
                     </p>
@@ -921,19 +690,15 @@ export default async function PersoonscertificaatDetailPage({
                 <dl className="grid gap-4 border-b border-slate-200 px-5 py-5 sm:grid-cols-2 lg:grid-cols-4">
                   <GegevensVeld
                     label="Attest-ID"
-                    waarde={
-                      deskcontrole.attestId
-                    }
+                    waarde={deskcontrole.attestId}
                   />
 
                   <GegevensVeld
                     label="Type controle"
                     waarde={
-                      deskcontrole.typeControle ===
-                      "OPVOLGING"
+                      deskcontrole.typeControle === "OPVOLGING"
                         ? "Opvolging"
-                        : deskcontrole.typeControle ===
-                            "NIEUWE_CONTROLE"
+                        : deskcontrole.typeControle === "NIEUWE_CONTROLE"
                           ? "Nieuwe controle"
                           : "—"
                     }
@@ -941,148 +706,89 @@ export default async function PersoonscertificaatDetailPage({
 
                   <GegevensVeld
                     label="Deadline sanctie"
-                    waarde={formatteerDatum(
-                      deskcontrole
-                        .deadlineSanctie,
-                    )}
+                    waarde={formatteerDatum(deskcontrole.deadlineSanctie)}
                   />
 
                   <GegevensVeld
                     label="Deadline correctie"
-                    waarde={formatteerDatum(
-                      deskcontrole
-                        .deadlineCorrectie,
-                    )}
+                    waarde={formatteerDatum(deskcontrole.deadlineCorrectie)}
                   />
 
-                  <GegevensVeld
-                    label="Adres"
-                    waarde={
-                      deskcontrole.adres
-                    }
-                  />
+                  <GegevensVeld label="Adres" waarde={deskcontrole.adres} />
 
                   <GegevensVeld
                     label="Opmerkingen"
-                    waarde={
-                      deskcontrole
-                        .opmerkingen
-                    }
+                    waarde={deskcontrole.opmerkingen}
                   />
                 </dl>
 
-                {deskcontrole
-                  .vaststellingen
-                  .length === 0 ? (
+                {deskcontrole.vaststellingen.length === 0 ? (
                   <div className="px-5 py-8 text-center text-sm text-slate-500">
-
-                    Geen non-conformiteiten
-                    voor deze deskcontrole.
+                    Geen non-conformiteiten voor deze deskcontrole.
                   </div>
                 ) : (
                   <div className="overflow-x-auto">
                     <table className="min-w-[1500px] w-full text-left text-sm">
                       <thead className="bg-slate-50 text-xs font-bold uppercase tracking-wide text-slate-500">
                         <tr>
-                          <th className="px-4 py-3">
-                            NC-ID
-                          </th>
-                          <th className="px-4 py-3">
-                            Parameter
-                          </th>
-                          <th className="px-4 py-3">
-                            Omschrijving
-                          </th>
-                          <th className="px-4 py-3">
-                            Vastgesteld door CI
-                          </th>
-                          <th className="px-4 py-3">
-                            Verduidelijking
-                          </th>
-                          <th className="px-4 py-3">
-                            Grote impact
-                          </th>
-                          <th className="px-4 py-3">
-                            Categorie
-                          </th>
-                          <th className="px-4 py-3">
-                            Motivatie aanpassing
-                          </th>
+                          <th className="px-4 py-3">NC-ID</th>
+                          <th className="px-4 py-3">Parameter</th>
+                          <th className="px-4 py-3">Omschrijving</th>
+                          <th className="px-4 py-3">Vastgesteld door CI</th>
+                          <th className="px-4 py-3">Verduidelijking</th>
+                          <th className="px-4 py-3">Grote impact</th>
+                          <th className="px-4 py-3">Categorie</th>
+                          <th className="px-4 py-3">Motivatie aanpassing</th>
                         </tr>
                       </thead>
 
                       <tbody className="divide-y divide-slate-100">
-                        {deskcontrole
-                          .vaststellingen
-                          .map(
-                            (
-                              vaststelling,
-                            ) => (
-                              <tr
-                                key={
-                                  vaststelling.id
-                                }
-                                className="align-top hover:bg-slate-50"
-                              >
-                                <td className="whitespace-nowrap px-4 py-3 font-bold text-slate-900">
-                                  {
-                                    vaststelling.ncId
-                                  }
-                                </td>
+                        {deskcontrole.vaststellingen.map((vaststelling) => (
+                          <tr
+                            key={vaststelling.id}
+                            className="align-top hover:bg-slate-50"
+                          >
+                            <td className="whitespace-nowrap px-4 py-3 font-bold text-slate-900">
+                              {canoniekeNcId(vaststelling.ncId)}
+                            </td>
 
-                                <td className="px-4 py-3">
-                                  {toonWaarde(
-                                    vaststelling.parameter,
-                                  )}
-                                </td>
+                            <td className="px-4 py-3">
+                              {toonWaarde(vaststelling.parameter)}
+                            </td>
 
-                                <td className="max-w-md whitespace-pre-wrap px-4 py-3">
-                                  {toonWaarde(
-                                    vaststelling.omschrijving,
-                                  )}
-                                </td>
+                            <td className="max-w-md whitespace-pre-wrap px-4 py-3">
+                              {toonWaarde(vaststelling.omschrijving)}
+                            </td>
 
-                                <td className="px-4 py-3">
-                                  {toonWaarde(
-                                    vaststelling.vastgesteldDoorCi,
-                                  )}
-                                </td>
+                            <td className="px-4 py-3">
+                              {toonWaarde(vaststelling.vastgesteldDoorCi)}
+                            </td>
 
-                                <td className="max-w-md whitespace-pre-wrap px-4 py-3">
-                                  {toonWaarde(
-                                    vaststelling.verduidelijking,
-                                  )}
-                                </td>
+                            <td className="max-w-md whitespace-pre-wrap px-4 py-3">
+                              {toonWaarde(vaststelling.verduidelijking)}
+                            </td>
 
-                                <td className="px-4 py-3">
-                                  {toonWaarde(
-                                    vaststelling.groteImpact,
-                                  )}
-                                </td>
+                            <td className="px-4 py-3">
+                              {toonWaarde(vaststelling.groteImpact)}
+                            </td>
 
-                                <td className="px-4 py-3">
-                                  {toonWaarde(
-                                    vaststelling.categorie,
-                                  )}
-                                </td>
+                            <td className="px-4 py-3">
+                              {toonWaarde(vaststelling.categorie)}
+                            </td>
 
-                                <td className="max-w-md whitespace-pre-wrap px-4 py-3">
-                                  {toonWaarde(
-                                    vaststelling.motivatieAanpassing,
-                                  )}
-                                </td>
-                              </tr>
-                            ),
-                          )}
+                            <td className="max-w-md whitespace-pre-wrap px-4 py-3">
+                              {toonWaarde(vaststelling.motivatieAanpassing)}
+                            </td>
+                          </tr>
+                        ))}
                       </tbody>
                     </table>
                   </div>
                 )}
               </details>
-            ),
-          )
-        )}
-      </section>
+            ))
+          )}
+        </section>
       </PersoonsDossierSectieKaart>
 
       <PersoonsDossierSectieKaart
@@ -1093,9 +799,7 @@ export default async function PersoonscertificaatDetailPage({
         aantalLabelMeervoud="terreincontroles"
         accent="sky"
       >
-        <PersoonsTerreincontroles
-          lidId={persoon.id}
-        />
+        <PersoonsTerreincontroles lidId={persoon.id} />
       </PersoonsDossierSectieKaart>
 
       <PersoonsDossierSectieKaart
@@ -1107,9 +811,7 @@ export default async function PersoonscertificaatDetailPage({
         accent="amber"
       >
         <PersoonsIngeplandeTerreincontroles
-          terreincontroles={
-            ingeplandeTerreincontroles
-          }
+          terreincontroles={ingeplandeTerreincontroles}
         />
       </PersoonsDossierSectieKaart>
 
@@ -1121,9 +823,7 @@ export default async function PersoonscertificaatDetailPage({
         aantalLabelMeervoud="registraties"
         accent="brown"
       >
-        <PersoonsOpvolgingSancties
-          lidId={persoon.id}
-        />
+        <PersoonsOpvolgingSancties lidId={persoon.id} />
       </PersoonsDossierSectieKaart>
 
       <PersoonsDossierSectieKaart
@@ -1134,9 +834,7 @@ export default async function PersoonscertificaatDetailPage({
         aantalLabelMeervoud="registraties"
         accent="purple"
       >
-        <PersoonsNaFinalisatie
-          lidId={persoon.id}
-        />
+        <PersoonsNaFinalisatie lidId={persoon.id} />
       </PersoonsDossierSectieKaart>
     </div>
   );

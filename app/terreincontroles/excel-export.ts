@@ -1,31 +1,26 @@
 import ExcelJS from "exceljs";
 
 import { prisma } from "@/lib/prisma";
+import {
+  geefCanoniekeNcId,
+  laadCanoniekeNcIdKaart,
+} from "@/lib/non-conformiteit-nc-id";
 
-function formatteerDatum(
-  waarde: Date | null,
-) {
+function formatteerDatum(waarde: Date | null) {
   if (!waarde) {
     return "";
   }
 
-  const jaar =
-    waarde.getUTCFullYear();
+  const jaar = waarde.getUTCFullYear();
 
-  const maand = String(
-    waarde.getUTCMonth() + 1,
-  ).padStart(2, "0");
+  const maand = String(waarde.getUTCMonth() + 1).padStart(2, "0");
 
-  const dag = String(
-    waarde.getUTCDate(),
-  ).padStart(2, "0");
+  const dag = String(waarde.getUTCDate()).padStart(2, "0");
 
   return `${jaar}-${maand}-${dag}`;
 }
 
-function geefCelRand(
-  kleur: string,
-): Partial<ExcelJS.Borders> {
+function geefCelRand(kleur: string): Partial<ExcelJS.Borders> {
   return {
     top: {
       style: "thin",
@@ -54,11 +49,8 @@ function geefCelRand(
   };
 }
 
-function formatteerWerkblad(
-  werkblad: ExcelJS.Worksheet,
-) {
-  const koprij =
-    werkblad.getRow(1);
+function formatteerWerkblad(werkblad: ExcelJS.Worksheet) {
+  const koprij = werkblad.getRow(1);
 
   koprij.height = 28;
 
@@ -83,22 +75,11 @@ function formatteerWerkblad(
   };
 
   koprij.eachCell((cel) => {
-    cel.border =
-      geefCelRand(
-        "FFCBD5E1",
-      );
+    cel.border = geefCelRand("FFCBD5E1");
   });
 
-  for (
-    let rijnummer = 2;
-    rijnummer <=
-    werkblad.rowCount;
-    rijnummer++
-  ) {
-    const rij =
-      werkblad.getRow(
-        rijnummer,
-      );
+  for (let rijnummer = 2; rijnummer <= werkblad.rowCount; rijnummer++) {
+    const rij = werkblad.getRow(rijnummer);
 
     rij.alignment = {
       vertical: "top",
@@ -110,14 +91,9 @@ function formatteerWerkblad(
         includeEmpty: true,
       },
       (cel) => {
-        cel.border =
-          geefCelRand(
-            "FFE2E8F0",
-          );
+        cel.border = geefCelRand("FFE2E8F0");
 
-        if (
-          rijnummer % 2 === 0
-        ) {
+        if (rijnummer % 2 === 0) {
           cel.fill = {
             type: "pattern",
             pattern: "solid",
@@ -136,66 +112,59 @@ function formatteerWerkblad(
       column: 1,
     },
     to: {
-      row: Math.max(
-        werkblad.rowCount,
-        1,
-      ),
-      column:
-        werkblad.columnCount,
+      row: Math.max(werkblad.rowCount, 1),
+      column: werkblad.columnCount,
     },
   };
 }
 
 export async function maakTerreincontroleExcel() {
-  const dossiers =
-    await prisma.terreincontroleDossier.findMany({
-      where: {
-        verwijderdOp: null,
-      },
-      include: {
-        vaststellingen: {
-          orderBy: [
-            {
-              excelRij: "asc",
-            },
-            {
-              id: "asc",
-            },
-          ],
-        },
-      },
-      orderBy: [
-        {
-          datumControle:
-            "desc",
-        },
-        {
-          id: "desc",
-        },
-      ],
-    });
-
-  const werkboek =
-    new ExcelJS.Workbook();
-
-  werkboek.creator =
-    "Ledenbeheer";
-
-  werkboek.created =
-    new Date();
-
-  const werkblad =
-    werkboek.addWorksheet(
-      "Terreincontroles",
-      {
-        views: [
+  const dossiers = await prisma.terreincontroleDossier.findMany({
+    where: {
+      verwijderdOp: null,
+    },
+    include: {
+      vaststellingen: {
+        orderBy: [
           {
-            state: "frozen",
-            ySplit: 1,
+            excelRij: "asc",
+          },
+          {
+            id: "asc",
           },
         ],
       },
-    );
+    },
+    orderBy: [
+      {
+        datumControle: "desc",
+      },
+      {
+        id: "desc",
+      },
+    ],
+  });
+
+  const canoniekeNcIdKaart = await laadCanoniekeNcIdKaart(
+    dossiers.flatMap((dossier) =>
+      dossier.vaststellingen.map((vaststelling) => vaststelling.ncId),
+    ),
+  );
+
+  const werkboek = new ExcelJS.Workbook();
+
+  werkboek.creator = "Ledenbeheer";
+
+  werkboek.created = new Date();
+
+  const werkblad = werkboek.addWorksheet("Terreincontroles", {
+    views: [
+      {
+        state: "frozen",
+        ySplit: 1,
+      },
+    ],
+  });
 
   werkblad.columns = [
     {
@@ -219,8 +188,7 @@ export async function maakTerreincontroleExcel() {
       width: 28,
     },
     {
-      header:
-        "Certificatieplatform",
+      header: "Certificatieplatform",
       key: "certificatiePlatform",
       width: 45,
     },
@@ -250,20 +218,17 @@ export async function maakTerreincontroleExcel() {
       width: 38,
     },
     {
-      header:
-        "Ondernemingsnummer",
+      header: "Ondernemingsnummer",
       key: "ondernemingsnummer",
       width: 24,
     },
     {
-      header:
-        "Persoonscertificaat",
+      header: "Persoonscertificaat",
       key: "persoonscertificaat",
       width: 24,
     },
     {
-      header:
-        "Procescertificaat",
+      header: "Procescertificaat",
       key: "procescertificaat",
       width: 24,
     },
@@ -274,50 +239,26 @@ export async function maakTerreincontroleExcel() {
     },
   ];
 
-  for (
-    const dossier of dossiers
-  ) {
+  for (const dossier of dossiers) {
     werkblad.addRow({
-      auditeur:
-        dossier.auditeur,
-      naamAdi:
-        dossier.naamAdi,
-      linkAttest:
-        dossier.linkAttest,
-      attestnummer:
-        dossier.attestnummer,
-      certificatiePlatform:
-        dossier.certificatiePlatform ??
-        "",
-      opmerkingen:
-        dossier.opmerkingen ??
-        "",
-      datumControle:
-        formatteerDatum(
-          dossier.datumControle,
-        ),
-      adres:
-        dossier.adres ?? "",
-      persoonsId:
-        dossier.persoonsId,
-      bedrijfsnaam:
-        dossier.bedrijfsnaam,
-      ondernemingsnummer:
-        dossier.ondernemingsnummer,
-      persoonscertificaat:
-        dossier
-          .persoonscertificaatNummer,
-      procescertificaat:
-        dossier
-          .procescertificaatNummer,
-      attestId:
-        dossier.attestId,
+      auditeur: dossier.auditeur,
+      naamAdi: dossier.naamAdi,
+      linkAttest: dossier.linkAttest,
+      attestnummer: dossier.attestnummer,
+      certificatiePlatform: dossier.certificatiePlatform ?? "",
+      opmerkingen: dossier.opmerkingen ?? "",
+      datumControle: formatteerDatum(dossier.datumControle),
+      adres: dossier.adres ?? "",
+      persoonsId: dossier.persoonsId,
+      bedrijfsnaam: dossier.bedrijfsnaam,
+      ondernemingsnummer: dossier.ondernemingsnummer,
+      persoonscertificaat: dossier.persoonscertificaatNummer,
+      procescertificaat: dossier.procescertificaatNummer,
+      attestId: dossier.attestId,
     });
   }
 
-  formatteerWerkblad(
-    werkblad,
-  );
+  formatteerWerkblad(werkblad);
 
   /*
    * Vaststellingen worden in een apart
@@ -325,18 +266,14 @@ export async function maakTerreincontroleExcel() {
    * meerdere vaststellingen per dossier
    * afzonderlijk beschikbaar.
    */
-  const vaststellingenWerkblad =
-    werkboek.addWorksheet(
-      "Vaststellingen",
+  const vaststellingenWerkblad = werkboek.addWorksheet("Vaststellingen", {
+    views: [
       {
-        views: [
-          {
-            state: "frozen",
-            ySplit: 1,
-          },
-        ],
+        state: "frozen",
+        ySplit: 1,
       },
-    );
+    ],
+  });
 
   vaststellingenWerkblad.columns = [
     {
@@ -375,8 +312,7 @@ export async function maakTerreincontroleExcel() {
       width: 60,
     },
     {
-      header:
-        "Vastgesteld door CI",
+      header: "Vastgesteld door CI",
       key: "vastgesteldDoorCi",
       width: 28,
     },
@@ -396,61 +332,32 @@ export async function maakTerreincontroleExcel() {
       width: 24,
     },
     {
-      header:
-        "Motivatie aanpassing",
+      header: "Motivatie aanpassing",
       key: "motivatieAanpassing",
       width: 60,
     },
   ];
 
-  for (
-    const dossier of dossiers
-  ) {
-    for (
-      const vaststelling of
-      dossier.vaststellingen
-    ) {
+  for (const dossier of dossiers) {
+    for (const vaststelling of dossier.vaststellingen) {
       vaststellingenWerkblad.addRow({
-        terreincontroleId:
-          dossier.id,
-        attestId:
-          dossier.attestId,
-        attestnummer:
-          dossier.attestnummer,
-        excelRij:
-          vaststelling.excelRij,
-        ncId:
-          vaststelling.ncId,
-        parameter:
-          vaststelling.parameter ??
-          "",
-        omschrijving:
-          vaststelling.omschrijving ??
-          "",
-        vastgesteldDoorCi:
-          vaststelling
-            .vastgesteldDoorCi ??
-          "",
-        verduidelijking:
-          vaststelling.verduidelijking ??
-          "",
-        groteImpact:
-          vaststelling.groteImpact ??
-          "",
-        categorie:
-          vaststelling.categorie ??
-          "",
-        motivatieAanpassing:
-          vaststelling
-            .motivatieAanpassing ??
-          "",
+        terreincontroleId: dossier.id,
+        attestId: dossier.attestId,
+        attestnummer: dossier.attestnummer,
+        excelRij: vaststelling.excelRij,
+        ncId: geefCanoniekeNcId(vaststelling.ncId, canoniekeNcIdKaart),
+        parameter: vaststelling.parameter ?? "",
+        omschrijving: vaststelling.omschrijving ?? "",
+        vastgesteldDoorCi: vaststelling.vastgesteldDoorCi ?? "",
+        verduidelijking: vaststelling.verduidelijking ?? "",
+        groteImpact: vaststelling.groteImpact ?? "",
+        categorie: vaststelling.categorie ?? "",
+        motivatieAanpassing: vaststelling.motivatieAanpassing ?? "",
       });
     }
   }
 
-  formatteerWerkblad(
-    vaststellingenWerkblad,
-  );
+  formatteerWerkblad(vaststellingenWerkblad);
 
   return werkboek.xlsx.writeBuffer();
 }

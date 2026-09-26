@@ -9,6 +9,10 @@ import { vereisMachtiging } from "@/lib/auth";
 import { heeftMachtiging } from "@/lib/autorisatie";
 import { formatteerOndernemingsnummer } from "@/lib/ondernemingsnummer";
 import { prisma } from "@/lib/prisma";
+import {
+  geefCanoniekeNcId,
+  laadCanoniekeNcIdKaart,
+} from "@/lib/non-conformiteit-nc-id";
 
 export const dynamic = "force-dynamic";
 
@@ -22,15 +26,12 @@ type Props = {
 };
 
 function datum(datum: Date) {
-  return new Intl.DateTimeFormat(
-    "nl-BE",
-    {
-      day: "2-digit",
-      month: "2-digit",
-      year: "numeric",
-      timeZone: "UTC",
-    },
-  ).format(datum);
+  return new Intl.DateTimeFormat("nl-BE", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    timeZone: "UTC",
+  }).format(datum);
 }
 
 function Veld({
@@ -43,13 +44,7 @@ function Veld({
   breed?: boolean;
 }) {
   return (
-    <div
-      className={
-        breed
-          ? "sm:col-span-2 xl:col-span-3"
-          : ""
-      }
-    >
+    <div className={breed ? "sm:col-span-2 xl:col-span-3" : ""}>
       <dt className="text-xs font-bold uppercase tracking-wide text-slate-500">
         {label}
       </dt>
@@ -64,50 +59,41 @@ export default async function TerreincontroleDetailPage({
   params,
   searchParams,
 }: Props) {
-  const gebruiker =
-    await vereisMachtiging(
-      "TERREINCONTROLES_BEKIJKEN",
-    );
+  const gebruiker = await vereisMachtiging("TERREINCONTROLES_BEKIJKEN");
 
-  const magBeheren =
-    heeftMachtiging(
-      gebruiker.rollen,
-      "TERREINCONTROLES_BEHEREN",
-    );
+  const magBeheren = heeftMachtiging(
+    gebruiker.rollen,
+    "TERREINCONTROLES_BEHEREN",
+  );
 
-  const { id: idWaarde } =
-    await params;
+  const { id: idWaarde } = await params;
 
-  const { toegevoegd } =
-    await searchParams;
+  const { toegevoegd } = await searchParams;
 
   const id = Number(idWaarde);
 
-  if (
-    !Number.isInteger(id) ||
-    id <= 0
-  ) {
+  if (!Number.isInteger(id) || id <= 0) {
     notFound();
   }
 
-  const dossier =
-    await prisma.terreincontroleDossier.findUnique({
-      where: {
-        id,
+  const dossier = await prisma.terreincontroleDossier.findUnique({
+    where: {
+      id,
+    },
+    include: {
+      vaststellingen: {
+        orderBy: [{ excelRij: "asc" }, { id: "asc" }],
       },
-      include: {
-        vaststellingen: {
-          orderBy: [
-            { excelRij: "asc" },
-            { id: "asc" },
-          ],
-        },
-      },
-    });
+    },
+  });
 
   if (!dossier) {
     notFound();
   }
+
+  const canoniekeNcIdKaart = await laadCanoniekeNcIdKaart(
+    dossier.vaststellingen.map((vaststelling) => vaststelling.ncId),
+  );
 
   return (
     <div className="mx-auto max-w-[1600px] space-y-5">
@@ -130,92 +116,39 @@ export default async function TerreincontroleDetailPage({
             Terreincontrole
           </p>
 
-          <h1 className="mt-2 text-3xl font-bold">
-            {dossier.attestnummer}
-          </h1>
+          <h1 className="mt-2 text-3xl font-bold">{dossier.attestnummer}</h1>
 
           <p className="mt-2 text-sm text-emerald-100">
-            {dossier.naamAdi} ·{" "}
-            {dossier.bedrijfsnaam}
+            {dossier.naamAdi} · {dossier.bedrijfsnaam}
           </p>
         </header>
 
         <dl className="grid gap-x-8 gap-y-6 px-6 py-7 sm:grid-cols-2 xl:grid-cols-3">
-          <Veld
-            label="Auditeur"
-            waarde={dossier.auditeur}
-          />
-          <Veld
-            label="Naam ADI"
-            waarde={dossier.naamAdi}
-          />
-          <Veld
-            label="Attestnummer"
-            waarde={
-              dossier.attestnummer
-            }
-          />
-          <Veld
-            label="Datum controle"
-            waarde={datum(
-              dossier.datumControle,
-            )}
-          />
-          <Veld
-            label="PersoonsID"
-            waarde={
-              dossier.persoonsId
-            }
-          />
+          <Veld label="Auditeur" waarde={dossier.auditeur} />
+          <Veld label="Naam ADI" waarde={dossier.naamAdi} />
+          <Veld label="Attestnummer" waarde={dossier.attestnummer} />
+          <Veld label="Datum controle" waarde={datum(dossier.datumControle)} />
+          <Veld label="PersoonsID" waarde={dossier.persoonsId} />
           <Veld
             label="Persoonscertificaat"
-            waarde={
-              dossier
-                .persoonscertificaatNummer
-            }
+            waarde={dossier.persoonscertificaatNummer}
           />
-          <Veld
-            label="Bedrijfsnaam"
-            waarde={
-              dossier.bedrijfsnaam
-            }
-          />
+          <Veld label="Bedrijfsnaam" waarde={dossier.bedrijfsnaam} />
           <Veld
             label="Ondernemingsnummer"
-            waarde={formatteerOndernemingsnummer(
-              dossier.ondernemingsnummer,
-            )}
+            waarde={formatteerOndernemingsnummer(dossier.ondernemingsnummer)}
           />
           <Veld
             label="Procescertificaat"
-            waarde={
-              dossier
-                .procescertificaatNummer
-            }
+            waarde={dossier.procescertificaatNummer}
           />
           <Veld
             label="Certificatieplatform"
-            waarde={
-              dossier
-                .certificatiePlatform
-            }
+            waarde={dossier.certificatiePlatform}
           />
-          <Veld
-            label="Attest-ID"
-            waarde={dossier.attestId}
-          />
-          <Veld
-            label="Adres"
-            waarde={dossier.adres}
-            breed
-          />
-          <Veld
-            label="Opmerkingen"
-            waarde={
-              dossier.opmerkingen
-            }
-            breed
-          />
+          <Veld label="Attest-ID" waarde={dossier.attestId} />
+          <Veld label="Adres" waarde={dossier.adres} breed />
+          <Veld label="Opmerkingen" waarde={dossier.opmerkingen} breed />
         </dl>
 
         <div className="flex flex-wrap gap-3 border-t border-slate-200 px-6 py-5">
@@ -230,9 +163,7 @@ export default async function TerreincontroleDetailPage({
 
           {dossier.certificatiePlatform ? (
             <a
-              href={
-                dossier.certificatiePlatform
-              }
+              href={dossier.certificatiePlatform}
               target="_blank"
               rel="noreferrer"
               className="rounded-xl border border-emerald-300 bg-emerald-50 px-4 py-2 text-sm font-bold text-emerald-800"
@@ -243,36 +174,26 @@ export default async function TerreincontroleDetailPage({
         </div>
       </section>
 
-      {magBeheren &&
-      !dossier.verwijderdOp ? (
-        <TerreincontroleDossierActies
-          id={dossier.id}
-        />
+      {magBeheren && !dossier.verwijderdOp ? (
+        <TerreincontroleDossierActies id={dossier.id} />
       ) : null}
 
       <section className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
         <header className="border-b border-slate-200 px-6 py-5">
           <h2 className="text-xl font-bold text-slate-950">
-
             Non-conformiteiten
           </h2>
 
           <p className="mt-1 text-sm text-slate-500">
-            {
-              dossier.vaststellingen
-                .length
-            }{" "}
-            {dossier.vaststellingen
-              .length === 1
+            {dossier.vaststellingen.length}{" "}
+            {dossier.vaststellingen.length === 1
               ? "vaststelling"
               : "non-conformiteiten"}
           </p>
         </header>
 
-        {dossier.vaststellingen
-          .length === 0 ? (
+        {dossier.vaststellingen.length === 0 ? (
           <div className="px-6 py-12 text-center text-sm text-slate-500">
-
             Aan deze terreincontrole zijn nog geen non-conformiteiten gekoppeld.
           </div>
         ) : (
@@ -289,9 +210,7 @@ export default async function TerreincontroleDetailPage({
                     "Grote impact",
                     "Categorie",
                     "Motivatie aanpassing",
-                    ...(magBeheren
-                      ? ["Acties"]
-                      : []),
+                    ...(magBeheren ? ["Acties"] : []),
                   ].map((label) => (
                     <th
                       key={label}
@@ -304,63 +223,46 @@ export default async function TerreincontroleDetailPage({
               </thead>
 
               <tbody>
-                {dossier.vaststellingen.map(
-                  (vaststelling) => (
-                    <tr
-                      key={
-                        vaststelling.id
-                      }
-                      className="border-b border-slate-100 align-top"
-                    >
-                      <td className="px-4 py-3 font-bold">
-                        {
-                          vaststelling.ncId
-                        }
-                      </td>
-                      <td className="px-4 py-3">
-                        {vaststelling.parameter ??
-                          "—"}
-                      </td>
-                      <td className="max-w-96 whitespace-pre-wrap px-4 py-3">
-                        {vaststelling.omschrijving ??
-                          "—"}
-                      </td>
-                      <td className="px-4 py-3">
-                        {vaststelling.vastgesteldDoorCi ??
-                          "—"}
-                      </td>
-                      <td className="max-w-96 whitespace-pre-wrap px-4 py-3">
-                        {vaststelling.verduidelijking ??
-                          "—"}
-                      </td>
-                      <td className="px-4 py-3">
-                        {vaststelling.groteImpact ??
-                          "—"}
-                      </td>
-                      <td className="px-4 py-3">
-                        {vaststelling.categorie ??
-                          "—"}
-                      </td>
-                      <td className="max-w-96 whitespace-pre-wrap px-4 py-3">
-                        {vaststelling.motivatieAanpassing ??
-                          "—"}
-                      </td>
+                {dossier.vaststellingen.map((vaststelling) => (
+                  <tr
+                    key={vaststelling.id}
+                    className="border-b border-slate-100 align-top"
+                  >
+                    <td className="px-4 py-3 font-bold">
+                      {geefCanoniekeNcId(vaststelling.ncId, canoniekeNcIdKaart)}
+                    </td>
+                    <td className="px-4 py-3">
+                      {vaststelling.parameter ?? "—"}
+                    </td>
+                    <td className="max-w-96 whitespace-pre-wrap px-4 py-3">
+                      {vaststelling.omschrijving ?? "—"}
+                    </td>
+                    <td className="px-4 py-3">
+                      {vaststelling.vastgesteldDoorCi ?? "—"}
+                    </td>
+                    <td className="max-w-96 whitespace-pre-wrap px-4 py-3">
+                      {vaststelling.verduidelijking ?? "—"}
+                    </td>
+                    <td className="px-4 py-3">
+                      {vaststelling.groteImpact ?? "—"}
+                    </td>
+                    <td className="px-4 py-3">
+                      {vaststelling.categorie ?? "—"}
+                    </td>
+                    <td className="max-w-96 whitespace-pre-wrap px-4 py-3">
+                      {vaststelling.motivatieAanpassing ?? "—"}
+                    </td>
 
-                      {magBeheren ? (
-                        <td className="px-4 py-3">
-                          <VerwijderTerreincontroleVaststellingKnop
-                            terreincontroleId={
-                              dossier.id
-                            }
-                            vaststellingId={
-                              vaststelling.id
-                            }
-                          />
-                        </td>
-                      ) : null}
-                    </tr>
-                  ),
-                )}
+                    {magBeheren ? (
+                      <td className="px-4 py-3">
+                        <VerwijderTerreincontroleVaststellingKnop
+                          terreincontroleId={dossier.id}
+                          vaststellingId={vaststelling.id}
+                        />
+                      </td>
+                    ) : null}
+                  </tr>
+                ))}
               </tbody>
             </table>
           </div>

@@ -1,328 +1,262 @@
 import Link from "next/link";
 
 import { prisma } from "@/lib/prisma";
+import {
+  geefCanoniekeNcId,
+  laadCanoniekeNcIdKaart,
+} from "@/lib/non-conformiteit-nc-id";
 
-function formatteerDatum(
-  datum: Date | null,
-) {
+function formatteerDatum(datum: Date | null) {
   if (!datum) {
     return "—";
   }
 
-  return new Intl.DateTimeFormat(
-    "nl-BE",
-    {
-      day: "2-digit",
-      month: "2-digit",
-      year: "numeric",
-      timeZone: "UTC",
-    },
-  ).format(datum);
+  return new Intl.DateTimeFormat("nl-BE", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    timeZone: "UTC",
+  }).format(datum);
 }
 
-function toonWaarde(
-  waarde:
-    | string
-    | number
-    | null
-    | undefined,
-) {
-  if (
-    waarde === null ||
-    waarde === undefined ||
-    String(waarde).trim() === ""
-  ) {
+function toonWaarde(waarde: string | number | null | undefined) {
+  if (waarde === null || waarde === undefined || String(waarde).trim() === "") {
     return "—";
   }
 
   return String(waarde);
 }
 
-export async function PersoonsTerreincontroles({
-  lidId,
-}: {
-  lidId: number;
-}) {
-  const terreincontroles =
-    await prisma.terreincontroleDossier.findMany({
-      where: {
-        lidId,
-        verwijderdOp: null,
+export async function PersoonsTerreincontroles({ lidId }: { lidId: number }) {
+  const terreincontroles = await prisma.terreincontroleDossier.findMany({
+    where: {
+      lidId,
+      verwijderdOp: null,
+    },
+    orderBy: [
+      {
+        datumControle: "desc",
       },
-      orderBy: [
-        {
-          datumControle: "desc",
-        },
-        {
-          id: "desc",
-        },
-      ],
-      include: {
-        vaststellingen: {
-          orderBy: [
-            {
-              excelRij: "asc",
-            },
-            {
-              id: "asc",
-            },
-          ],
-        },
+      {
+        id: "desc",
       },
-    });
+    ],
+    include: {
+      vaststellingen: {
+        orderBy: [
+          {
+            excelRij: "asc",
+          },
+          {
+            id: "asc",
+          },
+        ],
+      },
+    },
+  });
+
+  const canoniekeNcIdKaart = await laadCanoniekeNcIdKaart(
+    terreincontroles.flatMap((terreincontrole) =>
+      terreincontrole.vaststellingen.map((vaststelling) => vaststelling.ncId),
+    ),
+  );
 
   return (
     <section className="space-y-4">
-{terreincontroles.length === 0 ? (
+      {terreincontroles.length === 0 ? (
         <div className="rounded-3xl border border-slate-200 bg-white px-6 py-12 text-center shadow-sm">
-          <p className="font-bold text-slate-900">
-            Geen terreincontroles
-          </p>
+          <p className="font-bold text-slate-900">Geen terreincontroles</p>
 
           <p className="mt-2 text-sm text-slate-500">
-            Aan dit persoonscertificaat zijn geen actieve
-            terreincontroles gekoppeld.
+            Aan dit persoonscertificaat zijn geen actieve terreincontroles
+            gekoppeld.
           </p>
         </div>
       ) : (
-        terreincontroles.map(
-          (terreincontrole) => (
-            <details
-              key={terreincontrole.id}
-              className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm"
-            >
-              <summary className="flex flex-col gap-4 border-b border-slate-200 bg-slate-50 px-5 py-5 lg:flex-row lg:items-start lg:justify-between cursor-pointer list-none">
-                <div>
-                  <h3 className="text-lg font-bold text-slate-950">
-                    {terreincontrole.attestnummer ||
-                      `Terreincontrole #${terreincontrole.id}`}
-                  </h3>
+        terreincontroles.map((terreincontrole) => (
+          <details
+            key={terreincontrole.id}
+            className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm"
+          >
+            <summary className="flex flex-col gap-4 border-b border-slate-200 bg-slate-50 px-5 py-5 lg:flex-row lg:items-start lg:justify-between cursor-pointer list-none">
+              <div>
+                <h3 className="text-lg font-bold text-slate-950">
+                  {terreincontrole.attestnummer ||
+                    `Terreincontrole #${terreincontrole.id}`}
+                </h3>
 
-                  <p className="mt-2 text-sm text-slate-600">
-                    Controle op{" "}
-                    {formatteerDatum(
-                      terreincontrole.datumControle,
-                    )}{" "}
-                    · {terreincontrole.bedrijfsnaam}
-                  </p>
+                <p className="mt-2 text-sm text-slate-600">
+                  Controle op {formatteerDatum(terreincontrole.datumControle)} ·{" "}
+                  {terreincontrole.bedrijfsnaam}
+                </p>
 
-                  <p className="mt-1 text-sm text-slate-500">
-                    {terreincontrole.vaststellingen.length}{" "}
-                    {terreincontrole.vaststellingen.length === 1
-                      ? "vaststelling"
-                      : "non-conformiteiten"}
-                  </p>
-                </div>
-
-                <Link
-                  href={`/terreincontroles/${terreincontrole.id}`}
-                  className="inline-flex h-10 items-center justify-center rounded-xl bg-emerald-700 px-4 text-sm font-bold text-white hover:bg-emerald-800"
-                >
-                  Terreincontrole bekijken
-                </Link>
-              </summary>
-
-              <dl className="grid gap-4 border-b border-slate-200 px-5 py-5 sm:grid-cols-2 lg:grid-cols-4">
-                <div>
-                  <dt className="text-xs font-bold uppercase tracking-wide text-slate-500">
-                    Auditeur
-                  </dt>
-                  <dd className="mt-1 text-sm font-medium text-slate-900">
-                    {toonWaarde(
-                      terreincontrole.auditeur,
-                    )}
-                  </dd>
-                </div>
-
-                <div>
-                  <dt className="text-xs font-bold uppercase tracking-wide text-slate-500">
-                    Attest-ID
-                  </dt>
-                  <dd className="mt-1 break-all text-sm font-medium text-slate-900">
-                    {toonWaarde(
-                      terreincontrole.attestId,
-                    )}
-                  </dd>
-                </div>
-
-                <div>
-                  <dt className="text-xs font-bold uppercase tracking-wide text-slate-500">
-                    Adres
-                  </dt>
-                  <dd className="mt-1 text-sm font-medium text-slate-900">
-                    {toonWaarde(
-                      terreincontrole.adres,
-                    )}
-                  </dd>
-                </div>
-
-                <div>
-                  <dt className="text-xs font-bold uppercase tracking-wide text-slate-500">
-                    Bedrijfsnaam
-                  </dt>
-                  <dd className="mt-1 text-sm font-medium text-slate-900">
-                    {toonWaarde(
-                      terreincontrole.bedrijfsnaam,
-                    )}
-                  </dd>
-                </div>
-
-                <div>
-                  <dt className="text-xs font-bold uppercase tracking-wide text-slate-500">
-                    Ondernemingsnummer
-                  </dt>
-                  <dd className="mt-1 text-sm font-medium text-slate-900">
-                    {toonWaarde(
-                      terreincontrole.ondernemingsnummer,
-                    )}
-                  </dd>
-                </div>
-
-                <div>
-                  <dt className="text-xs font-bold uppercase tracking-wide text-slate-500">
-                    Persoonscertificaat
-                  </dt>
-                  <dd className="mt-1 text-sm font-medium text-slate-900">
-                    {toonWaarde(
-                      terreincontrole
-                        .persoonscertificaatNummer,
-                    )}
-                  </dd>
-                </div>
-
-                <div>
-                  <dt className="text-xs font-bold uppercase tracking-wide text-slate-500">
-                    Procescertificaat
-                  </dt>
-                  <dd className="mt-1 text-sm font-medium text-slate-900">
-                    {toonWaarde(
-                      terreincontrole
-                        .procescertificaatNummer,
-                    )}
-                  </dd>
-                </div>
-
-                <div className="sm:col-span-2 lg:col-span-4">
-                  <dt className="text-xs font-bold uppercase tracking-wide text-slate-500">
-                    Opmerkingen
-                  </dt>
-                  <dd className="mt-1 whitespace-pre-wrap text-sm font-medium text-slate-900">
-                    {toonWaarde(
-                      terreincontrole.opmerkingen,
-                    )}
-                  </dd>
-                </div>
-              </dl>
-
-              <div className="px-5 py-5">
-                <h4 className="text-sm font-bold text-slate-950">
-
-                  Non-conformiteiten
-                </h4>
-
-                {terreincontrole.vaststellingen.length === 0 ? (
-                  <p className="mt-3 rounded-xl bg-slate-50 px-4 py-4 text-sm text-slate-500">
-
-                    Aan deze terreincontrole zijn nog geen
-                    non-conformiteiten gekoppeld.
-                  </p>
-                ) : (
-                  <div className="mt-3 overflow-x-auto rounded-2xl border border-slate-200">
-                    <table className="min-w-[1800px] text-left text-sm">
-                      <thead className="bg-slate-50 text-slate-600">
-                        <tr>
-                          <th className="px-4 py-3">
-                            NC-ID
-                          </th>
-                          <th className="px-4 py-3">
-                            Parameter
-                          </th>
-                          <th className="px-4 py-3">
-                            Omschrijving
-                          </th>
-                          <th className="px-4 py-3">
-                            Vastgesteld door CI
-                          </th>
-                          <th className="px-4 py-3">
-                            Verduidelijking
-                          </th>
-                          <th className="px-4 py-3">
-                            Grote impact
-                          </th>
-                          <th className="px-4 py-3">
-                            Categorie
-                          </th>
-                          <th className="px-4 py-3">
-                            Motivatie aanpassing
-                          </th>
-                        </tr>
-                      </thead>
-
-                      <tbody>
-                        {terreincontrole.vaststellingen.map(
-                          (vaststelling) => (
-                            <tr
-                              key={vaststelling.id}
-                              className="border-t border-slate-100 align-top"
-                            >
-                              <td className="px-4 py-3 font-bold text-slate-900">
-                                {toonWaarde(
-                                  vaststelling.ncId,
-                                )}
-                              </td>
-
-                              <td className="px-4 py-3">
-                                {toonWaarde(
-                                  vaststelling.parameter,
-                                )}
-                              </td>
-
-                              <td className="max-w-md whitespace-pre-wrap px-4 py-3">
-                                {toonWaarde(
-                                  vaststelling.omschrijving,
-                                )}
-                              </td>
-
-                              <td className="px-4 py-3">
-                                {toonWaarde(
-                                  vaststelling.vastgesteldDoorCi,
-                                )}
-                              </td>
-
-                              <td className="max-w-md whitespace-pre-wrap px-4 py-3">
-                                {toonWaarde(
-                                  vaststelling.verduidelijking,
-                                )}
-                              </td>
-
-                              <td className="px-4 py-3">
-                                {toonWaarde(
-                                  vaststelling.groteImpact,
-                                )}
-                              </td>
-
-                              <td className="px-4 py-3">
-                                {toonWaarde(
-                                  vaststelling.categorie,
-                                )}
-                              </td>
-
-                              <td className="max-w-md whitespace-pre-wrap px-4 py-3">
-                                {toonWaarde(
-                                  vaststelling.motivatieAanpassing,
-                                )}
-                              </td>
-                            </tr>
-                          ),
-                        )}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
+                <p className="mt-1 text-sm text-slate-500">
+                  {terreincontrole.vaststellingen.length}{" "}
+                  {terreincontrole.vaststellingen.length === 1
+                    ? "vaststelling"
+                    : "non-conformiteiten"}
+                </p>
               </div>
-            </details>
-          ),
-        )
+
+              <Link
+                href={`/terreincontroles/${terreincontrole.id}`}
+                className="inline-flex h-10 items-center justify-center rounded-xl bg-emerald-700 px-4 text-sm font-bold text-white hover:bg-emerald-800"
+              >
+                Terreincontrole bekijken
+              </Link>
+            </summary>
+
+            <dl className="grid gap-4 border-b border-slate-200 px-5 py-5 sm:grid-cols-2 lg:grid-cols-4">
+              <div>
+                <dt className="text-xs font-bold uppercase tracking-wide text-slate-500">
+                  Auditeur
+                </dt>
+                <dd className="mt-1 text-sm font-medium text-slate-900">
+                  {toonWaarde(terreincontrole.auditeur)}
+                </dd>
+              </div>
+
+              <div>
+                <dt className="text-xs font-bold uppercase tracking-wide text-slate-500">
+                  Attest-ID
+                </dt>
+                <dd className="mt-1 break-all text-sm font-medium text-slate-900">
+                  {toonWaarde(terreincontrole.attestId)}
+                </dd>
+              </div>
+
+              <div>
+                <dt className="text-xs font-bold uppercase tracking-wide text-slate-500">
+                  Adres
+                </dt>
+                <dd className="mt-1 text-sm font-medium text-slate-900">
+                  {toonWaarde(terreincontrole.adres)}
+                </dd>
+              </div>
+
+              <div>
+                <dt className="text-xs font-bold uppercase tracking-wide text-slate-500">
+                  Bedrijfsnaam
+                </dt>
+                <dd className="mt-1 text-sm font-medium text-slate-900">
+                  {toonWaarde(terreincontrole.bedrijfsnaam)}
+                </dd>
+              </div>
+
+              <div>
+                <dt className="text-xs font-bold uppercase tracking-wide text-slate-500">
+                  Ondernemingsnummer
+                </dt>
+                <dd className="mt-1 text-sm font-medium text-slate-900">
+                  {toonWaarde(terreincontrole.ondernemingsnummer)}
+                </dd>
+              </div>
+
+              <div>
+                <dt className="text-xs font-bold uppercase tracking-wide text-slate-500">
+                  Persoonscertificaat
+                </dt>
+                <dd className="mt-1 text-sm font-medium text-slate-900">
+                  {toonWaarde(terreincontrole.persoonscertificaatNummer)}
+                </dd>
+              </div>
+
+              <div>
+                <dt className="text-xs font-bold uppercase tracking-wide text-slate-500">
+                  Procescertificaat
+                </dt>
+                <dd className="mt-1 text-sm font-medium text-slate-900">
+                  {toonWaarde(terreincontrole.procescertificaatNummer)}
+                </dd>
+              </div>
+
+              <div className="sm:col-span-2 lg:col-span-4">
+                <dt className="text-xs font-bold uppercase tracking-wide text-slate-500">
+                  Opmerkingen
+                </dt>
+                <dd className="mt-1 whitespace-pre-wrap text-sm font-medium text-slate-900">
+                  {toonWaarde(terreincontrole.opmerkingen)}
+                </dd>
+              </div>
+            </dl>
+
+            <div className="px-5 py-5">
+              <h4 className="text-sm font-bold text-slate-950">
+                Non-conformiteiten
+              </h4>
+
+              {terreincontrole.vaststellingen.length === 0 ? (
+                <p className="mt-3 rounded-xl bg-slate-50 px-4 py-4 text-sm text-slate-500">
+                  Aan deze terreincontrole zijn nog geen non-conformiteiten
+                  gekoppeld.
+                </p>
+              ) : (
+                <div className="mt-3 overflow-x-auto rounded-2xl border border-slate-200">
+                  <table className="min-w-[1800px] text-left text-sm">
+                    <thead className="bg-slate-50 text-slate-600">
+                      <tr>
+                        <th className="px-4 py-3">NC-ID</th>
+                        <th className="px-4 py-3">Parameter</th>
+                        <th className="px-4 py-3">Omschrijving</th>
+                        <th className="px-4 py-3">Vastgesteld door CI</th>
+                        <th className="px-4 py-3">Verduidelijking</th>
+                        <th className="px-4 py-3">Grote impact</th>
+                        <th className="px-4 py-3">Categorie</th>
+                        <th className="px-4 py-3">Motivatie aanpassing</th>
+                      </tr>
+                    </thead>
+
+                    <tbody>
+                      {terreincontrole.vaststellingen.map((vaststelling) => (
+                        <tr
+                          key={vaststelling.id}
+                          className="border-t border-slate-100 align-top"
+                        >
+                          <td className="px-4 py-3 font-bold text-slate-900">
+                            {toonWaarde(
+                              geefCanoniekeNcId(
+                                vaststelling.ncId,
+                                canoniekeNcIdKaart,
+                              ),
+                            )}
+                          </td>
+
+                          <td className="px-4 py-3">
+                            {toonWaarde(vaststelling.parameter)}
+                          </td>
+
+                          <td className="max-w-md whitespace-pre-wrap px-4 py-3">
+                            {toonWaarde(vaststelling.omschrijving)}
+                          </td>
+
+                          <td className="px-4 py-3">
+                            {toonWaarde(vaststelling.vastgesteldDoorCi)}
+                          </td>
+
+                          <td className="max-w-md whitespace-pre-wrap px-4 py-3">
+                            {toonWaarde(vaststelling.verduidelijking)}
+                          </td>
+
+                          <td className="px-4 py-3">
+                            {toonWaarde(vaststelling.groteImpact)}
+                          </td>
+
+                          <td className="px-4 py-3">
+                            {toonWaarde(vaststelling.categorie)}
+                          </td>
+
+                          <td className="max-w-md whitespace-pre-wrap px-4 py-3">
+                            {toonWaarde(vaststelling.motivatieAanpassing)}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          </details>
+        ))
       )}
     </section>
   );

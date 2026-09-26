@@ -7,6 +7,10 @@ import { vereisMachtiging } from "@/lib/auth";
 import { heeftMachtiging } from "@/lib/autorisatie";
 import { formatteerOndernemingsnummer } from "@/lib/ondernemingsnummer";
 import { prisma } from "@/lib/prisma";
+import {
+  geefCanoniekeNcId,
+  laadCanoniekeNcIdKaart,
+} from "@/lib/non-conformiteit-nc-id";
 
 export const dynamic = "force-dynamic";
 
@@ -16,34 +20,25 @@ type DeskcontroleDetailPageProps = {
   }>;
 };
 
-function formatteerDatum(
-  datum: Date | null,
-) {
+function formatteerDatum(datum: Date | null) {
   if (!datum) {
     return "";
   }
 
-  return new Intl.DateTimeFormat(
-    "nl-BE",
-    {
-      day: "2-digit",
-      month: "2-digit",
-      year: "numeric",
-      timeZone: "UTC",
-    },
-  ).format(datum);
+  return new Intl.DateTimeFormat("nl-BE", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    timeZone: "UTC",
+  }).format(datum);
 }
 
-function statusLabel(
-  status: string,
-) {
+function statusLabel(status: string) {
   if (status === "IN_OPMAAK") {
     return "In opmaak";
   }
 
-  if (
-    status === "GEACTUALISEERD"
-  ) {
+  if (status === "GEACTUALISEERD") {
     return "Geactualiseerd";
   }
 
@@ -54,38 +49,24 @@ function statusLabel(
   return "Geen";
 }
 
-
-function typeControleLabel(
-  typeControle: string | null,
-) {
-  if (
-    typeControle ===
-    "OPVOLGING"
-  ) {
+function typeControleLabel(typeControle: string | null) {
+  if (typeControle === "OPVOLGING") {
     return "Opvolging";
   }
 
-  if (
-    typeControle ===
-    "NIEUWE_CONTROLE"
-  ) {
+  if (typeControle === "NIEUWE_CONTROLE") {
     return "Nieuwe controle";
   }
 
   return "—";
 }
 
-
-function statusStijl(
-  status: string,
-) {
+function statusStijl(status: string) {
   if (status === "AFGEROND") {
     return "border-green-300 bg-green-100 text-green-900";
   }
 
-  if (
-    status === "GEACTUALISEERD"
-  ) {
+  if (status === "GEACTUALISEERD") {
     return "border-emerald-200 bg-emerald-50 text-emerald-800";
   }
 
@@ -96,26 +77,15 @@ function statusStijl(
   return "border-slate-200 bg-slate-100 text-slate-700";
 }
 
-
 type GegevensVeldProps = {
   label: string;
   waarde?: string | null;
   breed?: boolean;
 };
 
-function GegevensVeld({
-  label,
-  waarde,
-  breed = false,
-}: GegevensVeldProps) {
+function GegevensVeld({ label, waarde, breed = false }: GegevensVeldProps) {
   return (
-    <div
-      className={
-        breed
-          ? "sm:col-span-2 xl:col-span-3"
-          : ""
-      }
-    >
+    <div className={breed ? "sm:col-span-2 xl:col-span-3" : ""}>
       <dt className="text-xs font-bold uppercase tracking-wide text-slate-500">
         {label}
       </dt>
@@ -132,98 +102,73 @@ export default async function DeskcontroleDetailPage({
 }: DeskcontroleDetailPageProps) {
   const gebruiker = await vereisMachtiging("DESKCONTROLES_BEKIJKEN");
 
-  const magBeheren = heeftMachtiging(
-    gebruiker.rollen,
-    "DESKCONTROLES_BEHEREN",
-  );
+  const magBeheren = heeftMachtiging(gebruiker.rollen, "DESKCONTROLES_BEHEREN");
 
-  const { id: idWaarde } =
-    await params;
+  const { id: idWaarde } = await params;
 
   const id = Number(idWaarde);
 
-  if (
-    !Number.isInteger(id) ||
-    id <= 0
-  ) {
+  if (!Number.isInteger(id) || id <= 0) {
     notFound();
   }
 
-  const deskcontrole =
-    await prisma.deskcontrole.findUnique({
-      where: {
-        id,
-      },
-      include: {
-        lid: {
-          select: {
-            naamPersoon: true,
-            ovamId: true,
-            certificaatnummer: true,
-            certificatiePlatform: true,
-          },
-        },
-        procescertificaat: {
-          select: {
-            naamBedrijf: true,
-            kboNummer: true,
-            certificaatnummer: true,
-            oneDrive: true,
-          },
-        },
-        vaststellingen: {
-          orderBy: [
-            {
-              excelRij: "asc",
-            },
-            {
-              id: "asc",
-            },
-          ],
+  const deskcontrole = await prisma.deskcontrole.findUnique({
+    where: {
+      id,
+    },
+    include: {
+      lid: {
+        select: {
+          naamPersoon: true,
+          ovamId: true,
+          certificaatnummer: true,
+          certificatiePlatform: true,
         },
       },
-    });
+      procescertificaat: {
+        select: {
+          naamBedrijf: true,
+          kboNummer: true,
+          certificaatnummer: true,
+          oneDrive: true,
+        },
+      },
+      vaststellingen: {
+        orderBy: [
+          {
+            excelRij: "asc",
+          },
+          {
+            id: "asc",
+          },
+        ],
+      },
+    },
+  });
 
   if (!deskcontrole) {
     notFound();
   }
 
-  const vaststellingRijen =
-    deskcontrole.vaststellingen.map(
-      (vaststelling) => ({
-        id: vaststelling.id,
-        excelRij:
-          vaststelling.excelRij,
-        parameter:
-          vaststelling.parameter ?? "",
-        ncId:
-          vaststelling.ncId,
-        omschrijving:
-          vaststelling.omschrijving ??
-          "",
-        vastgesteldDoorCi:
-          vaststelling.vastgesteldDoorCi ??
-          "",
-        verduidelijking:
-          vaststelling.verduidelijking ??
-          "",
-        groteImpact:
-          vaststelling.groteImpact ??
-          "",
-        categorie:
-          vaststelling.categorie ?? "",
-        motivatieAanpassing:
-          vaststelling.motivatieAanpassing ??
-          "",
-      }),
-    );
+  const canoniekeNcIdKaart = await laadCanoniekeNcIdKaart(
+    deskcontrole.vaststellingen.map((vaststelling) => vaststelling.ncId),
+  );
+
+  const vaststellingRijen = deskcontrole.vaststellingen.map((vaststelling) => ({
+    id: vaststelling.id,
+    excelRij: vaststelling.excelRij,
+    parameter: vaststelling.parameter ?? "",
+    ncId: geefCanoniekeNcId(vaststelling.ncId, canoniekeNcIdKaart),
+    omschrijving: vaststelling.omschrijving ?? "",
+    vastgesteldDoorCi: vaststelling.vastgesteldDoorCi ?? "",
+    verduidelijking: vaststelling.verduidelijking ?? "",
+    groteImpact: vaststelling.groteImpact ?? "",
+    categorie: vaststelling.categorie ?? "",
+    motivatieAanpassing: vaststelling.motivatieAanpassing ?? "",
+  }));
 
   const oneDrive =
-    deskcontrole.oneDrive ??
-    deskcontrole.procescertificaat
-      ?.oneDrive ??
-    "";
-
+    deskcontrole.oneDrive ?? deskcontrole.procescertificaat?.oneDrive ?? "";
 
   return (
     <div className="mx-auto max-w-[1600px] space-y-5">
@@ -248,51 +193,28 @@ export default async function DeskcontroleDetailPage({
               Bewerken
             </Link>
           ) : null}
-
         </div>
       </div>
 
       <DeskcontroleContextActies
         id={deskcontrole.id}
-        linkAttest={
-          deskcontrole.linkAttest
-        }
+        linkAttest={deskcontrole.linkAttest}
         oneDrive={oneDrive}
-        certificatiePlatform={
-          deskcontrole.lid
-            .certificatiePlatform
-        }
-        deadlineSanctie={formatteerDatum(
-          deskcontrole.deadlineSanctie,
-        )}
-        deadlineCorrectie={formatteerDatum(
-          deskcontrole.deadlineCorrectie,
-        )}
+        certificatiePlatform={deskcontrole.lid.certificatiePlatform}
+        deadlineSanctie={formatteerDatum(deskcontrole.deadlineSanctie)}
+        deadlineCorrectie={formatteerDatum(deskcontrole.deadlineCorrectie)}
         magBeheren={magBeheren}
-        verwijderd={Boolean(
-          deskcontrole.verwijderdOp,
-        )}
+        verwijderd={Boolean(deskcontrole.verwijderdOp)}
       />
 
-      {magBeheren &&
-      !deskcontrole.verwijderdOp ? (
+      {magBeheren && !deskcontrole.verwijderdOp ? (
         <DeskcontroleDetailSnelleActies
           id={deskcontrole.id}
           status={deskcontrole.status}
-          mailSanctieVerzonden={
-            deskcontrole
-              .mailSanctieVerzonden ??
-            false
-          }
-          mailCorrectieVerzonden={
-            deskcontrole
-              .mailCorrectieVerzonden ??
-            false
-          }
+          mailSanctieVerzonden={deskcontrole.mailSanctieVerzonden ?? false}
+          mailCorrectieVerzonden={deskcontrole.mailCorrectieVerzonden ?? false}
           voorwaardelijkeOpheffing={
-            deskcontrole
-              .voorwaardelijkeOpheffing ??
-            false
+            deskcontrole.voorwaardelijkeOpheffing ?? false
           }
         />
       ) : null}
@@ -306,24 +228,13 @@ export default async function DeskcontroleDetailPage({
               </p>
 
               <h1 className="mt-2 text-2xl font-bold sm:text-3xl">
-                {
-                  deskcontrole.attestnummer
-                }
+                {deskcontrole.attestnummer}
               </h1>
 
               <p className="mt-2 text-sm text-emerald-100">
-                {
-                  deskcontrole.lid
-                    .naamPersoon
-                }{" "}
-                ·{" "}
-                {
-                  deskcontrole
-                    .procescertificaat
-                    ?.naamBedrijf ??
-                  "Niet gekoppeld"
-                }
-
+                {deskcontrole.lid.naamPersoon} ·{" "}
+                {deskcontrole.procescertificaat?.naamBedrijf ??
+                  "Niet gekoppeld"}
               </p>
             </div>
 
@@ -332,196 +243,117 @@ export default async function DeskcontroleDetailPage({
                 deskcontrole.status,
               )}`}
             >
-              {statusLabel(
-                deskcontrole.status,
-              )}
+              {statusLabel(deskcontrole.status)}
             </span>
           </div>
         </header>
 
         <dl className="grid gap-x-8 gap-y-6 px-6 py-6 sm:grid-cols-2 sm:px-8 xl:grid-cols-3">
-          <GegevensVeld
-            label="Auditeur"
-            waarde={
-              deskcontrole.auditeur
-            }
-          />
+          <GegevensVeld label="Auditeur" waarde={deskcontrole.auditeur} />
 
           <GegevensVeld
             label="Type Controle"
-            waarde={typeControleLabel(
-              deskcontrole.typeControle,
-            )}
+            waarde={typeControleLabel(deskcontrole.typeControle)}
           />
 
-          <GegevensVeld
-            label="Attest-ID"
-            waarde={
-              deskcontrole.attestId
-            }
-          />
+          <GegevensVeld label="Attest-ID" waarde={deskcontrole.attestId} />
 
           <GegevensVeld
             label="Naam ADI"
-            waarde={
-              deskcontrole.lid
-                .naamPersoon
-            }
+            waarde={deskcontrole.lid.naamPersoon}
           />
 
-          <GegevensVeld
-            label="OVAM-ID"
-            waarde={
-              deskcontrole.lid.ovamId
-            }
-          />
+          <GegevensVeld label="OVAM-ID" waarde={deskcontrole.lid.ovamId} />
 
           <GegevensVeld
             label="Persoonscertificaat"
-            waarde={
-              deskcontrole.lid
-                .certificaatnummer
-            }
+            waarde={deskcontrole.lid.certificaatnummer}
           />
 
           <GegevensVeld
             label="Certificatie platform"
-            waarde={
-              deskcontrole.lid
-                .certificatiePlatform
-            }
+            waarde={deskcontrole.lid.certificatiePlatform}
           />
 
           <GegevensVeld
             label="Bedrijfsnaam"
             waarde={
-              deskcontrole
-                .procescertificaat
-                ?.naamBedrijf ??
-              "Niet gekoppeld"
+              deskcontrole.procescertificaat?.naamBedrijf ?? "Niet gekoppeld"
             }
           />
 
           <GegevensVeld
             label="Ondernemingsnummer / EU-btw-nummer"
             waarde={
-              deskcontrole
-                .procescertificaat
-                ?.kboNummer
+              deskcontrole.procescertificaat?.kboNummer
                 ? formatteerOndernemingsnummer(
-                    deskcontrole
-                      .procescertificaat
-                      .kboNummer,
+                    deskcontrole.procescertificaat.kboNummer,
                   )
                 : "Niet gekoppeld"
             }
           />
 
-
           <GegevensVeld
             label="Procescertificaat"
             waarde={
-              deskcontrole
-                .procescertificaat
-                ?.certificaatnummer ??
+              deskcontrole.procescertificaat?.certificaatnummer ??
               "Niet gekoppeld"
             }
           />
 
-
           <GegevensVeld
             label="Datum controle"
-            waarde={formatteerDatum(
-              deskcontrole.datumControle,
-            )}
+            waarde={formatteerDatum(deskcontrole.datumControle)}
           />
 
           <GegevensVeld
             label="Deadline Sanctie"
-            waarde={formatteerDatum(
-              deskcontrole.deadlineSanctie,
-            )}
+            waarde={formatteerDatum(deskcontrole.deadlineSanctie)}
           />
 
           <GegevensVeld
             label="Finalisatie Datum"
-            waarde={formatteerDatum(
-              deskcontrole.finalisatieDatum,
-            )}
+            waarde={formatteerDatum(deskcontrole.finalisatieDatum)}
           />
 
           <GegevensVeld
             label="Deadline Correctie"
-            waarde={formatteerDatum(
-              deskcontrole.deadlineCorrectie,
-            )}
+            waarde={formatteerDatum(deskcontrole.deadlineCorrectie)}
           />
 
           <GegevensVeld
             label="Mail sanctie verzonden"
-            waarde={
-              deskcontrole
-                .mailSanctieVerzonden
-                ? "Ja"
-                : "Nee"
-            }
+            waarde={deskcontrole.mailSanctieVerzonden ? "Ja" : "Nee"}
           />
 
           <GegevensVeld
             label="Mail correctie verzonden"
-            waarde={
-              deskcontrole
-                .mailCorrectieVerzonden
-                ? "Ja"
-                : "Nee"
-            }
+            waarde={deskcontrole.mailCorrectieVerzonden ? "Ja" : "Nee"}
           />
 
           <GegevensVeld
             label="Voorwaardelijke Opheffing"
-            waarde={
-              deskcontrole
-                .voorwaardelijkeOpheffing
-                ? "Ja"
-                : "Nee"
-            }
+            waarde={deskcontrole.voorwaardelijkeOpheffing ? "Ja" : "Nee"}
           />
 
-          <GegevensVeld
-            label="Adres"
-            waarde={
-              deskcontrole.adres
-            }
-            breed
-          />
+          <GegevensVeld label="Adres" waarde={deskcontrole.adres} breed />
 
           <GegevensVeld
             label="Opmerkingen"
-            waarde={
-              deskcontrole.opmerkingen
-            }
+            waarde={deskcontrole.opmerkingen}
             breed
           />
         </dl>
       </section>
 
-      {vaststellingRijen.length >
-      0 ? (
-        <DeskcontroleVaststellingenTabel
-          rijen={vaststellingRijen}
-        />
+      {vaststellingRijen.length > 0 ? (
+        <DeskcontroleVaststellingenTabel rijen={vaststellingRijen} />
       ) : (
         <section className="rounded-3xl border border-slate-200 bg-white px-6 py-12 text-center shadow-sm">
-          <h2 className="font-bold text-slate-950">
-
-            Geen non-conformiteiten
-          </h2>
+          <h2 className="font-bold text-slate-950">Geen non-conformiteiten</h2>
 
           <p className="mt-2 text-sm text-slate-500">
-
-            Aan deze deskcontrole zijn
-            geen non-conformiteiten
-            gekoppeld.
+            Aan deze deskcontrole zijn geen non-conformiteiten gekoppeld.
           </p>
         </section>
       )}
