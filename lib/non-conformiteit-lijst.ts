@@ -312,6 +312,77 @@ function basisCte() {
   `;
 }
 
+/**
+ * Koppelt een NC-ID zonder achtervoegsel aan dezelfde NC-ID met "-2",
+ * wanneer die variant in de actuele desk- of terreincontroles bestaat.
+ *
+ * Voorbeeld:
+ * - Bepe55   -> Bepe55-2, als Bepe55-2 bestaat
+ * - Bepe55-2 -> Bepe55-2
+ * - Bepe56   -> Bepe56, als Bepe56-2 niet bestaat
+ *
+ * De oorspronkelijke databasewaarde wordt niet gewijzigd.
+ */
+function canoniekeNcIdExpressie(alias = "b") {
+  const prefix = Prisma.raw(`"${alias}".`);
+
+  return Prisma.sql`
+    CASE
+      WHEN RIGHT(
+        LOWER(
+          BTRIM(
+            COALESCE(
+              ${prefix}"ncId",
+              ''
+            )
+          )
+        ),
+        2
+      ) = '-2'
+      THEN BTRIM(
+        COALESCE(
+          ${prefix}"ncId",
+          ''
+        )
+      )
+      ELSE COALESCE(
+        (
+          SELECT MIN(
+            BTRIM(
+              COALESCE(
+                "canonieke_nc"."ncId",
+                ''
+              )
+            )
+          )
+          FROM "basis" "canonieke_nc"
+          WHERE LOWER(
+            BTRIM(
+              COALESCE(
+                "canonieke_nc"."ncId",
+                ''
+              )
+            )
+          ) = LOWER(
+            BTRIM(
+              COALESCE(
+                ${prefix}"ncId",
+                ''
+              )
+            ) || '-2'
+          )
+        ),
+        BTRIM(
+          COALESCE(
+            ${prefix}"ncId",
+            ''
+          )
+        )
+      )
+    END
+  `;
+}
+
 function tekstExpressie(sleutel: NonConformiteitSortering, alias = "b") {
   const prefix = Prisma.raw(`"${alias}".`);
 
@@ -321,7 +392,7 @@ function tekstExpressie(sleutel: NonConformiteitSortering, alias = "b") {
     case "bron":
       return Prisma.sql`${prefix}"bron"`;
     case "ncId":
-      return Prisma.sql`${prefix}"ncId"`;
+      return canoniekeNcIdExpressie(alias);
     case "categorie":
       return Prisma.sql`${prefix}"categorie"`;
     case "parameter":
@@ -419,7 +490,7 @@ function maakZoekVoorwaarde(zoekterm: string) {
 
   const expressies: Prisma.Sql[] = [
     Prisma.sql`b."bron"`,
-    Prisma.sql`b."ncId"`,
+    canoniekeNcIdExpressie("b"),
     Prisma.sql`b.categorie`,
     Prisma.sql`b.parameter`,
     Prisma.sql`b."naamAdi"`,
@@ -539,7 +610,7 @@ export async function laadNonConformiteiten({
       g."bronSleutel",
       g."excelRij",
       g.parameter,
-      g."ncId",
+      ${canoniekeNcIdExpressie("g")} AS "ncId",
       g.omschrijving,
       g."vastgesteldDoorCi",
       g.verduidelijking,
@@ -586,7 +657,7 @@ export async function laadNonConformiteitTrends(ncIds: string[]) {
     Prisma.sql`
         WITH ${basisCte()}
         SELECT
-          BTRIM(b."ncId") AS "ncId",
+          ${canoniekeNcIdExpressie("b")} AS "ncId",
           TO_CHAR(
             DATE_TRUNC('month', b."datumControle"),
             'YYYY-MM'
@@ -595,12 +666,12 @@ export async function laadNonConformiteitTrends(ncIds: string[]) {
         FROM "basis" b
         WHERE
           b."datumControle" IS NOT NULL
-          AND BTRIM(b."ncId") IN (${Prisma.join(uniekeNcIds)})
+          AND ${canoniekeNcIdExpressie("b")} IN (${Prisma.join(uniekeNcIds)})
         GROUP BY
-          BTRIM(b."ncId"),
+          ${canoniekeNcIdExpressie("b")},
           DATE_TRUNC('month', b."datumControle")
         ORDER BY
-          BTRIM(b."ncId") ASC,
+          ${canoniekeNcIdExpressie("b")} ASC,
           DATE_TRUNC('month', b."datumControle") ASC
       `,
   );
