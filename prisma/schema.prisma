@@ -822,3 +822,14 @@ model PubliekeRateLimit {
   @@index([vervaltOp])
   @@map("publieke_rate_limits")
 }
+
+model NonConformiteitNcIdAlias {
+  aliasGenormaliseerd String   @id @map("alias_genormaliseerd")
+  canoniekeNcId       String   @map("canonieke_nc_id")
+  handmatig           Boolean  @default(false)
+  aangemaaktOp        DateTime @default(now()) @map("aangemaakt_op")
+  bijgewerktOp        DateTime @updatedAt @map("bijgewerkt_op")
+
+  @@index([canoniekeNcId])
+  @@map("non_conformiteit_nc_id_aliases")
+}

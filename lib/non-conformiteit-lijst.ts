@@ -247,7 +247,10 @@ function basisCte() {
         'deskcontrole'::text AS "bronSleutel",
         v."excel_rij" AS "excelRij",
         COALESCE(v.parameter, '')::text AS parameter,
-        v."nc_id"::text AS "ncId",
+        COALESCE(
+          nc_id_alias."canonieke_nc_id",
+          BTRIM(v."nc_id"::text)
+        )::text AS "ncId",
         COALESCE(v.omschrijving, '')::text AS omschrijving,
         COALESCE(v."vastgesteld_door_ci", '')::text AS "vastgesteldDoorCi",
         COALESCE(v.verduidelijking, '')::text AS verduidelijking,
@@ -271,6 +274,9 @@ function basisCte() {
       INNER JOIN "deskcontroles" d ON d.id = v."deskcontrole_id"
       INNER JOIN "leden" l ON l.id = d."lid_id"
       LEFT JOIN "procescertificaten" pc ON pc.id = d."procescertificaat_id"
+      LEFT JOIN "non_conformiteit_nc_id_aliases" nc_id_alias
+        ON nc_id_alias."alias_genormaliseerd" =
+           LOWER(BTRIM(v."nc_id"::text))
       WHERE d."verwijderd_op" IS NULL
 
       UNION ALL
@@ -283,7 +289,10 @@ function basisCte() {
         'terreincontrole'::text AS "bronSleutel",
         v."excel_rij" AS "excelRij",
         COALESCE(v.parameter, '')::text AS parameter,
-        v."nc_id"::text AS "ncId",
+        COALESCE(
+          nc_id_alias."canonieke_nc_id",
+          BTRIM(v."nc_id"::text)
+        )::text AS "ncId",
         COALESCE(v.omschrijving, '')::text AS omschrijving,
         COALESCE(v."vastgesteld_door_ci", '')::text AS "vastgesteldDoorCi",
         COALESCE(v.verduidelijking, '')::text AS verduidelijking,
@@ -307,79 +316,11 @@ function basisCte() {
       INNER JOIN "terreincontrole_dossiers" t
         ON t.id = v."terreincontrole_dossier_id"
       INNER JOIN "leden" l ON l.id = t."lid_id"
+      LEFT JOIN "non_conformiteit_nc_id_aliases" nc_id_alias
+        ON nc_id_alias."alias_genormaliseerd" =
+           LOWER(BTRIM(v."nc_id"::text))
       WHERE t."verwijderd_op" IS NULL
     )
-  `;
-}
-
-/**
- * Koppelt een NC-ID zonder achtervoegsel aan dezelfde NC-ID met "-2",
- * wanneer die variant in de actuele desk- of terreincontroles bestaat.
- *
- * Voorbeeld:
- * - Bepe55   -> Bepe55-2, als Bepe55-2 bestaat
- * - Bepe55-2 -> Bepe55-2
- * - Bepe56   -> Bepe56, als Bepe56-2 niet bestaat
- *
- * De oorspronkelijke databasewaarde wordt niet gewijzigd.
- */
-function canoniekeNcIdExpressie(alias = "b") {
-  const prefix = Prisma.raw(`"${alias}".`);
-
-  return Prisma.sql`
-    CASE
-      WHEN RIGHT(
-        LOWER(
-          BTRIM(
-            COALESCE(
-              ${prefix}"ncId",
-              ''
-            )
-          )
-        ),
-        2
-      ) = '-2'
-      THEN BTRIM(
-        COALESCE(
-          ${prefix}"ncId",
-          ''
-        )
-      )
-      ELSE COALESCE(
-        (
-          SELECT MIN(
-            BTRIM(
-              COALESCE(
-                "canonieke_nc"."ncId",
-                ''
-              )
-            )
-          )
-          FROM "basis" "canonieke_nc"
-          WHERE LOWER(
-            BTRIM(
-              COALESCE(
-                "canonieke_nc"."ncId",
-                ''
-              )
-            )
-          ) = LOWER(
-            BTRIM(
-              COALESCE(
-                ${prefix}"ncId",
-                ''
-              )
-            ) || '-2'
-          )
-        ),
-        BTRIM(
-          COALESCE(
-            ${prefix}"ncId",
-            ''
-          )
-        )
-      )
-    END
   `;
 }
 
@@ -392,7 +333,7 @@ function tekstExpressie(sleutel: NonConformiteitSortering, alias = "b") {
     case "bron":
       return Prisma.sql`${prefix}"bron"`;
     case "ncId":
-      return canoniekeNcIdExpressie(alias);
+      return Prisma.sql`${prefix}"ncId"`;
     case "categorie":
       return Prisma.sql`${prefix}"categorie"`;
     case "parameter":
@@ -490,7 +431,7 @@ function maakZoekVoorwaarde(zoekterm: string) {
 
   const expressies: Prisma.Sql[] = [
     Prisma.sql`b."bron"`,
-    canoniekeNcIdExpressie("b"),
+    Prisma.sql`b."ncId"`,
     Prisma.sql`b.categorie`,
     Prisma.sql`b.parameter`,
     Prisma.sql`b."naamAdi"`,
@@ -610,7 +551,7 @@ export async function laadNonConformiteiten({
       g."bronSleutel",
       g."excelRij",
       g.parameter,
-      ${canoniekeNcIdExpressie("g")} AS "ncId",
+      g."ncId",
       g.omschrijving,
       g."vastgesteldDoorCi",
       g.verduidelijking,
@@ -657,7 +598,7 @@ export async function laadNonConformiteitTrends(ncIds: string[]) {
     Prisma.sql`
         WITH ${basisCte()}
         SELECT
-          ${canoniekeNcIdExpressie("b")} AS "ncId",
+          BTRIM(b."ncId") AS "ncId",
           TO_CHAR(
             DATE_TRUNC('month', b."datumControle"),
             'YYYY-MM'
@@ -666,12 +607,12 @@ export async function laadNonConformiteitTrends(ncIds: string[]) {
         FROM "basis" b
         WHERE
           b."datumControle" IS NOT NULL
-          AND ${canoniekeNcIdExpressie("b")} IN (${Prisma.join(uniekeNcIds)})
+          AND BTRIM(b."ncId") IN (${Prisma.join(uniekeNcIds)})
         GROUP BY
-          ${canoniekeNcIdExpressie("b")},
+          BTRIM(b."ncId"),
           DATE_TRUNC('month', b."datumControle")
         ORDER BY
-          ${canoniekeNcIdExpressie("b")} ASC,
+          BTRIM(b."ncId") ASC,
           DATE_TRUNC('month', b."datumControle") ASC
       `,
   );
